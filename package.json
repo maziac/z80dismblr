@@ -1,0 +1,27 @@
+{
+  "name": "z80dismblr",
+  "version": "0.1.0",
+  "description": "A Z80 disassembler.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "typescript": "^2.6.2"
+  },
+  "devDependencies": {
+    "@types/node": "7.0.55",
+    "@types/chai": "^4.0.5",
+    "@types/mocha": "^2.2.44",
+    "mocha": "5.0.1",
+    "chai": "^4.1.2",
+    "del": "^3.0.0",
+    "gulp": "^3.9.1",
+    "gulp-typescript": "^3.2.3",
+    "mochawesome": "^2.3.1",
+    "tslint": "5.9.1",
+    "vsce": "1.37.5"
+  }
+}
