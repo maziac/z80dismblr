@@ -4,3 +4,5 @@ out/
 npm-debug.log
 *.vsix
 .vscode/settings.json
+.nyc_output/
+coverage/
