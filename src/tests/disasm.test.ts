@@ -1,5 +1,4 @@
-import assert = require('assert');
-//import { Utility } from '../utility';
+//import assert = require('assert');
 import { Disassembler } from '../disasm';
 
 
@@ -23,16 +22,16 @@ suite('Disassembler', () => {
 		test('Test B', () => {
 			let dasm = new Disassembler();
 
-			const memory = new Uint8Array([
+			const memory = [
 				0,
 				1, 0x34, 0x12,
 				2,
 				3,
 				4,
 				5, 128
-			]);
+			];
 
-			dasm.setMemory(memory);
+			dasm.memory.setMemory(0, new Uint8Array(memory));
 			let lines = dasm.disassemble();
 
 		});

@@ -1,5 +1,5 @@
 import assert = require('assert');
-import { Memory } from '../memory';
+import { Memory, MAX_MEM_SIZE } from '../memory';
 
 
 suite('Memory', () => {
@@ -104,7 +104,7 @@ suite('Memory', () => {
 		}
 
 		// Remaining
-		for(;addr<0x10000; addr++) {
+		for(;addr<MAX_MEM_SIZE; addr++) {
 			assert.equal(mem.getValueAt(addr), 0);
 		}
 	});

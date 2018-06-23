@@ -1,10 +1,12 @@
 import { readFileSync } from "fs";
+import { Opcode } from './opcodes';
+import { LabelType } from './label';
 
 //import * as util from 'util';
-//import * as assert from 'assert';
+import * as assert from 'assert';
 
 
-const MAX_MEM_SIZE = 0x10000;
+export const MAX_MEM_SIZE = 0x10000;
 
 enum MemAttribute {
 	/// Unassigned memory
@@ -14,7 +16,7 @@ enum MemAttribute {
 }
 
 /**
- * Class to hold the memory (segments).
+ * Class to hold and access the memory.
  */
 export class Memory {
 
@@ -72,6 +74,7 @@ export class Memory {
 		return this.memory[address&(MAX_MEM_SIZE-1)];
 	}
 
+
 	/**
 	 * Returns the word memory value at address.
 	 * @param address The address to retrieve.
@@ -80,6 +83,42 @@ export class Memory {
 	public getWordValueAt(address: number) {
 		const word = this.memory[address&(MAX_MEM_SIZE-1)] * 256*this.memory[address&(MAX_MEM_SIZE-1)];
 		return word;
+	}
+
+
+	/**
+	 * Returns the Opcode at address.
+	 * @param address The address to retrieve.
+	 * @returns It's opcode.
+	 */
+	public getOpcodeAt(address: number): Opcode {
+		const val = this.memory[address&(MAX_MEM_SIZE-1)];
+		const opcode = Opcode.fromValue(val);
+		// Get value (if any)
+		switch(opcode.valueType) {
+			case LabelType.NONE:
+				// no value
+			break;
+			case LabelType.CODE_LBL:
+			case LabelType.CODE_SUB:
+			case LabelType.CODE_SUB:
+			case LabelType.DATA_LBL:
+			case LabelType.NUMBER_WORD:
+				// word value
+				opcode.value = this.getWordValueAt(address+1);
+			break;
+			case LabelType.CODE_LOCAL_LBL:
+			case LabelType.CODE_LOOP:
+			case LabelType.NUMBER_BYTE:
+				// byte value
+				opcode.value = this.getValueAt(address+1);
+			break;
+			default:
+				assert(false);
+			break;
+
+		}
+		return opcode;
 	}
 
 
