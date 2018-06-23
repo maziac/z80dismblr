@@ -16,7 +16,7 @@ suite('Disassembler', () => {
 	suite('Test 1', () => {
 
 		test('Test A', () => {
-            let dasm = new Disassembler();
+            new Disassembler();
 		});
 
 		test('Test B', () => {

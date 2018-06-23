@@ -7,10 +7,10 @@
 export const enum LabelType {
 	// No label
 	NONE = 0,
-	// "loop"-type
-	CODE_LOOP,
 	// "local-label"-type
 	CODE_LOCAL_LBL,
+	// "loop"-type
+	CODE_LOOP,
 	// "LBL"-type
 	CODE_LBL,
 	// "SUB"-type
@@ -33,7 +33,7 @@ export class Label {
 	public type: LabelType;
 
 	/// The name of the label, e.g. "SUB001" or ".sub001_loop5"
-	protected name: string;
+	public name: string;
 
 
 	/**
