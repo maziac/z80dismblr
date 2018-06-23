@@ -82,4 +82,31 @@ suite('Memory', () => {
 		}
 	});
 
+	test('Reading bin file', () => {
+		let mem = new Memory();
+
+		let org1 = 1000;
+		let length = 6;
+		mem.readBinFile(org1, './src/tests/data/memory1.bin');
+
+		// before 1rst area
+		let addr = 0;
+		for(;addr<org1; addr++) {
+			assert.equal(mem.getValueAt(addr), 0);
+		}
+
+		// 1rst area
+		let value = 0x31;	// Values of the bin file
+		for(let i=0; i<length; i++) {
+			assert.equal(mem.getValueAt(addr), value);
+			value++;	// Next value from bin file
+			addr++;
+		}
+
+		// Remaining
+		for(;addr<0x10000; addr++) {
+			assert.equal(mem.getValueAt(addr), 0);
+		}
+	});
+
 });

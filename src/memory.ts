@@ -1,3 +1,5 @@
+import { readFileSync } from "fs";
+
 //import * as util from 'util';
 //import * as assert from 'assert';
 
@@ -55,8 +57,9 @@ export class Memory {
 	 * @param origin The start address of the memory area.
 	 * @param path The file path to a binary file.
 	 */
-	public readMemory(origin:number, path: string) {
-		// TODO: implement
+	public readBinFile(origin: number, path: string) {
+		let bin = readFileSync(path);
+		this.setMemory(origin, bin);
 	}
 
 
