@@ -45,7 +45,7 @@ const opcodes: Array<Array<any>> = [
 ];
 
 
-const opcodes: Array<Array<any>> = [
+const opcodes2: Array<Array<any>> = [
 	["NOP", LabelType.NONE],
 	["LD BC,%d", LabelType.NUMBER_BYTE],
 	["LD (BC),A", LabelType.NONE],
@@ -194,7 +194,7 @@ export class Disassembler {
 				break;
 		}
 		// Add disassembled opcode
-		lines.push(name);
+	//	lines.push(name);
 		// Return
 		return addr;
 	}
