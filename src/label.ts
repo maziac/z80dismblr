@@ -21,6 +21,8 @@ export const enum LabelType {
 	NUMBER_WORD,
 	// "Data LBL"-type
 	DATA_LBL,
+	// Label for "out/in" command
+	PORT_LBL
 }
 
 

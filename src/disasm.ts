@@ -254,10 +254,14 @@ export class Disassembler {
 			// Disassemble
 			const opCodeString = util.format(opcode.name, labelName);
 
-			// Check if label nneds to be added to line (print label on own line)
+			// TODO: print references (callers)
+
+			// Check if label needs to be added to line (print label on own line)
 			const addrLabel = this.labels.get(addr);
-			if(addrLabel)
+			if(addrLabel) {
 				const line1 = addr.toString(16) + '\t' + addrLabel.name + '\n';
+				// TODO: print line
+			}
 
 			// Add address
 			const line = addr.toString(16) + '\t\t' + opCodeString + '\n'
