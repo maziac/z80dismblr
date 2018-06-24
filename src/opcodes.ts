@@ -44,7 +44,7 @@ export class Opcode {
 		this.value = 0;
 		// Retrieve valueType and opcode flags from name
 		let k;
-		if(k = name.indexOf('#n') > 0) {
+		if((k = name.indexOf('#n')) > 0) {
 			if(name.substr(k+2,1) == 'n') { // i.e. '#nn'
 				// Word
 				this.length = 3;
@@ -106,9 +106,12 @@ export class Opcode {
 				}
 			}
 		}
-		else if(name.startsWith("RET")) {	// "RET" or "RETI"
-			// This is also a stop-code
-			this.flags |= OpcodeFlags.STOP;
+		else if(name.startsWith("RET")) {	// "RET" or "RET cc"
+			// If it is not conditional it is a stop-code.
+			if(name.substr(name.length-1,1) == '\t') {	// last character is no TAB
+				// not conditional -> stop-code
+				this.flags |= OpcodeFlags.STOP;
+			}
 		}
 
 		// Store
@@ -119,9 +122,9 @@ export class Opcode {
 	 * Static method to create an Opcode object from a value.
 	 */
 	public static fromValue(val) {
-		if(val< 0 || val>=opcodes.length)
+		if(val< 0 || val>=Opcodes.length)
 			throw new Error('Opcode 0x' + val.toString(16) + ' unknown.');
-		const opcode = opcodes[val];
+		const opcode = Opcodes[val];
 		return opcode;
 	}
 }
@@ -156,7 +159,7 @@ nn nn             DD nn          CB nn       FD CB ff nn      ED nn
 */
 
 
-const opcodes: Array<Opcode> = [
+export const Opcodes: Array<Opcode> = [
 	new Opcode(0x00, "NOP	"),
 	new Opcode(0x01, "LD	BC,#nn"),
 	new Opcode(0x02, "LD	(BC),A"),
@@ -173,7 +176,7 @@ const opcodes: Array<Opcode> = [
 	new Opcode(0x0D, "DEC	C"),
 	new Opcode(0x0E, "LD	C,#n"),
 	new Opcode(0x0F, "RRCA	"),
-	new Opcode(0x10, "DJNZ	$n"),
+	new Opcode(0x10, "DJNZ	#n"),
 	new Opcode(0x11, "LD	DE,#nn"),
 	new Opcode(0x12, "LD	(DE),A"),
 	new Opcode(0x13, "INC	DE"),
@@ -181,7 +184,7 @@ const opcodes: Array<Opcode> = [
 	new Opcode(0x15, "DEC	D"),
 	new Opcode(0x16, "LD	D,#n"),
 	new Opcode(0x17, "RLA	"),
-	new Opcode(0x18, "JR	$n"),
+	new Opcode(0x18, "JR	#n"),
 	new Opcode(0x19, "ADD	HL,DE"),
 	new Opcode(0x1A, "LD	A,(DE)"),
 	new Opcode(0x1B, "DEC	DE"),
@@ -189,7 +192,7 @@ const opcodes: Array<Opcode> = [
 	new Opcode(0x1D, "DEC	E"),
 	new Opcode(0x1E, "LD	E,#n"),
 	new Opcode(0x1F, "RRA	"),
-	new Opcode(0x20, "JR	NZ,$n"),
+	new Opcode(0x20, "JR	NZ,#n"),
 	new Opcode(0x21, "LD	HL,#nn"),
 	new Opcode(0x22, "LD	(#nn),HL"),
 	new Opcode(0x23, "INC	HL"),
@@ -197,7 +200,7 @@ const opcodes: Array<Opcode> = [
 	new Opcode(0x25, "DEC	H"),
 	new Opcode(0x26, "LD	H,#n"),
 	new Opcode(0x27, "DAA	"),
-	new Opcode(0x28, "JR	Z,$n"),
+	new Opcode(0x28, "JR	Z,#n"),
 	new Opcode(0x29, "ADD	HL,HL"),
 	new Opcode(0x2A, "LD	HL,(#nn)"),
 	new Opcode(0x2B, "DEC	HL"),
@@ -205,7 +208,7 @@ const opcodes: Array<Opcode> = [
 	new Opcode(0x2D, "DEC	L"),
 	new Opcode(0x2E, "LD	L,#n"),
 	new Opcode(0x2F, "CPL	"),
-	new Opcode(0x30, "JR	NC,$n"),
+	new Opcode(0x30, "JR	NC,#n"),
 	new Opcode(0x31, "LD	SP,#nn"),
 	new Opcode(0x32, "LD	(#nn),A"),
 	new Opcode(0x33, "INC	SP"),
@@ -213,7 +216,7 @@ const opcodes: Array<Opcode> = [
 	new Opcode(0x35, "DEC	(HL)"),
 	new Opcode(0x36, "LD	(HL),#n"),
 	new Opcode(0x37, "SCF	"),
-	new Opcode(0x38, "JR	C,$n"),
+	new Opcode(0x38, "JR	C,#n"),
 	new Opcode(0x39, "ADD	HL,SP"),
 	new Opcode(0x3A, "LD	A,(#nn)"),
 	new Opcode(0x3B, "DEC	SP"),
