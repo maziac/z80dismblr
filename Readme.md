@@ -9,3 +9,4 @@ INC BC: increment BC
 - Spectrum Standard labels optional hinzufügen. Memory und Ports.
 - Was mach ich mit Labeln, die im Binary nicht auftauchen. Port labels sowieso und MemoryLabels die ausserhalb sind.
 	- Vielleicht einfach als EQU aufführen
+- Labels vorgeben: man sollte labels mit Adresse und Namen auf der Kommandozeile vorgeben können.

@@ -7,10 +7,10 @@
 export const enum LabelType {
 	// No label
 	NONE = 0,
-	// "local-label"-type
-	CODE_LOCAL_LBL,
+	// "relative-label"-type, i.e. JR
+	CODE_RELATIVE_LBL,
 	// "loop"-type
-	CODE_LOOP,
+	CODE_RELATIVE_LOOP,
 	// "LBL"-type
 	CODE_LBL,
 	// "SUB"-type

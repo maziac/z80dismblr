@@ -6,7 +6,7 @@ import { LabelType } from './label'
 
 
 /// Classifies opcodes.
-export enum OpcodeFlags {
+export enum OpcodeFlag {
 	NONE = 0,
 	BRANCH_ADDRESS = 0x01,	///< contains a branch address, e.g. jp, jp cc, jr, jr cc, call, call cc.
 	CALL = 0x02,	///< is a subroutine call, e.g. call or call cc
@@ -25,7 +25,7 @@ export class Opcode {
 	/// The name of the opcode, e.g. "LD A,%d"
 	public name: string;
 	/// Opcode flags: branch-address, call, stop
-	public flags: OpcodeFlags;
+	public flags: OpcodeFlag;
 	/// The additional value in the opcode, e.g. nn or n
 	public valueType: LabelType;
 	// The length of the opcode + value
@@ -39,9 +39,10 @@ export class Opcode {
 	 */
 	constructor(code: number, name: string, value?: LabelType.NONE, length?: number) {
 		this.code = code;
-		this.flags = OpcodeFlags.NONE;
+		this.flags = OpcodeFlag.NONE;
 		this.valueType = LabelType.NONE;
 		this.value = 0;
+		this.length = 1;	// default
 		// Retrieve valueType and opcode flags from name
 		let k;
 		if((k = name.indexOf('#n')) > 0) {
@@ -59,17 +60,17 @@ export class Opcode {
 				else {
 					// now check for opcode flags
 					if(name.startsWith("CALL")) {
-						this.flags |= OpcodeFlags.CALL | OpcodeFlags.BRANCH_ADDRESS;
+						this.flags |= OpcodeFlag.CALL | OpcodeFlag.BRANCH_ADDRESS;
 						this.valueType = LabelType.CODE_SUB;
 					}
 					else if(name.startsWith("JP")) {
-						this.flags |= OpcodeFlags.BRANCH_ADDRESS;
+						this.flags |= OpcodeFlag.BRANCH_ADDRESS;
 						this.valueType = LabelType.CODE_LBL;
 						// Now check if it is conditional, i.e. if there is a ',' in the opcode
 						// If it is not conditional it is a stop-code.
 						if(name.indexOf(',') < 0) {
 							// not conditional -> stop-code
-							this.flags |= OpcodeFlags.STOP;
+							this.flags |= OpcodeFlag.STOP;
 						}
 					}
 					else {
@@ -80,6 +81,7 @@ export class Opcode {
 			}
 			else {
 				// Byte
+				this.length = 2;
 				// substitute formatting
 				name = name.substr(0,k) + '%s' + name.substr(k+2);
 				// store type
@@ -87,17 +89,17 @@ export class Opcode {
 
 				// now check for opcode flags
 				if(name.startsWith("DJNZ")) {
-					this.valueType = LabelType.CODE_LOOP;
-					this.flags |= OpcodeFlags.BRANCH_ADDRESS;
+					this.valueType = LabelType.CODE_RELATIVE_LOOP;
+					this.flags |= OpcodeFlag.BRANCH_ADDRESS;
 				}
 				if(name.startsWith("JR")) {
-					this.valueType = LabelType.CODE_LOCAL_LBL;
-					this.flags |= OpcodeFlags.BRANCH_ADDRESS;
+					this.valueType = LabelType.CODE_RELATIVE_LBL;
+					this.flags |= OpcodeFlag.BRANCH_ADDRESS;
 					// Now check if it is conditional, i.e. if there is a ',' in the opcode
 					// If it is not conditional it is a stop-code.
 					if(name.indexOf(',') < 0) {
 						// not conditional -> stop-code
-						this.flags |= OpcodeFlags.STOP;
+						this.flags |= OpcodeFlag.STOP;
 					}
 				}
 				else if(name.startsWith("IN") || name.startsWith("OUT")) {
@@ -110,7 +112,7 @@ export class Opcode {
 			// If it is not conditional it is a stop-code.
 			if(name.substr(name.length-1,1) == '\t') {	// last character is no TAB
 				// not conditional -> stop-code
-				this.flags |= OpcodeFlags.STOP;
+				this.flags |= OpcodeFlag.STOP;
 			}
 		}
 

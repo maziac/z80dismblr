@@ -8,11 +8,21 @@ import * as assert from 'assert';
 
 export const MAX_MEM_SIZE = 0x10000;
 
-enum MemAttribute {
+
+/// Classification of memory addresses.
+export enum MemAttribute {
 	/// Unassigned memory
 	UNUSED = 0,
-	// Assigned memory
-	ASSIGNED,
+	/// Unknown area (code or data)
+	ASSIGNED = 0x01,
+	/// Area that should not be disassembled
+	BANNED = 0x02,
+	/// Code area
+	CODE = 0x04,
+	/// First byte of an opcode
+	CODE_FIRST = 0x08,
+	/// Data area
+	DATA = 0x10
 }
 
 /**
@@ -49,10 +59,20 @@ export class Memory {
 		for(let i=0; i<size; i++) {
 			const addr = (origin+i) & (MAX_MEM_SIZE-1);
 			this.memory[addr] = memory[i];
-			this.memoryAttr[addr] = MemAttribute.ASSIGNED;
+			this.memoryAttr[addr] |= MemAttribute.ASSIGNED;
 		}
 	}
 
+	/**
+	 * Ban a memory range from disassembly.
+	 * Use this e.g. to not disassemble referenced ROM areas.
+	 */
+	public banMemory(address: number, size: number) {
+		for(let i=0; i<size; i++) {
+			const addr = (address+i) & (MAX_MEM_SIZE-1);
+			this.memoryAttr[addr] |= MemAttribute.BANNED;
+		}
+	}
 
 	/**
 	 * Reads a memory area as binary from a file.
@@ -107,11 +127,13 @@ export class Memory {
 				// word value
 				opcode.value = this.getWordValueAt(address+1);
 			break;
-			case LabelType.CODE_LOCAL_LBL:
-			case LabelType.CODE_LOOP:
+			case LabelType.CODE_RELATIVE_LBL:
+			case LabelType.CODE_RELATIVE_LOOP:
 			case LabelType.NUMBER_BYTE:
 				// byte value
 				opcode.value = this.getValueAt(address+1);
+				if(opcode.value >= 128)
+					opcode.value -= 256;
 			break;
 			default:
 				assert(false);
@@ -122,5 +144,26 @@ export class Memory {
 	}
 
 
+	/**
+	 * Return memory attribute.
+	 * @param address At address
+	 * @returns The memory attribute.
+	 */
+	public getAttributeAt(address: number): MemAttribute {
+		const attr = this.memoryAttr[address++];
+		return attr;
+	}
+
+
+	/**
+	 * Adds (ORs) a memory attribute for an address.
+	 * @param address The memory address
+	 * @param length The size of the memory area to change.
+	 * @param attr The attribute to set (e.g. CODE or DATA)
+	 */
+	public addAttributeAt(address: number, length: number, attr: MemAttribute) {
+		for(let i=0; i<length; i++)
+			this.memoryAttr[address++] |= attr;
+	}
 }
 

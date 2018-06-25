@@ -1,4 +1,4 @@
-import assert = require('assert');
+import * as assert from 'assert';
 import { Memory, MAX_MEM_SIZE } from '../memory';
 
 
