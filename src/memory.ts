@@ -15,14 +15,12 @@ export enum MemAttribute {
 	UNUSED = 0,
 	/// Unknown area (code or data)
 	ASSIGNED = 0x01,
-	/// Area that should not be disassembled
-	BANNED = 0x02,
 	/// Code area
-	CODE = 0x04,
+	CODE = 0x02,
 	/// First byte of an opcode
-	CODE_FIRST = 0x08,
+	CODE_FIRST = 0x04,
 	/// Data area
-	DATA = 0x10
+	DATA = 0x08
 }
 
 /**
@@ -63,16 +61,6 @@ export class Memory {
 		}
 	}
 
-	/**
-	 * Ban a memory range from disassembly.
-	 * Use this e.g. to not disassemble referenced ROM areas.
-	 */
-	public banMemory(address: number, size: number) {
-		for(let i=0; i<size; i++) {
-			const addr = (address+i) & (MAX_MEM_SIZE-1);
-			this.memoryAttr[addr] |= MemAttribute.BANNED;
-		}
-	}
 
 	/**
 	 * Reads a memory area as binary from a file.
@@ -101,7 +89,7 @@ export class Memory {
 	 * @returns It's value.
 	 */
 	public getWordValueAt(address: number) {
-		const word = this.memory[address&(MAX_MEM_SIZE-1)] * 256*this.memory[address&(MAX_MEM_SIZE-1)];
+		const word = this.memory[address&(MAX_MEM_SIZE-1)] + 256*this.memory[(address+1)&(MAX_MEM_SIZE-1)];
 		return word;
 	}
 
@@ -134,6 +122,9 @@ export class Memory {
 				opcode.value = this.getValueAt(address+1);
 				if(opcode.value >= 128)
 					opcode.value -= 256;
+				// Change relative jump address to absolute
+				if(opcode.valueType == LabelType.CODE_RELATIVE_LBL || opcode.valueType == LabelType.CODE_RELATIVE_LOOP)
+					opcode.value += address+2;
 			break;
 			default:
 				assert(false);

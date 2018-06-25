@@ -28,10 +28,11 @@ export class Opcode {
 	public flags: OpcodeFlag;
 	/// The additional value in the opcode, e.g. nn or n
 	public valueType: LabelType;
-	// The length of the opcode + value
+	/// The length of the opcode + value
 	public length: number;
 
-	// The value (if any) used in the opcode, e.g. nn in "LD HL,nn"
+	/// The value (if any) used in the opcode, e.g. nn in "LD HL,nn"
+	/// Is only a temporary value, decoded for the current instruction.
 	public value: number;
 
 	/**

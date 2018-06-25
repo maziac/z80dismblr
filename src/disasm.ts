@@ -3,8 +3,8 @@ import * as assert from 'assert';
 import { Memory, MemAttribute, MAX_MEM_SIZE } from './memory';
 import { Opcode, OpcodeFlag } from './opcodes';
 import { Label, LabelType } from './label';
-import { Warning } from './warning';
 import { EventEmitter } from 'events';
+//import { readFileSync } from 'fs';
 
 
 //var assert = require('assert');
@@ -108,12 +108,12 @@ export class Disassembler extends EventEmitter {
 			do {
 				// Check if memory has already been disassembled
 				let attr = this.memory.getAttributeAt(address);
-				if(attr & (MemAttribute.CODE|MemAttribute.BANNED))
-					break;	// Yes, already disassembled or banned
+				if(attr & MemAttribute.CODE)
+					break;	// Yes, already disassembled
 				if(!(attr & MemAttribute.ASSIGNED)) {
 					// Error: tying to disassemble unassigned memory areas
-					this.emit('warning', 'Aborting disassembly: Trying to disassemble unassigned memory area at 0x' + address.toString(16) + '.');
-					return;
+					this.emit('warning', 'Warning: Trying to disassemble unassigned memory area at 0x' + address.toString(16) + '.');
+					break;
 				}
 
 				// Read memory value
@@ -135,43 +135,13 @@ export class Disassembler extends EventEmitter {
 					}
 				}
 
-				// Check opcode for labels
-				this.disassembleForLabel(opcode);
-
 				// Mark memory area
 				this.memory.addAttributeAt(address, 1, MemAttribute.CODE_FIRST);
 				this.memory.addAttributeAt(address, opcode.length, MemAttribute.CODE);
 
-				// Check for branching etc. (CALL, JP, JR)
-				if(opcode.flags & OpcodeFlag.BRANCH_ADDRESS) {
-					// Add to queue
-					let branchAddress = opcode.value;
-					if(opcode.valueType == LabelType.CODE_RELATIVE_LBL || opcode.valueType == LabelType.CODE_RELATIVE_LOOP)
-						branchAddress += address+2;
-
-					// Check memory area
-					attr = this.memory.getAttributeAt(branchAddress);
-					if(attr & MemAttribute.CODE) {
-						// It has already been disassembled
-						if(!(attr & MemAttribute.CODE_FIRST)) {
-							// The branch address would jump into the middle of an instruction -> error
-							let branchOpcodeAddress = branchAddress;
-							do {	// Find start of opcode.
-								branchOpcodeAddress --;
-								assert(branchAddress-branchOpcodeAddress > 4, 'Internal error: Could not find start of opcode.');
-							} while(!(this.memory.getAttributeAt(branchOpcodeAddress) & MemAttribute.CODE_FIRST));
-							// Get opcode to branch to
-							const branchOpcode = this.memory.getOpcodeAt(branchOpcodeAddress);
-							// emit warning
-							this.emit('warning', 'Aborting disassembly: Ambiguous disassembly: encountered branch instruction into the middle of an opcode. Opcode "' + opcode.name + '" at address 0x' + address.toString(16) + ' would branch into "' + branchOpcode.name + '" at address 0x' + branchOpcodeAddress.toString(16) + '.');
-							return;
-						}
-					}
-					else {
-						// It has not been disassembled yet
-						this.addressQueue.push(branchAddress);
-					}
-				}
+				// Check opcode for labels
+				if(!this.disassembleForLabel(opcode, address))
+					return;
 
 				// Check for stop code. (JP, JR, RET)
 				if(opcode.flags & OpcodeFlag.STOP)
@@ -201,8 +171,11 @@ export class Disassembler extends EventEmitter {
 	 * a label.
 	 * If so, the label is stored together with the call infromation.
 	 * @param opcode The opcode to search for a label.
+	 * @param address The current address. (Used only for warning)
+	 * @returns false if problem occurred.
 	 */
-	protected disassembleForLabel(opcode: Opcode) {
+	protected disassembleForLabel(opcode: Opcode, address: number): boolean {
+		/*
 		// Decode label
 		let createNewLabel = false;
 		switch(opcode.valueType) {
@@ -215,9 +188,11 @@ export class Disassembler extends EventEmitter {
 				createNewLabel = true;
 				break;
 			case LabelType.NUMBER_WORD:
-				// use word as label only under ceratin circumstances
+				// use word as label only under certain circumstances
+				/* TODO: no idea yet how to handle this:
 				if(this.useNumberAsLabel(opcode.value))
 					createNewLabel = true;
+				/
 			break;
 			case LabelType.NUMBER_BYTE:
 				// byte value -> no label
@@ -226,10 +201,17 @@ export class Disassembler extends EventEmitter {
 				// no label
 			break;
 		}
+		*/
 
-		// It is a label
-		if(createNewLabel) {
-			// Prioritize if label already exists
+		// Check for branching etc. (CALL, JP, JR)
+		if(opcode.flags & OpcodeFlag.BRANCH_ADDRESS) {
+			// It is a label.
+
+			// Get branching memory attribute
+			let branchAddress = opcode.value;
+			const attr = this.memory.getAttributeAt(branchAddress);
+
+			// Create new label or prioritize if label already exists
 			const label = this.labels.get(opcode.value);
 			if(label) {
 				// label already exists: prioritize
@@ -238,9 +220,41 @@ export class Disassembler extends EventEmitter {
 			}
 			else {
 				// Label does not exist yet, just add it
-				this.labels.set(opcode.value, new Label(opcode.valueType));
+				const label = new Label(opcode.valueType);
+				this.labels.set(opcode.value, label);
+				// Check if out of range
+				if(!(attr & MemAttribute.ASSIGNED))
+					label.isEqu = true;
+			}
+
+			// Check if code from the branching address has already been disassembled
+			if(attr & MemAttribute.CODE) {
+				// It has already been disassembled
+				if(!(attr & MemAttribute.CODE_FIRST)) {
+					// The branch address would jump into the middle of an instruction -> error
+					let branchOpcodeAddress = branchAddress;
+					do {	// Find start of opcode.
+						branchOpcodeAddress --;
+						assert(branchAddress-branchOpcodeAddress > 4, 'Internal error: Could not find start of opcode.');
+					} while(!(this.memory.getAttributeAt(branchOpcodeAddress) & MemAttribute.CODE_FIRST));
+					// Get opcode to branch to
+					const branchOpcode = this.memory.getOpcodeAt(branchOpcodeAddress);
+					// emit warning
+					this.emit('warning', 'Aborting disassembly: Ambiguous disassembly: encountered branch instruction into the middle of an opcode. Opcode "' + opcode.name + '" at address 0x' + address.toString(16) + ' would branch into "' + branchOpcode.name + '" at address 0x' + branchOpcodeAddress.toString(16) + '.');
+					return false;
+				}
+			}
+			else {
+				// It has not been disassembled yet
+				if(attr & MemAttribute.ASSIGNED) {
+					// memory location exists, so queue it for disassembly
+					this.addressQueue.push(branchAddress);
+				}
 			}
 		}
+
+		// Everything fine
+		return true;
 	}
 
 

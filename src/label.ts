@@ -37,12 +37,16 @@ export class Label {
 	/// The name of the label, e.g. "SUB001" or ".sub001_loop5"
 	public name: string;
 
+	/// True if it is an EQU label. A label whose memory was not given as binary value.
+	/// I.e. outside the range of the given memory.
+	public isEqu: boolean;
 
 	/**
 	 * Constructor: Initializes memory.
 	 */
  	constructor (type: LabelType) {
 		this.type = type;
+		this.isEqu = false;
 	}
 }
 
