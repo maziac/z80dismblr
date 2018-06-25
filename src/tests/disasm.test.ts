@@ -92,7 +92,7 @@ suite('Disassembler', () => {
 			assert(dasm.labels.get(org) != undefined);
 		});
 
-		test('2 labels', () => {
+		test('2 labels UNASSIGNED', () => {
 			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
 
 			const memory = [
@@ -106,8 +106,39 @@ suite('Disassembler', () => {
 			dasm.collectLabels();
 
 			assert(dasm.labels.size == 2);
-			assert(dasm.labels.get(org) != undefined);
-			assert(dasm.labels.get(0x4000) != undefined);
+
+			const label1 = dasm.labels.get(org);
+			assert(label1 != undefined);
+			assert(label1.isEqu == false);
+
+			const label2 = dasm.labels.get(0x4000);
+			assert(label2 != undefined);
+			assert(label2.isEqu == true);
+		});
+
+		test('2 labels ASSIGNED', () => {
+			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
+
+			const memory = [
+				0x3e, 0x01,			// LD a,1
+			// L1002:
+				0xc3, 0x02, 0x10,	// JP 0x1002
+			];
+
+			const org = 0x1000;
+			dasm.memory.setMemory(org, new Uint8Array(memory));
+			dasm.setLabel(org);
+			dasm.collectLabels();
+
+			assert(dasm.labels.size == 2);
+
+			const label1 = dasm.labels.get(org);
+			assert(label1 != undefined);
+			assert(label1.isEqu == false);
+
+			const label2 = dasm.labels.get(0x1002);
+			assert(label2 != undefined);
+			assert(label2.isEqu == false);
 		});
 
     });

@@ -82,7 +82,13 @@ export class Disassembler extends EventEmitter {
 	 */
 	public setLabel(address: number, name?: string) {
 		this.addressQueue.push(address);
-		this.labels.set(address, new Label(LabelType.CODE_LBL));
+		const label = new Label(LabelType.CODE_LBL);
+		this.labels.set(address, label);
+		// Check if out of range
+		const attr = this.memory.getAttributeAt(address);
+		if(!(attr & MemAttribute.ASSIGNED))
+			label.isEqu = true;
+
 		// TODO: use name
 	}
 
