@@ -1,4 +1,4 @@
-import { readFileSync } from "fs";
+import { readFileSync } from 'fs';
 import { Opcode } from './opcodes';
 import { LabelType } from './label';
 

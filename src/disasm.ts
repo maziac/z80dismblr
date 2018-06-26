@@ -94,6 +94,15 @@ export class Disassembler extends EventEmitter {
 
 
 	/**
+	 * Prints all labels to the console.
+	 */
+	public printLabels() {
+		for(let [address, label] of this.labels) {
+			console.log( '0x' + address.toString(16) + ': ' + label.name + ', ' +  label.getTypeAsString() + ', EQU=' + label.isEqu);
+		}
+	}
+
+	/**
 	 * Parses the memory area for opcodes with labels.
 	 * Stores all labels with a categorization in an array.
 	 * Priorization of labels:
@@ -173,6 +182,31 @@ export class Disassembler extends EventEmitter {
 
 
 	/**
+	 * Sets or creates a label and sets its type.
+	 * @param address The address for the label.
+	 * @param type The LabelType.
+	 * @param attr The memory attribute at address.
+	 */
+	protected setFoundLabel(address: number, type: LabelType, attr: MemAttribute) {
+		// Check if label already exists
+		const label = this.labels.get(address);
+		if(label) {
+			// label already exists: prioritize
+			if(label.type < type)
+				label.type = type;
+		}
+		else {
+			// Label does not exist yet, just add it
+			const label = new Label(type);
+			this.labels.set(address, label);
+			// Check if out of range
+			if(!(attr & MemAttribute.ASSIGNED))
+				label.isEqu = true;
+		}
+
+	}
+
+	/**
 	 * "Disassembles" one label. I.e. the opcode is disassembled and checked if it includes
 	 * a label.
 	 * If so, the label is stored together with the call infromation.
@@ -218,20 +252,7 @@ export class Disassembler extends EventEmitter {
 			const attr = this.memory.getAttributeAt(branchAddress);
 
 			// Create new label or prioritize if label already exists
-			const label = this.labels.get(opcode.value);
-			if(label) {
-				// label already exists: prioritize
-				if(label.type < opcode.valueType)
-					label.type = opcode.valueType;
-			}
-			else {
-				// Label does not exist yet, just add it
-				const label = new Label(opcode.valueType);
-				this.labels.set(opcode.value, label);
-				// Check if out of range
-				if(!(attr & MemAttribute.ASSIGNED))
-					label.isEqu = true;
-			}
+			this.setFoundLabel(branchAddress, opcode.valueType, attr);
 
 			// Check if code from the branching address has already been disassembled
 			if(attr & MemAttribute.CODE) {
@@ -257,6 +278,14 @@ export class Disassembler extends EventEmitter {
 					this.addressQueue.push(branchAddress);
 				}
 			}
+		}
+		else if(opcode.valueType == LabelType.DATA_LBL) {
+			// It's a data label, like "LD A,(nn)"
+			const address = opcode.value;
+			const attr = this.memory.getAttributeAt(address);
+
+			// Create new label or prioritize if label already exists
+			this.setFoundLabel(address, opcode.valueType, attr);
 		}
 
 		// Everything fine

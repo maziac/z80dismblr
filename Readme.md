@@ -9,4 +9,6 @@ INC BC: increment BC
 - Spectrum Standard labels optional hinzufügen. Memory und Ports.
 - Was mach ich mit Labeln, die im Binary nicht auftauchen. Port labels sowieso und MemoryLabels die ausserhalb sind.
 	- Vielleicht einfach als EQU aufführen
-- Labels vorgeben: man sollte labels mit Adresse und Namen auf der Kommandozeile vorgeben können.
+- Was mach ich mit Data Labels, die in die Mitte eines Opcodes weisen. Also z.B. für Self-modifying code.
+-> Am Besten am Ende nachprüfen, ob solcher Code existiert. Dann das Label in ein Label+offset umwandeln. D.h. dann wird dafür ein LAbel an der Opcode-Start Adresse erzeugt und im Opcode, der das Label benutzt wird dieses Label+offset angezeigt.
+- Self-modifying code sollte im Kommentar dabei stehen.
