@@ -54,7 +54,7 @@ suite('Disassembler', () => {
 			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
 
 			dasm.on('warning', msg => {
-				assert(false);	// no warnign should occur
+				assert(false);	// no warning should occur
 			});
 
 			const memory = [
@@ -290,9 +290,242 @@ suite('Disassembler', () => {
 			assert(label != undefined);
 			assert(label.type == LabelType.DATA_LBL);
 			assert(label.isEqu == false);
-
-
 		});
+
+    });
+
+
+
+
+	suite('countTypesOfLabels', () => {
+
+		test('label types', () => {
+			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
+
+			const memory = [
+/*6000*/ 					// BCODE_START:
+/*6000*/ 0xca, 0x03, 0x60,	// 	    jp z,BCODE2
+/*6003*/ 					// BCODE2:
+/*6003*/ 0xca, 0x06, 0x60,	// 	    jp z,BCODE3
+/*6006*/ 					// BCODE3:
+/*6006*/ 0xca, 0x09, 0x60,	// 	    jp z,BCODE4
+/*6009*/ 					// BCODE4:
+/*6009*/ 0x3a, 0x19, 0x60,	// 	    ld a,(BDATA1)
+/*600c*/ 0x2a, 0x1a, 0x60,	// 	    ld hl,(BDATA2)
+/*600f*/ 0x22, 0x1b, 0x60,	// 	    ld (BDATA3),hl
+/*6012*/ 0xcd, 0x15, 0x60,	// 	    call BSUB1
+/*6015*/ 					// BSUB1:
+/*6015*/ 0xcd, 0x18, 0x60,	// 	    call BSUB2
+/*6018*/ 					// BSUB2:
+/*6018*/ 0xc9,				// 		ret
+/*6019*/ 0x01,				// BDATA1: defb 1
+/*601a*/ 0x02,				// BDATA2: defb 2
+/*601b*/ 0x03,				// BDATA3: defb 3
+];
+
+			const org = 0x6000;
+			dasm.memory.setMemory(org, new Uint8Array(memory));
+			dasm.setLabel(org);
+			dasm.collectLabels();
+
+			dasm.printLabels();
+			dasm.countTypesOfLabels();
+
+			assert(dasm.labelSubCount == 2);
+			assert(dasm.labelLblCount == 4);
+			assert(dasm.labelDataLblCount == 3);
+
+			assert(dasm.labelSubCountDigits == 1);
+			assert(dasm.labelLblCountDigits == 1);
+			assert(dasm.labelDataLblCountDigits == 1);
+		});
+    });
+
+
+	suite('assignLabelNames', () => {
+
+		test('only absolute', () => {
+			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
+
+			const memory = [
+/*6000*/ 					// BCODE_START:
+/*6000*/ 0xca, 0x03, 0x60,	// 	    jp z,BCODE2
+/*6003*/ 					// BCODE2:
+/*6003*/ 0xca, 0x06, 0x60,	// 	    jp z,BCODE3
+/*6006*/ 					// BCODE3:
+/*6006*/ 0xca, 0x09, 0x60,	// 	    jp z,BCODE4
+/*6009*/ 					// BCODE4:
+/*6009*/ 0x3a, 0x19, 0x60,	// 	    ld a,(BDATA1)
+/*600c*/ 0x2a, 0x1a, 0x60,	// 	    ld hl,(BDATA2)
+/*600f*/ 0x22, 0x1b, 0x60,	// 	    ld (BDATA3),hl
+/*6012*/ 0xcd, 0x15, 0x60,	// 	    call BSUB1
+/*6015*/ 					// BSUB1:
+/*6015*/ 0xcd, 0x18, 0x60,	// 	    call BSUB2
+/*6018*/ 					// BSUB2:
+/*6018*/ 0xc9,				// 		ret
+/*6019*/ 0x01,				// BDATA1: defb 1
+/*601a*/ 0x02,				// BDATA2: defb 2
+/*601b*/ 0x03,				// BDATA3: defb 3
+];
+
+			const org = 0x4000;
+			dasm.memory.setMemory(org, new Uint8Array(memory));
+			dasm.setLabel(org);
+			dasm.collectLabels();
+
+			//dasm.printLabels();
+
+			assert(dasm.labels.size == 9);
+
+			let label;
+
+			label = dasm.labels.get(0x4000);
+			assert(label != undefined);
+			assert(label.type == LabelType.CODE_LBL);
+			assert(label.isEqu == false);
+
+			label = dasm.labels.get(0x4002);
+			assert(label != undefined);
+			assert(label.type == LabelType.CODE_LBL);
+			assert(label.isEqu == false);
+
+			label = dasm.labels.get(0x4007);
+			assert(label != undefined);
+			assert(label.type == LabelType.CODE_RELATIVE_LOOP);
+			assert(label.isEqu == false);
+
+			label = dasm.labels.get(0x400a);
+			assert(label != undefined);
+			assert(label.type == LabelType.DATA_LBL);
+			assert(label.isEqu == false);
+
+			label = dasm.labels.get(0x4018);
+			assert(label != undefined);
+			assert(label.type == LabelType.CODE_RELATIVE_LBL);
+			assert(label.isEqu == false);
+
+			label = dasm.labels.get(0x401a);
+			assert(label != undefined);
+			assert(label.type == LabelType.CODE_SUB);
+			assert(label.isEqu == false);
+
+			label = dasm.labels.get(0x4036);
+			assert(label != undefined);
+			assert(label.type == LabelType.DATA_LBL);
+			assert(label.isEqu == false);
+
+			label = dasm.labels.get(0x5000);
+			assert(label != undefined);
+			assert(label.type == LabelType.DATA_LBL);
+			assert(label.isEqu == true);
+
+			label = dasm.labels.get(0x5100);
+			assert(label != undefined);
+			assert(label.type == LabelType.CODE_LBL);
+			assert(label.isEqu == true);
+		});
+
+		test('also relative', () => {
+			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
+
+			const memory = [
+/*4000*/					// START:
+/*4000*/ 0x3e, 0x01,	    //     ld a,1
+/*4002*/					// START2:
+/*4002*/ 0x28, 0xfe,		//     jr z,START2
+/*4004*/ 0xda, 0x02, 0x40,	// 	   jp c,START2
+/*4007*/					// LBL1:
+/*4007*/ 0x00,				//     nop
+/*4008*/ 0x10, 0xfd,		//     djnz LBL1
+/*400a*/					// LBL2:
+/*400a*/ 0x30, 0xfe,		//     jr nc,LBL2
+/*400c*/ 0xca, 0x02, 0x40,	// 	   jp z,START2
+/*400f*/ 0x00,				//     nop
+/*4010*/ 0xcd, 0x1a, 0x40,	// 	   call SUB1
+/*4013*/ 0xc9,				//     ret
+/*4014*/ 0x00,				//     nop
+/*4015*/					// SUB2:
+/*4015*/ 0x28, 0x01,		//     jr z,LBL3
+/*4017*/ 0x00,				//     nop
+/*4018*/					// LBL3:
+/*4018*/ 0xc9,				//     ret
+/*4019*/ 0x00,				//     nop
+/*401a*/					// SUB1:
+/*401a*/ 0x3a, 0x0a, 0x40,	//	   ld a,(LBL2)
+/*401d*/ 0xc8,				//     ret z
+/*401e*/ 0x0e, 0x02,		//     ld c,2
+/*4020*/ 0x20, 0xf6,		//     jr nz,LBL3
+/*4022*/ 0x06, 0x05,		//     ld b,5
+/*4024*/ 0x21, 0x03, 0x00,	//     ld hl,3
+/*4027*/ 0x32, 0x36, 0x40,	//     ld (DATA1),a
+/*402a*/ 0x3a, 0x00, 0x50,	//     ld a,(0x5000)
+/*402d*/ 0xca, 0x00, 0x51,	//     jp z,0x5100
+/*4030*/ 0xc9,				//     ret
+/*4031*/ 0x00,				//     nop
+/*4032*/					// LBL4:
+/*4032*/ 0x00,				//     nop
+/*4033*/ 0xc3, 0x32, 0x40,	//     jp LBL4
+/*4036*/					// DATA1:
+/*4036*/ 0x00				//     defb 0
+];
+
+			const org = 0x4000;
+			dasm.memory.setMemory(org, new Uint8Array(memory));
+			dasm.setLabel(org);
+			dasm.collectLabels();
+
+			//dasm.printLabels();
+
+			assert(dasm.labels.size == 9);
+
+			let label;
+
+			label = dasm.labels.get(0x4000);
+			assert(label != undefined);
+			assert(label.type == LabelType.CODE_LBL);
+			assert(label.isEqu == false);
+
+			label = dasm.labels.get(0x4002);
+			assert(label != undefined);
+			assert(label.type == LabelType.CODE_LBL);
+			assert(label.isEqu == false);
+
+			label = dasm.labels.get(0x4007);
+			assert(label != undefined);
+			assert(label.type == LabelType.CODE_RELATIVE_LOOP);
+			assert(label.isEqu == false);
+
+			label = dasm.labels.get(0x400a);
+			assert(label != undefined);
+			assert(label.type == LabelType.DATA_LBL);
+			assert(label.isEqu == false);
+
+			label = dasm.labels.get(0x4018);
+			assert(label != undefined);
+			assert(label.type == LabelType.CODE_RELATIVE_LBL);
+			assert(label.isEqu == false);
+
+			label = dasm.labels.get(0x401a);
+			assert(label != undefined);
+			assert(label.type == LabelType.CODE_SUB);
+			assert(label.isEqu == false);
+
+			label = dasm.labels.get(0x4036);
+			assert(label != undefined);
+			assert(label.type == LabelType.DATA_LBL);
+			assert(label.isEqu == false);
+
+			label = dasm.labels.get(0x5000);
+			assert(label != undefined);
+			assert(label.type == LabelType.DATA_LBL);
+			assert(label.isEqu == true);
+
+			label = dasm.labels.get(0x5100);
+			assert(label != undefined);
+			assert(label.type == LabelType.CODE_LBL);
+			assert(label.isEqu == true);
+		});
+
 
     });
 

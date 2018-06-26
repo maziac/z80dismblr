@@ -4,22 +4,8 @@ import { Memory, MemAttribute, MAX_MEM_SIZE } from './memory';
 import { Opcode, OpcodeFlag } from './opcodes';
 import { Label, LabelType } from './label';
 import { EventEmitter } from 'events';
-//import { readFileSync } from 'fs';
 
 
-//var assert = require('assert');
-
-
-/*
-/// For storing info about the label.
-interface LabelInfo {
-	/// The name of the label.
-	name: string;
-
-	/// The type of the label
-	type: LabelType;
-}
-*/
 
 export class Disassembler extends EventEmitter {
 
@@ -31,6 +17,21 @@ export class Disassembler extends EventEmitter {
 
 	/// Queue for start addresses.
 	protected addressQueue = new Array<number>();
+
+	/// Label prefixes
+	public labelSubPrefix = "SUB";
+	public labelLblPrefix = "LBL";
+	public labelDataLblPrefix = "DATA";
+	public labelLocalLablePrefix = "_l";
+	public labelLoopPrefix = "_loop";
+
+	/// The calculated number of occurences of a label type.
+	protected labelSubCountDigits;
+	protected labelLblCountDigits;
+	protected labelDataLblCountDigits;
+	protected labelSubCount;
+	protected labelLblCount;
+	protected labelDataLblCount;
 
 
 	/**
@@ -302,23 +303,34 @@ export class Disassembler extends EventEmitter {
 	 */
 	protected countTypesOfLabels() {
 		// Count number of SUBs
-		// TODO: numbers need to be calculated
 		this.labelSubCountDigits = 4;
 		this.labelLblCountDigits = 4;
-		this.labelDataLblCountDigits = 4;	}
+		this.labelDataLblCountDigits = 4;
+		this.labelSubCount = 0;
+		this.labelLblCount = 0;
+		this.labelDataLblCount = 0;
 
+		// Loop through all labels
+		for( let [,label] of this.labels) {
+			switch(label.type) {
+				case LabelType.CODE_SUB:
+					this.labelSubCount++;
+				break;
+				case LabelType.CODE_LBL:
+					this.labelLblCount++;
+				break;
+				case LabelType.DATA_LBL:
+					this.labelDataLblCount++;
+				break;
+			}
+		}
 
-	/// Label prefixes
-	public labelSubPrefix = "SUB";
-	public labelLblPrefix = "LBL";
-	public labelDataLblPrefix = "DATA";
-	public labelLocalLablePrefix = "_l";
-	public labelLoopPrefix = "_loop";
+		// Calculate digit counts
+		this.labelSubCountDigits = this.labelSubCount.toString().length;
+		this.labelLblCountDigits = this.labelLblCount.toString().length;
+		this.labelDataLblCountDigits = this.labelDataLblCount.toString().length;
+	}
 
-	/// The calculated number of occurences of a label type.
-	protected labelSubCountDigits;
-	protected labelLblCountDigits;
-	protected labelDataLblCountDigits;
 
 	/// Assign label names.
 	/// Is done in 2 passes:
