@@ -1,6 +1,6 @@
 import * as util from 'util';
 import * as assert from 'assert';
-import { Memory, MemAttribute, MAX_MEM_SIZE } from './memory';
+import { Memory, MemAttribute } from './memory';
 import { Opcode, OpcodeFlag } from './opcodes';
 import { Label, LabelType } from './label';
 import { EventEmitter } from 'events';
@@ -15,8 +15,33 @@ export class Disassembler extends EventEmitter {
 	/// The labels.
 	protected labels = new Map<number,Label>();
 
+	// An array with the (sorted) addresses for all labels
+	//protected sortedParentLabelAddresses = new Array<number>();
+
 	/// Queue for start addresses.
 	protected addressQueue = new Array<number>();
+
+	/// Choose opcodes in lower or upper case.
+	public opcodesLowerCase = true;
+
+	/// Choose opcodes in lower or upper case.
+	public hexNumbersLowerCase = false;
+
+	/// Choose how many lines should separate code blocks in the disassembly listing
+	public numberOfLinesBetweenBlocks = 2;
+
+	/// Choose if references should be added to SUBs
+	public addReferencesToSubroutines = true;
+
+	/// Choose if references should be added to LBLs
+	public addReferencesToAbsoluteLabels = true;
+
+	/// Choose if references should be added to DATA labels
+	public addReferencesToDataLabels = true;
+
+	/// Choose to start every line with the address
+	public startLinesWithAddress = true;
+
 
 	/// Label prefixes
 	public labelSubPrefix = "SUB";
@@ -56,18 +81,20 @@ export class Disassembler extends EventEmitter {
 		this.assignLabelNames();
 
 		// 4. Pass: Disassemble opcode with label names
-		this.dissambleOpcodes();
+		const disLines = this.disassembleOpcodes();
 
-		/*
-		let lines = new Array<string>();
-		let addr = 0;
-		let end = addr + this.memory.length;
-		while (addr < end) {
-			// Determine which opcode
-			addr = this.disOpcode(addr, lines);
+		// 4. Add all EQU labels to the beginning of the disassembly
+		const lines = this.getEquLabelsDisassembly();
+
+		// Add the real disassembly
+		lines.push(...disLines);
+
+		// Remove any preceeding empty lines
+		while(lines.length) {
+			if(lines[0].length > 0)
+				break;
+			lines.splice(0,1);
 		}
-		*/
-		let lines = new Array<string>();
 		return lines;
 	}
 
@@ -99,9 +126,33 @@ export class Disassembler extends EventEmitter {
 	 */
 	public printLabels() {
 		for(let [address, label] of this.labels) {
-			console.log( '0x' + address.toString(16) + ': ' + label.name + ', ' +  label.getTypeAsString() + ', EQU=' + label.isEqu);
+			// Label
+			console.log('0x' + address.toString(16) + ': ' + label.name + ', ' +  label.getTypeAsString() + ', EQU=' + label.isEqu);
+			// References
+			const refArray = label.references.map(value => '0x'+value.toString(16));
+			console.log('\tReferenced by: ' + refArray.toString() );
 		}
 	}
+
+
+	/**
+	 * Puts all EQU labels in an array of strings.
+	 * @returns Array of strings.
+	 */
+	public getEquLabelsDisassembly(): Array<string> {
+		const lines = new Array<string>();
+		for(let [address, label] of this.labels) {
+			// Check if EQU
+			if(label.isEqu) {
+				// "Disassemble"
+				const line = label.name + ':\t EQU ' + address.toString(16) + 'h';
+				// Store
+				lines.push(line);
+			}
+		}
+		return lines;
+	}
+
 
 	/**
 	 * Parses the memory area for opcodes with labels.
@@ -113,6 +164,7 @@ export class Disassembler extends EventEmitter {
 	 * 4. "l"-labels: Everything jumped to by "JR n" or "JR cc,n"
 	 * "loop" and "lbl" labels are prefixed by a previous "SUB"- or "LBL"-label with a prefix
 	 * ".subNNN_" or ".lblNNN_". E.g. ".sub001_l5", ".sub001_loop1", ".lbl788_l89", ".lbl788_loop23".
+	 * All labels are stored into this.labels. At teh end the list is sorted by the address.
 	 */
 	protected collectLabels() {
 		let address;
@@ -169,6 +221,9 @@ export class Disassembler extends EventEmitter {
 				// Check for end of disassembly (JP, RET)
 			} while(!(opcode.flags & OpcodeFlag.STOP));
 		}
+
+		// Sort all labels by address
+		this.labels = new Map([...this.labels.entries()].sort());
 	}
 
 
@@ -185,12 +240,13 @@ export class Disassembler extends EventEmitter {
 	/**
 	 * Sets or creates a label and sets its type.
 	 * @param address The address for the label.
+	 * @param opcodeAddress The address that references the label.
 	 * @param type The LabelType.
 	 * @param attr The memory attribute at address.
 	 */
-	protected setFoundLabel(address: number, type: LabelType, attr: MemAttribute) {
+	protected setFoundLabel(address: number, opcodeAddress: number, type: LabelType, attr: MemAttribute) {
 		// Check if label already exists
-		const label = this.labels.get(address);
+		let label = this.labels.get(address);
 		if(label) {
 			// label already exists: prioritize
 			if(label.type < type)
@@ -198,51 +254,27 @@ export class Disassembler extends EventEmitter {
 		}
 		else {
 			// Label does not exist yet, just add it
-			const label = new Label(type);
+			label = new Label(type);
 			this.labels.set(address, label);
 			// Check if out of range
 			if(!(attr & MemAttribute.ASSIGNED))
 				label.isEqu = true;
 		}
 
+		// Add reference
+		label.references.push(opcodeAddress);
 	}
+
 
 	/**
 	 * "Disassembles" one label. I.e. the opcode is disassembled and checked if it includes
 	 * a label.
 	 * If so, the label is stored together with the call infromation.
 	 * @param opcode The opcode to search for a label.
-	 * @param address The current address. (Used only for warning)
+	 * @param opcodeAddress The current address.
 	 * @returns false if problem occurred.
 	 */
-	protected disassembleForLabel(opcode: Opcode, address: number): boolean {
-		/*
-		// Decode label
-		let createNewLabel = false;
-		switch(opcode.valueType) {
-			case LabelType.CODE_LBL:
-			case LabelType.CODE_SUB:
-			case LabelType.DATA_LBL:
-			case LabelType.CODE_RELATIVE_LBL:
-			case LabelType.CODE_RELATIVE_LOOP:
-				// Use label
-				createNewLabel = true;
-				break;
-			case LabelType.NUMBER_WORD:
-				// use word as label only under certain circumstances
-				/* TODO: no idea yet how to handle this:
-				if(this.useNumberAsLabel(opcode.value))
-					createNewLabel = true;
-				/
-			break;
-			case LabelType.NUMBER_BYTE:
-				// byte value -> no label
-			break;
-			default:
-				// no label
-			break;
-		}
-		*/
+	protected disassembleForLabel(opcode: Opcode, opcodeAddress: number): boolean {
 
 		// Check for branching etc. (CALL, JP, JR)
 		if(opcode.flags & OpcodeFlag.BRANCH_ADDRESS) {
@@ -253,7 +285,7 @@ export class Disassembler extends EventEmitter {
 			const attr = this.memory.getAttributeAt(branchAddress);
 
 			// Create new label or prioritize if label already exists
-			this.setFoundLabel(branchAddress, opcode.valueType, attr);
+			this.setFoundLabel(branchAddress, opcodeAddress, opcode.valueType, attr);
 
 			// Check if code from the branching address has already been disassembled
 			if(attr & MemAttribute.CODE) {
@@ -268,7 +300,7 @@ export class Disassembler extends EventEmitter {
 					// Get opcode to branch to
 					const branchOpcode = this.memory.getOpcodeAt(branchOpcodeAddress);
 					// emit warning
-					this.emit('warning', 'Aborting disassembly: Ambiguous disassembly: encountered branch instruction into the middle of an opcode. Opcode "' + opcode.name + '" at address 0x' + address.toString(16) + ' would branch into "' + branchOpcode.name + '" at address 0x' + branchOpcodeAddress.toString(16) + '.');
+					this.emit('warning', 'Aborting disassembly: Ambiguous disassembly: encountered branch instruction into the middle of an opcode. Opcode "' + opcode.name + '" at address 0x' + opcodeAddress.toString(16) + ' would branch into "' + branchOpcode.name + '" at address 0x' + branchOpcodeAddress.toString(16) + '.');
 					return false;
 				}
 			}
@@ -286,7 +318,7 @@ export class Disassembler extends EventEmitter {
 			const attr = this.memory.getAttributeAt(address);
 
 			// Create new label or prioritize if label already exists
-			this.setFoundLabel(address, opcode.valueType, attr);
+			this.setFoundLabel(address, opcodeAddress, opcode.valueType, attr);
 		}
 
 		// Everything fine
@@ -303,9 +335,6 @@ export class Disassembler extends EventEmitter {
 	 */
 	protected countTypesOfLabels() {
 		// Count number of SUBs
-		this.labelSubCountDigits = 4;
-		this.labelLblCountDigits = 4;
-		this.labelDataLblCountDigits = 4;
 		this.labelSubCount = 0;
 		this.labelLblCount = 0;
 		this.labelDataLblCount = 0;
@@ -344,17 +373,34 @@ export class Disassembler extends EventEmitter {
 		let dataLblIndex = 1;	// DATA_LBL
 
 		// prefixes for the local labels are dependent on the surrounding code (e.g. sub routine)
-		let localPrefix = "lbl0_";	// Just in case
+		let localPrefix = "lbl0";	// Just in case
 
-		// Loop through all labels
+		let parentLabel;
+		const relLabels = new Array<Label>();
+		const relLoopLabels = new Array<Label>();
+
+		// Loop through all labels (labels is sorted by address)
 		for( let [,label] of this.labels) {
 			const type = label.type;
+
+			// Check for parent label
+			if(type == LabelType.CODE_SUB || type == LabelType.CODE_LBL) {
+				// process previous local labels
+				this.assignRelLabelNames(relLabels, parentLabel);
+				this.assignRelLabelNames(relLoopLabels, parentLabel);
+				relLabels.length = 0;
+				relLoopLabels.length = 0;
+				// Store new
+				parentLabel = label;
+		}
+
+			// Process label
 			switch(type) {
 				case LabelType.CODE_SUB:
 					// Set name
 					label.name = this.labelSubPrefix + this.getIndex(subIndex, this.labelSubCountDigits);
 					// Use for local prefix
-					localPrefix = '.' + label.name.toLowerCase() + '_';
+					localPrefix = '.' + label.name.toLowerCase();
 					// Next
 					subIndex++;
 				break;
@@ -362,7 +408,7 @@ export class Disassembler extends EventEmitter {
 					// Set name
 					label.name = this.labelLblPrefix + this.getIndex(lblIndex, this.labelLblCountDigits);
 					// Use for local prefix
-					localPrefix = '.' + label.name.toLowerCase() + '_';
+					localPrefix = '.' + label.name.toLowerCase();
 					// Next
 					lblIndex++;
 				break;
@@ -370,60 +416,230 @@ export class Disassembler extends EventEmitter {
 					// Set name
 					label.name = this.labelDataLblPrefix + this.getIndex(dataLblIndex, this.labelDataLblCountDigits);
 					// Use for local prefix
-					localPrefix = '.' + label.name.toLowerCase() + '_';
+					localPrefix = '.' + label.name.toLowerCase();
 					// Next
 					dataLblIndex++;
 				break;
 				case LabelType.CODE_RELATIVE_LOOP:
 					// Set name
-					label.name = localPrefix + this.labelLoopPrefix
+					label.name = localPrefix + this.labelLoopPrefix;
+					// Remember label
+					relLoopLabels.push(label);
 				break;
-				case LabelType.CODE_SUB:
+				case LabelType.CODE_RELATIVE_LBL:
 					// Set name
-					label.name = this.labelSubPrefix + this.getIndex(subIndex, this.labelSubCountDigits);
-					// Next
-					subIndex++;
+					label.name = localPrefix + this.labelLocalLablePrefix;
+					// Remember label
+					relLabels.push(label);
 				break;
 			}
+		}
 
-			// TODO: 2nd pass with index numbers for the local labels
+		// Process the last relative labels
+		this.assignRelLabelNames(relLabels, parentLabel);
+		this.assignRelLabelNames(relLoopLabels, parentLabel);
+	}
+
+
+	/**
+	 * Adds the indexes and the parentLAbel to the relative labels.
+	 * @param relLabels The relative (relative or loop) labels within a parent.
+	 * @param parentLabel The parentLabel (SUB or LBL)
+	 */
+	protected assignRelLabelNames(relLabels: Array<Label>, parentLabel: Label) {
+		const count = relLabels.length;
+		if(count == 1) {
+			// No index in case there is only one index
+			relLabels[0].parent = parentLabel;
+			return;
+		}
+		// Normal loop (>=2 entries)
+		const digitCount = count.toString().length;
+		let index = 1;
+		for(let relLabel of relLabels) {
+			const indexString = this.getIndex(index, digitCount);
+			relLabel.name += indexString;
+			relLabel.parent = parentLabel;
+			// next
+			index ++;
 		}
 	}
 
-	// Disassemble opcodes together with label names
-	protected dissambleOpcodes() {
-		let addr = 0;
-		while (addr < MAX_MEM_SIZE) {
-			// Get opcode
-			let opcode = this.memory.getOpcodeAt(addr);
 
-			// Get label name
-			let labelName = '';
-			if(opcode.valueType != LabelType.NONE) {
-				const label = this.labels.get(opcode.value);
-				if(label)
-					labelName = label.name;
-			}
+	/**
+	 *  Disassemble opcodes together with label names
+	 * Returns an array of strings whichcontains the disassembly.
+	 * @returns The disassembly.
+	 */
+	protected disassembleOpcodes(): Array<string> {
+		let lines = new Array<string>();
 
-			// Disassemble
-			const opCodeString = util.format(opcode.name, labelName);
+		// Loop over all labels
+		let address = 0;
+		for(const [addr,] of this.labels) {
+			// Check if address has already been disassembled
+			if(addr < address)
+				continue;
 
-			// TODO: print references (callers)
+			// Use address
+			address = addr;
 
-			// Check if label needs to be added to line (print label on own line)
-			const addrLabel = this.labels.get(addr);
-			if(addrLabel) {
-				const line1 = addr.toString(16) + '\t' + addrLabel.name + '\n';
-				// TODO: print line
-			}
+			// disassemble until stop-code
+			do {
+				// Check if memory has already been disassembled
+				let attr = this.memory.getAttributeAt(address);
+				if(!(attr & MemAttribute.ASSIGNED)) {
+					break;	// E.g. an EQU label
+				}
+				assert(attr & MemAttribute.CODE);	// should be safe because for labelling we have already disassembled these addresses
 
-			// Add address
-			const line = addr.toString(16) + '\t\t' + opCodeString + '\n'
+				// Read opcode at address
+				var opcode = this.memory.getOpcodeAt(address);
 
-			// Next
-			addr += opcode.length;
+				// Check if label needs to be added to line (print label on own line)
+				const addrLabel = this.labels.get(address);
+				if(addrLabel) {
+					// Add empty lines in case this is a SUB or LBL label
+					const type = addrLabel.type;
+					if(type == LabelType.CODE_SUB || type == LabelType.CODE_LBL) {
+						this.addEmptyLines(lines);
+					}
+					// Add comment with references
+					if((type == LabelType.CODE_SUB && this.addReferencesToSubroutines)
+					|| (type == LabelType.CODE_LBL && this.addReferencesToAbsoluteLabels)
+					|| (type == LabelType.DATA_LBL && this.addReferencesToDataLabels)) {
+						// First line: Reference count
+						const refCount = addrLabel.references.length;
+						let refLine = (type == LabelType.CODE_SUB) ? '; Subroutine' : '; Label';
+						refLine += ' is referenced by ' + refCount + ' location';
+						if(refCount > 1)
+							refLine += 's';
+						refLine += (refCount > 0) ? ':' : '.'
+						lines.push(refLine);
+						if(refCount > 0) {
+							// Second line: The references
+							const refArray = addrLabel.references.map(addr => {
+								let s = '0x'+addr.toString(16);
+								const parentLabel = this.getParentLabel(addr);
+								if(parentLabel) {
+									// Add e.g. start of subroutine
+									s += ' (in ' + parentLabel.name + ')';
+								}
+								return s;
+							});
+							refLine = '; ' + refArray.toString();
+							lines.push(refLine);
+						}
+					}
+
+					// Add label on separate line
+					let labelLine = addrLabel.name + ':';
+					if(this.startLinesWithAddress) {
+						labelLine =  this.getHexString(address) + '\t' + labelLine;
+					}
+					lines.push(labelLine);
+				}
+
+				// Disassemble the single opcode
+				const opCodeString = this.disassembleOpcode(opcode);
+				let line = '\t' + opCodeString;
+
+				// Add address
+				if(this.startLinesWithAddress) {
+					line = this.getHexString(address) + '\t' + line;
+				}
+
+				// Store
+				lines.push(line);
+
+				// Next address
+				address += opcode.length;
+
+				// Check for stop code. (JP, JR, RET)
+			} while(!(opcode.flags & OpcodeFlag.STOP));
 		}
 
+		// Return
+		return lines;
+	}
+
+
+	/**
+	 * Disassembles one opcode together with a referenced label (if there
+	 * is one).
+	 * @param opcode The Opcode to disassemble.
+	 * @returns A string that contains the disassembly, e.g. "LD A,(DATA_LBL1)"
+	 * or "JR Z,.sub1_lbl3".
+	 */
+	protected disassembleOpcode(opcode: Opcode) {
+		// optional comment
+		let comment = '';
+
+		// Check if there is any value
+		if(opcode.valueType == LabelType.NONE) {
+			let name = opcode.name;
+			if(this.opcodesLowerCase)
+				name = name.toLowerCase();
+			return name;
+		}
+
+		// Get referenced label name
+		let valueName = '';
+		if(opcode.flags & OpcodeFlag.BRANCH_ADDRESS) {
+			const label = this.labels.get(opcode.value);
+			if(label)
+				valueName = label.name;
+		}
+		else {
+			// Use direct value
+			let val = opcode.value;
+			valueName = val.toString();	// decimal
+			// Add comment
+			if(opcode.valueType == LabelType.NUMBER_BYTE) {
+				// byte
+				if(val < 0)
+					val = 0x100 + val;
+				comment = '\t; ' + this.getHexString(val,2) + 'h';
+			}
+			else {
+				// word
+				comment = '\t; ' + this.getHexString(val) + 'h';
+				if(val >= 0x8000) {
+					// Also add negative value
+					const negVal = val - 0x10000;
+					comment += ', ' + negVal.toString();
+				}
+			}
+		}
+
+		// Disassemble
+		let name = opcode.name;
+		if(this.opcodesLowerCase)
+			name = name.toLowerCase();
+		const opCodeString = util.format(name, valueName) + comment;
+		return opCodeString;
+	}
+
+
+	/**
+	 * Finds the parent label. I.e. the first non relative label that is lower than the given address.
+	 * @param address
+	 */
+	protected getParentLabel(address: number): Label|undefined {
+		let prevLabel;
+		for(let [addr, label] of this.labels) {
+			const type = label.type;
+			if(type == LabelType.CODE_SUB || type == LabelType.CODE_LBL) {
+				if(addr >= address) {
+					// found
+					return prevLabel;
+				}
+				// store previous
+				prevLabel = label;
+			}
+		}
+		// Nothing found
+		return undefined;
 	}
 
 
@@ -435,6 +651,33 @@ export class Disassembler extends EventEmitter {
 	protected getIndex(index: number, countDigits: number) {
 		const str = index.toString();
 		return '0'.repeat(countDigits-str.length) + str;
+	}
+
+
+	/**
+	 * Adds empty lines to the given array.
+	 * The count depends on 'numberOfLinesBetweenBlocks'.
+	 * @param lines Array to add the empty lines.
+	 */
+	protected addEmptyLines(lines: Array<string>) {
+		for(let i=0; i<this.numberOfLinesBetweenBlocks; i++) {
+			lines.push('');
+		}
+	}
+
+
+	/**
+	 * Returns a hex string with a fixed number of digits.
+	 * @param value The value to convert.
+	 * @param countDigits The number of digits.
+	 * @returns a string, e.g. "04fd".
+	 */
+	protected getHexString(value:number, countDigits = 4): string {
+		let s = value.toString(16);
+		if(!this.hexNumbersLowerCase)
+			s = s.toUpperCase();
+		const res = '0'.repeat(countDigits-s.length) + s;
+		return res;
 	}
 }
 

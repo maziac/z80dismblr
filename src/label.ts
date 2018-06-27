@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-
+//import { CodeLocation } from './codelocation';
 
 
 /// A categorization (and priorization) of the labels.
@@ -27,7 +27,7 @@ export const enum LabelType {
 
 
 /**
- * Class to hold and access the memory.
+ * Class for the labels.
  */
 export class Label {
 
@@ -37,16 +37,22 @@ export class Label {
 	/// The name of the label, e.g. "SUB001" or ".sub001_loop5"
 	public name: string;
 
+	/// The "parent" label: Either a subroutine or a code label.
+	/// Used for local label naming.
+	public parent: Label;
+
+	/// The code locations that reference the label.
+	public references = Array<number>();
+
 	/// True if it is an EQU label. A label whose memory was not given as binary value.
 	/// I.e. outside the range of the given memory.
-	public isEqu: boolean;
+	public isEqu = false;
 
 	/**
 	 * Constructor: Initializes memory.
 	 */
  	constructor (type: LabelType) {
 		this.type = type;
-		this.isEqu = false;
 	}
 
 
