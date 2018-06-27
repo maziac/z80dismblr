@@ -615,4 +615,84 @@ suite('Disassembler', () => {
 		});
     });
 
+
+
+	suite('complete binaries', () => {
+
+		test('currah', () => {
+			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
+
+			// configure
+			dasm.labelSubPrefix = "SUB";
+			dasm.labelLblPrefix = "LBL";
+			dasm.labelDataLblPrefix = "DATA";
+			dasm.labelLocalLablePrefix = "_lbl";
+			dasm.labelLoopPrefix = "_loop";
+
+			const org = 0x8000;
+			dasm.memory.readBinFile(org, './src/tests/data/currah.bin');
+			dasm.setLabel(org);
+			const lines = dasm.disassemble();
+
+			//dasm.printLabels();
+			console.log('\n');
+			console.log(lines.join('\n'));
+
+			assert(lines.length == 5);
+
+			assert(lines[0] == '; Label is referenced by 0 location.')
+			assert(lines[1] == '0000	LBL1:');
+			assert(lines[2] == '0000		ld	a,-3	; FDh');
+			assert(lines[3] == '0002		ld	hl,65244	; FEDCh, -292');
+			assert(lines[4] == '0005		ret	');
+
+		});
+
+
+		test('more complex', () => {
+			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
+
+			const memory = [
+/*7000*/ 					// CCODE_START:
+/*7000*/ 0x28, 0x00,		// 		jr z,l1_rel1
+/*7002*/ 					// l1_rel1:
+/*7002*/ 0x28, 0x00,		// 		jr z,l1_rel2
+/*7004*/ 					// l1_rel2:
+/*7004*/ 0x00,				// 		nop
+/*7005*/					// l1_loop1:
+/*7005*/ 0x10, 0xfe,		// 		djnz l1_loop1
+/*7007*/ 0xcd, 0x0b, 0x70,	// 	    call CSUB1
+/*700a*/ 0xc9,				// ret
+/*700b*/ 					// CSUB1:
+/*700b*/ 0x28, 0x00,		// 		jr z,s1_rel1
+/*700d*/ 					// s1_rel1:
+/*700d*/ 0x28, 0x00,		// 		jr z,s1_rel2
+/*700f*/ 					// s1_rel2:
+/*700f*/ 0x00, 				// 		nop
+/*7010*/ 					// s1_loop1:
+/*7010*/ 0x10, 0xfe,		// 		djnz s1_loop1
+/*7012*/ 					// s1_loop2:
+/*7012*/ 0x10, 0xfe,		// 		djnz s1_loop2
+/*7014*/ 0xc9,				// 		ret
+			];
+
+			dasm.labelSubPrefix = "SUB";
+			dasm.labelLblPrefix = "LBL";
+			dasm.labelDataLblPrefix = "DATA";
+			dasm.labelLocalLablePrefix = "_lbl";
+			dasm.labelLoopPrefix = "_loop";
+
+			const org = 0x7000;
+			dasm.memory.setMemory(org, new Uint8Array(memory));
+			dasm.setLabel(org);
+			const lines = dasm.disassemble();
+
+			//dasm.printLabels();
+			console.log('\n');
+			console.log(lines.join('\n'));
+
+			assert(lines.length > 10);	// It's hard to find a good assert here.
+		});
+    });
+
 });

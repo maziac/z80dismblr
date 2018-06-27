@@ -81,7 +81,7 @@ export class Disassembler extends EventEmitter {
 		this.assignLabelNames();
 
 		// 4. Pass: Disassemble opcode with label names
-		const disLines = this.disassembleOpcodes();
+		const disLines = this.disassembleMemory();
 
 		// 4. Add all EQU labels to the beginning of the disassembly
 		const lines = this.getEquLabelsDisassembly();
@@ -174,6 +174,9 @@ export class Disassembler extends EventEmitter {
 		while((address = this.addressQueue.shift()) != undefined) {
 			// disassemble until stop-code
 			do {
+				// Trace address
+				console.log('collectLabels: address=' + this.getHexString(address) + 'h');
+
 				// Check if memory has already been disassembled
 				let attr = this.memory.getAttributeAt(address);
 				if(attr & MemAttribute.CODE)
@@ -467,11 +470,11 @@ export class Disassembler extends EventEmitter {
 
 
 	/**
-	 *  Disassemble opcodes together with label names
+	 * Disassemble opcodes together with label names
 	 * Returns an array of strings whichcontains the disassembly.
 	 * @returns The disassembly.
 	 */
-	protected disassembleOpcodes(): Array<string> {
+	protected disassembleMemory(): Array<string> {
 		let lines = new Array<string>();
 
 		// Loop over all labels
@@ -480,21 +483,18 @@ export class Disassembler extends EventEmitter {
 			// Check if address has already been disassembled
 			if(addr < address)
 				continue;
+			// Check if it is a code label
 
 			// Use address
 			address = addr;
 
 			// disassemble until stop-code
-			do {
+			while(true) {
 				// Check if memory has already been disassembled
 				let attr = this.memory.getAttributeAt(address);
 				if(!(attr & MemAttribute.ASSIGNED)) {
 					break;	// E.g. an EQU label
 				}
-				assert(attr & MemAttribute.CODE);	// should be safe because for labelling we have already disassembled these addresses
-
-				// Read opcode at address
-				var opcode = this.memory.getOpcodeAt(address);
 
 				// Check if label needs to be added to line (print label on own line)
 				const addrLabel = this.labels.get(address);
@@ -540,23 +540,62 @@ export class Disassembler extends EventEmitter {
 					lines.push(labelLine);
 				}
 
-				// Disassemble the single opcode
-				const opCodeString = this.disassembleOpcode(opcode);
-				let line = '\t' + opCodeString;
+				// Check if code or data should be disassembled
+				if(attr & MemAttribute.CODE) {
+					// CODE
 
-				// Add address
-				if(this.startLinesWithAddress) {
-					line = this.getHexString(address) + '\t' + line;
+					// Read opcode at address
+					const opcode = this.memory.getOpcodeAt(address);
+
+					// Disassemble the single opcode
+					const opCodeString = this.disassembleOpcode(opcode);
+					let line = '\t' + opCodeString;
+
+					// Add address
+					if(this.startLinesWithAddress) {
+						line = this.getHexString(address) + '\t' + line;
+					}
+
+					// Store
+					lines.push(line);
+
+					// Next address
+					address += opcode.length;
+
+					// Stop diassembly?
+					if(opcode.flags & OpcodeFlag.STOP)
+						break;
 				}
 
-				// Store
-				lines.push(line);
+				else {
+					// DATA
 
-				// Next address
-				address += opcode.length;
+					// Read memory value at address
+					let memValue = this.memory.getValueAt(address);
 
+					// Create negative value:
+					if(memValue > 0x80)
+						memValue = 0x100 - memValue;
+
+					// Disassemble the data line
+					let line = '\t defb ' + memValue.toString() + '\t; ' + this.getVariousConversionsForByte(memValue);
+
+					// Add address
+					if(this.startLinesWithAddress) {
+						line = this.getHexString(address) + '\t' + line;
+					}
+
+					// Store
+					lines.push(line);
+
+					// Next address
+					address ++;
+
+					// Note:
+					// For data there is no stop-code. I.e. data is disassembled as long as there is no CODE area found. Then in the CODE area a stop-condition might be found.
+				}
 				// Check for stop code. (JP, JR, RET)
-			} while(!(opcode.flags & OpcodeFlag.STOP));
+			}
 		}
 
 		// Return
@@ -597,9 +636,7 @@ export class Disassembler extends EventEmitter {
 			// Add comment
 			if(opcode.valueType == LabelType.NUMBER_BYTE) {
 				// byte
-				if(val < 0)
-					val = 0x100 + val;
-				comment = '\t; ' + this.getHexString(val,2) + 'h';
+				comment = '\t; ' + this.getVariousConversionsForByte(val);
 			}
 			else {
 				// word
@@ -678,6 +715,26 @@ export class Disassembler extends EventEmitter {
 			s = s.toUpperCase();
 		const res = '0'.repeat(countDigits-s.length) + s;
 		return res;
+	}
+
+
+	/**
+	 * Puts together a few common conversions for a byte value.
+	 * E.g. hex, decimal and ASCII.
+	 * Used to create the comment for an opcode or a data label.
+	 * @param byteValue The value to convert.
+	 * @returns A string with all conversions, e.g. "20h, 32, ' '"
+	 */
+	protected getVariousConversionsForByte(byteValue: number): string {
+		// byte
+		if(byteValue < 0)
+			byteValue = 0x100 + byteValue;
+		let result = this.getHexString(byteValue, 2) + "h, " + byteValue.toString();
+		// Check for ASCII
+		if(byteValue >= 32 /*space*/ && byteValue <= 126 /*tilde*/)
+			result += ", '" + String.fromCharCode(byteValue) + "'";
+		// return
+		return result;
 	}
 }
 

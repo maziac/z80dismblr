@@ -126,6 +126,10 @@ export class Memory {
 				if(opcode.valueType == LabelType.CODE_RELATIVE_LBL || opcode.valueType == LabelType.CODE_RELATIVE_LOOP)
 					opcode.value += address+2;
 			break;
+			case LabelType.PORT_LBL:
+				// TODO: need to be implemented differently
+				opcode.value = this.getValueAt(address+1);
+			break;
 			default:
 				assert(false);
 			break;
