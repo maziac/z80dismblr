@@ -632,6 +632,13 @@ suite('Disassembler', () => {
 			const org = 0x8000;
 			dasm.memory.readBinFile(org, './src/tests/data/currah.bin');
 			dasm.setLabel(org);
+
+			// Set the 3 call tables
+			dasm.setCallTable(0x80E5, 10);
+			dasm.setCallTable(0x80FD, 10);
+			dasm.setCallTable(0x8115, 10);
+
+			// Disassemble
 			const lines = dasm.disassemble();
 
 			//dasm.printLabels();

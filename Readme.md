@@ -41,7 +41,4 @@ INC BC: increment BC
 8149		 defb 32	; 20h, 32, ' '
 814A		 defb 111	; 6Fh, 111, 'o'
 814B		 defb 117	; 75h, 117, 'u'
-- call table statt direkte label übergabe
-80E5, 10
-80FD, 10
-8115, 10
+

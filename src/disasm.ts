@@ -122,6 +122,24 @@ export class Disassembler extends EventEmitter {
 
 
 	/**
+	 * Adds the addresses from a call table (in memory) to the labels.
+	 * @param address Address of the start of the call table.
+	 * @param count The number of jmp addresses.
+	 */
+	public setCallTable(address: number, count: number) {
+		// Loop over all jmp addresses
+		for(let i=0; i<count; i++) {
+			// Get address
+			let jmpAddress = this.memory.getWordValueAt(address);
+			// Set label
+			this.setLabel(jmpAddress);
+			// Next
+			address += 2;
+		}
+	}
+
+
+	/**
 	 * Prints all labels to the console.
 	 */
 	public printLabels() {
@@ -501,7 +519,7 @@ export class Disassembler extends EventEmitter {
 				if(addrLabel) {
 					// Add empty lines in case this is a SUB or LBL label
 					const type = addrLabel.type;
-					if(type == LabelType.CODE_SUB || type == LabelType.CODE_LBL) {
+					if(type == LabelType.CODE_SUB || type == LabelType.CODE_LBL || type == LabelType.DATA_LBL) {
 						this.addEmptyLines(lines);
 					}
 					// Add comment with references
@@ -523,7 +541,7 @@ export class Disassembler extends EventEmitter {
 								const parentLabel = this.getParentLabel(addr);
 								if(parentLabel) {
 									// Add e.g. start of subroutine
-									s += ' (in ' + parentLabel.name + ')';
+									s += '(in ' + parentLabel.name + ') ';
 								}
 								return s;
 							});
@@ -624,7 +642,11 @@ export class Disassembler extends EventEmitter {
 
 		// Get referenced label name
 		let valueName = '';
-		if(opcode.flags & OpcodeFlag.BRANCH_ADDRESS) {
+		if(opcode.valueType == LabelType.CODE_LBL
+			|| opcode.valueType == LabelType.CODE_RELATIVE_LBL
+			|| opcode.valueType == LabelType.CODE_RELATIVE_LOOP
+			|| opcode.valueType == LabelType.CODE_SUB
+			|| opcode.valueType == LabelType.DATA_LBL) {
 			const label = this.labels.get(opcode.value);
 			if(label)
 				valueName = label.name;
