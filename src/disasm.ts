@@ -163,7 +163,7 @@ export class Disassembler extends EventEmitter {
 			// Check if EQU
 			if(label.isEqu) {
 				// "Disassemble"
-				const line = label.name + ':\t EQU ' + address.toString(16) + 'h';
+				const line = label.name + ':\t EQU ' + this.fillDigits(address.toString(), ' ', 5) + '\t; ' + this.getVariousConversionsForWord(address);
 				// Store
 				lines.push(line);
 			}
@@ -530,7 +530,7 @@ export class Disassembler extends EventEmitter {
 						const refCount = addrLabel.references.length;
 						let refLine = (type == LabelType.CODE_SUB) ? '; Subroutine' : '; Label';
 						refLine += ' is referenced by ' + refCount + ' location';
-						if(refCount > 1)
+						if(refCount != 1)
 							refLine += 's';
 						refLine += (refCount > 0) ? ':' : '.'
 						lines.push(refLine);
@@ -590,10 +590,6 @@ export class Disassembler extends EventEmitter {
 
 					// Read memory value at address
 					let memValue = this.memory.getValueAt(address);
-
-					// Create negative value:
-					if(memValue > 0x80)
-						memValue = 0x100 - memValue;
 
 					// Disassemble the data line
 					let line = '\t defb ' + memValue.toString() + '\t; ' + this.getVariousConversionsForByte(memValue);
@@ -662,12 +658,7 @@ export class Disassembler extends EventEmitter {
 			}
 			else {
 				// word
-				comment = '\t; ' + this.getHexString(val) + 'h';
-				if(val >= 0x8000) {
-					// Also add negative value
-					const negVal = val - 0x10000;
-					comment += ', ' + negVal.toString();
-				}
+				comment = '\t; ' + this.getVariousConversionsForWord(val);
 			}
 		}
 
@@ -735,7 +726,19 @@ export class Disassembler extends EventEmitter {
 		let s = value.toString(16);
 		if(!this.hexNumbersLowerCase)
 			s = s.toUpperCase();
-		const res = '0'.repeat(countDigits-s.length) + s;
+		return this.fillDigits(s, '0', countDigits);
+	}
+
+
+	/**
+	 * If string is smaller than countDigits the string is filled with 'fillCharacter'.
+	 * Used to fill a number up with '0' or spaces.
+	 */
+	protected fillDigits(valueString:string, fillCharacter: string, countDigits: number): string {
+		const repeat = countDigits-valueString.length;
+		if(repeat <= 0)
+			return valueString;
+		const res = fillCharacter.repeat(repeat) + valueString;
 		return res;
 	}
 
@@ -744,17 +747,44 @@ export class Disassembler extends EventEmitter {
 	 * Puts together a few common conversions for a byte value.
 	 * E.g. hex, decimal and ASCII.
 	 * Used to create the comment for an opcode or a data label.
-	 * @param byteValue The value to convert.
+	 * @param byteValue The value to convert. [-128;255]
 	 * @returns A string with all conversions, e.g. "20h, 32, ' '"
 	 */
 	protected getVariousConversionsForByte(byteValue: number): string {
 		// byte
 		if(byteValue < 0)
 			byteValue = 0x100 + byteValue;
-		let result = this.getHexString(byteValue, 2) + "h, " + byteValue.toString();
+		let result = this.getHexString(byteValue, 2) + "h";
+		// Negative?
+		let convValue = byteValue;
+		if(convValue >= 0x80) {
+			convValue -= 0x100;
+			result += ', ' + this.fillDigits(convValue.toString(), ' ', 4);
+		}
 		// Check for ASCII
 		if(byteValue >= 32 /*space*/ && byteValue <= 126 /*tilde*/)
 			result += ", '" + String.fromCharCode(byteValue) + "'";
+		// return
+		return result;
+	}
+
+
+	/**
+	 * Puts together a few common conversions for a word value.
+	 * E.g. hex and decimal.
+	 * Used to create the comment for an EQU label.
+	 * @param wordValue The value to convert.
+	 * @returns A string with all conversions, e.g. "FA20h, -3212"
+	 */
+	protected getVariousConversionsForWord(wordValue: number): string {
+		// word
+		let result = this.getHexString(wordValue) + 'h';
+		// Negative?
+		let convValue = wordValue;
+		if(convValue >= 0x8000) {
+			convValue -= 0x10000;
+			result += ', ' + this.fillDigits(convValue.toString(), ' ', 6);
+		}
 		// return
 		return result;
 	}

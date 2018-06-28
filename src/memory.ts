@@ -117,14 +117,17 @@ export class Memory {
 			break;
 			case LabelType.CODE_RELATIVE_LBL:
 			case LabelType.CODE_RELATIVE_LOOP:
-			case LabelType.NUMBER_BYTE:
 				// byte value
 				opcode.value = this.getValueAt(address+1);
-				if(opcode.value >= 128)
-					opcode.value -= 256;
+				if(opcode.value >= 0x80)
+					opcode.value -= 0x100;
 				// Change relative jump address to absolute
 				if(opcode.valueType == LabelType.CODE_RELATIVE_LBL || opcode.valueType == LabelType.CODE_RELATIVE_LOOP)
 					opcode.value += address+2;
+			break;
+			case LabelType.NUMBER_BYTE:
+				// byte value
+				opcode.value = this.getValueAt(address+1);
 			break;
 			case LabelType.PORT_LBL:
 				// TODO: need to be implemented differently
