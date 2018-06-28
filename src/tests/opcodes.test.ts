@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { Opcodes, OpcodeFlag } from '../opcodes';
+import { Opcodes, OpcodesCB, OpcodesDD, OpcodesED, OpcodesFD, OpcodesFDCB, OpcodeFlag } from '../opcodes';
 import { LabelType } from '../label';
 
 
@@ -22,7 +22,8 @@ suite('Opcodes', () => {
 		for(let i=0; i<0x100; i++) {
 			const opcode = Opcodes[i];
 			assert(opcode != undefined);
-			assert(i == opcode.code);
+			if(!Array.isArray(opcode))
+				assert(i == opcode.code);
 		}
 	});
 
@@ -126,7 +127,16 @@ suite('Opcodes', () => {
 		assert(Opcodes[0xD3].valueType == LabelType.PORT_LBL);
 	});
 
-	test('length', () => {
+	test('length of opcode arrays', () => {
+		// Length of arrays
+		assert(Opcodes.length == 0x100);
+		assert(OpcodesCB.length == 0x100);
+		assert(OpcodesDD.length == 0x100);
+		assert(OpcodesED.length == 0x100);
+		assert(OpcodesFDCB.length == 0x100);
+	});
+
+	test('length of opcodes', () => {
 		// CALL nn
 		assert(Opcodes[0xCD].length == 3);
 
@@ -144,6 +154,16 @@ suite('Opcodes', () => {
 
 		// RET
 		assert(Opcodes[0xC9].length == 1);
+	});
+
+
+	test('Special combined opcodes', () => {
+		assert(Array.isArray(Opcodes[0xCB]));
+		assert(Array.isArray(Opcodes[0xDD]));
+		assert(Array.isArray(Opcodes[0xED]));
+		assert(Array.isArray(Opcodes[0xFD]));
+
+		assert(Array.isArray(OpcodesFD[0xCB]));
 	});
 
 });

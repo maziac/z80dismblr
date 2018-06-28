@@ -120,26 +120,28 @@ export class Opcode {
 		// Store
 		this.name = name;
 	}
+}
 
-	/**
-	 * Static method to create an Opcode object from a value.
-	 */
-	public static fromValue(val) {
-		if(val< 0 || val>=Opcodes.length)
-			throw new Error('Opcode 0x' + val.toString(16) + ' unknown.');
-		const opcode = Opcodes[val];
-		return opcode;
+
+class OpcodeCB extends Opcode {
+	constructor(code: number, name: string, value?: LabelType.NONE, length?: number) {
+		super(0xDD+code, name, value, length);
+		this.length += 1;	// one more
 	}
 }
 
-
 class OpcodeDD extends Opcode {
-}
-
-class OpcodeCB extends Opcode {
+	constructor(code: number, name: string, value?: LabelType.NONE, length?: number) {
+		super(0xDD+code, name, value, length);
+		this.length += 1;	// one more
+	}
 }
 
 class OpcodeED extends Opcode {
+	constructor(code: number, name: string, value?: LabelType.NONE, length?: number) {
+		super(0xDD+code, name, value, length);
+		this.length += 1;	// one more
+	}
 }
 
 
@@ -162,6 +164,39 @@ nn nn             DD nn          CB nn       FD CB ff nn      ED nn
 */
 
 
+/// Opcodes that start with 0xCB.
+export const OpcodesCB: Array<Opcode> = [
+	...Array<number>(0x7E).fill(0).map((value, index) =>
+		new Opcode(index,"lll")),
+	...([] as Array<Opcode>).fill(new Opcode(9,"lll"), 0, 0x7E),
+	new OpcodeCB(0x7E, "LD A,(IX+#n)"),
+	...Array<number>( 0x100-0x7E-1).fill(0).map((value, index) =>
+	new Opcode(index+0x7E+1,"lll"))
+];
+
+/// Opcodes that start with 0xDD.
+export const OpcodesDD: Array<Opcode> = [
+	new OpcodeDD(0x7E, "LD A,(IX+#n)"),
+];
+
+/// Opcodes that start with 0xED.
+export const OpcodesED: Array<Opcode> = [
+	new OpcodeED(0x7E, "LD A,(IX+#n)"),
+];
+
+
+/// Opcodes that start with 0xFDCB.
+export const OpcodesFDCB: Array<Opcode> = [
+	new OpcodeFDCB(0x7E, "LD A,(IX+#n)"),
+];
+
+/// Opcodes that start with 0xFD.
+export const OpcodesFD: Array<Opcode> = [
+	OpcodesFDCB as any,
+];
+
+
+// Normal Opcodes
 export const Opcodes: Array<Opcode> = [
 	new Opcode(0x00, "NOP	"),
 	new Opcode(0x01, "LD	BC,#nn"),
@@ -384,7 +419,7 @@ export const Opcodes: Array<Opcode> = [
 	new Opcode(0xDA, "JP	C,#nn"),
 	new Opcode(0xDB, "IN	A,(#n)"),
 	new Opcode(0xDC, "CALL	C,#nn"),
-	new OpcodeDD(0xDD, "DD-----"),	// TODO
+	OpcodesDD as any,
 	new Opcode(0xDE, "SBC	A,#n"),
 	new Opcode(0xDF, "RST	&18"),
 	new Opcode(0xE0, "RET	PO"),

@@ -1,5 +1,5 @@
 import { readFileSync } from 'fs';
-import { Opcode } from './opcodes';
+import { Opcode, Opcodes } from './opcodes';
 import { LabelType } from './label';
 
 //import * as util from 'util';
@@ -100,8 +100,18 @@ export class Memory {
 	 * @returns It's opcode.
 	 */
 	public getOpcodeAt(address: number): Opcode {
-		const val = this.memory[address&(MAX_MEM_SIZE-1)];
-		const opcode = Opcode.fromValue(val);
+		let opcodeArray = Opcodes;
+		let opcode;
+		while(true) {
+			let val = this.memory[address&(MAX_MEM_SIZE-1)];
+			address ++;
+			opcode = opcodeArray[val];
+			// Check if it is a combined opcode
+			if(!Array.isArray(opcode))
+				break;
+			// Next
+			opcodeArray = opcode;
+		}
 		// Get value (if any)
 		switch(opcode.valueType) {
 			case LabelType.NONE:
@@ -113,25 +123,25 @@ export class Memory {
 			case LabelType.DATA_LBL:
 			case LabelType.NUMBER_WORD:
 				// word value
-				opcode.value = this.getWordValueAt(address+1);
+				opcode.value = this.getWordValueAt(address);
 			break;
 			case LabelType.CODE_RELATIVE_LBL:
 			case LabelType.CODE_RELATIVE_LOOP:
 				// byte value
-				opcode.value = this.getValueAt(address+1);
+				opcode.value = this.getValueAt(address);
 				if(opcode.value >= 0x80)
 					opcode.value -= 0x100;
 				// Change relative jump address to absolute
 				if(opcode.valueType == LabelType.CODE_RELATIVE_LBL || opcode.valueType == LabelType.CODE_RELATIVE_LOOP)
-					opcode.value += address+2;
+					opcode.value += address+1;
 			break;
 			case LabelType.NUMBER_BYTE:
 				// byte value
-				opcode.value = this.getValueAt(address+1);
+				opcode.value = this.getValueAt(address);
 			break;
 			case LabelType.PORT_LBL:
 				// TODO: need to be implemented differently
-				opcode.value = this.getValueAt(address+1);
+				opcode.value = this.getValueAt(address);
 			break;
 			default:
 				assert(false);

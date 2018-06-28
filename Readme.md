@@ -27,5 +27,4 @@ INC BC: increment BC
 	- keine Angabe von Startlabels mehr nötig
 	- vielleicht kann man aus diesen Files auch ersehen, wer auf welchen Speicher zugreift. Z.B. um rauszukriegen, wo die Sprite-Routinen sind.
 	-Es wäre vielleicht möglich zu erkennen, wo die const Datenbereiche sind (die nur gelesen werden und nicht geschrieben)
-- EQU Label als decimal ausgeben, dahinter als Kommentar in hex.
 - Möglicherweise kann man alle relativen jumps nach oben als "loop" werten und betiteln.
