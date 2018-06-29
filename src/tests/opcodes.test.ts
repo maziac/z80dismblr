@@ -10,22 +10,42 @@ suite('Opcodes', () => {
 		//Settings.Init(<any>undefined, '');
 	});
 
-/*
-	teardown( () => dc.stop() );
-*/
+	/*
+		teardown( () => dc.stop() );
+	*/
 
 	test('Check all opcode numbers', () => {
-		// Check size of array
-		assert(0x100 == Opcodes.length);
+		const length = Opcodes.length;
+//		const arr = Opcodes;
 
 		// Check opcode for each element
-		for(let i=0; i<0x100; i++) {
+		for(let i=0; i<length; i++) {
+//			console.log('n ' + i + ', ' + i.toString(16));
 			const opcode = Opcodes[i];
 			assert(opcode != undefined);
 			if(!Array.isArray(opcode))
 				assert(i == opcode.code);
 		}
 	});
+
+
+	test('Check all DD opcode numbers', () => {
+		const length = OpcodesDD.length;
+//		const arr = OpcodesDD;
+
+		// Check opcode for each element
+		for(let i=0; i<length; i++) {
+			const opcode = OpcodesDD[i];
+			assert(opcode != undefined);
+			if(!Array.isArray(opcode)) {
+//				console.log('DD ' + i + ', ' + i.toString(16) + ', ' + opcode.name);
+				assert(i == opcode.code);
+			}
+//			else
+//				console.log('DD ' + i + ', ' + i.toString(16) + ' -> Array');
+		}
+	});
+
 
 	test('Opcode flags', () => {
 		// CALL

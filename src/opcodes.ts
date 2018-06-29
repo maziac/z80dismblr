@@ -123,23 +123,46 @@ export class Opcode {
 }
 
 
+/**
+ * Class used for unknown opcodes.
+ * Calculates length on its own.
+ */
+class OpcodeUnknown extends Opcode {
+	constructor(prefixCode: number, code: number) {
+		// Create length and name from opcode
+		let length = 0;
+		let name = '';
+		let bCode = (prefixCode<<8) + code;
+		do {
+			length ++;
+			const codeString = (bCode & 0xFF).toString(16).toUpperCase();
+			name = '0'.repeat(2-codeString.length) + codeString + 'h, ' + name;
+			// next
+			bCode >>= 8;
+		} while(bCode);
+		name = 'defb ' + name.substr(0, name.length-2) + '\t; UNKNOWN OPCODE';
+		super(code, name, LabelType.NONE, length);
+	}
+}
+
+
 class OpcodeCB extends Opcode {
 	constructor(code: number, name: string, value?: LabelType.NONE, length?: number) {
-		super(0xDD+code, name, value, length);
+		super(code, name, value, length);
 		this.length += 1;	// one more
 	}
 }
 
 class OpcodeDD extends Opcode {
 	constructor(code: number, name: string, value?: LabelType.NONE, length?: number) {
-		super(0xDD+code, name, value, length);
+		super(code, name, value, length);
 		this.length += 1;	// one more
 	}
 }
 
 class OpcodeED extends Opcode {
 	constructor(code: number, name: string, value?: LabelType.NONE, length?: number) {
-		super(0xDD+code, name, value, length);
+		super(code, name, value, length);
 		this.length += 1;	// one more
 	}
 }
@@ -176,7 +199,145 @@ export const OpcodesCB: Array<Opcode> = [
 
 /// Opcodes that start with 0xDD.
 export const OpcodesDD: Array<Opcode> = [
-	new OpcodeDD(0x7E, "LD A,(IX+#n)"),
+	...Array<number>(0x09).fill(0).map((value, index) => new OpcodeUnknown(0xDD, index)),
+
+	new OpcodeDD(0x09, "ADD  IX,BC    "),
+	...Array<number>(0x0F).fill(0).map((value, index) => new OpcodeUnknown(0xDD, 0x0A+index)),
+
+	new OpcodeDD(0x19, "ADD  IX,DE    "),
+	...Array<number>(0x07).fill(0).map((value, index) => new OpcodeUnknown(0xDD, 0x1A+index)),
+
+	new OpcodeDD(0x21, "LD   IX,&0000 "),
+	new OpcodeDD(0x22, "LD  (&0000),IX"),
+	new OpcodeDD(0x23, "INC  IX       "),
+	new OpcodeDD(0x24, "INC  IXH      "),
+	new OpcodeDD(0x25, "DEC  IXH      "),
+	new OpcodeDD(0x26, "LD   IXH,&00  "),
+	...Array<number>(0x02).fill(0).map((value, index) => new OpcodeUnknown(0xDD, 0x27+index)),
+
+	new OpcodeDD(0x29, "ADD  IX,IX    "),
+	new OpcodeDD(0x2A, "LD  IX,(&0000)"),
+	new OpcodeDD(0x2B, "DEC  IX       "),
+	new OpcodeDD(0x2C, "INC  IXL      "),
+	new OpcodeDD(0x2D, "DEC  IXL      "),
+	new OpcodeDD(0x2E, "LD   IXL,&00  "),
+	...Array<number>(0x05).fill(0).map((value, index) => new OpcodeUnknown(0xDD, 0x2F+index)),
+
+	new OpcodeDD(0x34, "INC  (IX+0)   "),
+	new OpcodeDD(0x35, "DEC  (IX+0)   "),
+	new OpcodeDD(0x36, "LD  (IX+0),&00"),
+	...Array<number>(0x02).fill(0).map((value, index) => new OpcodeUnknown(0xDD, 0x37+index)),
+
+	new OpcodeDD(0x39, "ADD  IX,SP    "),
+	...Array<number>(0x0A).fill(0).map((value, index) => new OpcodeUnknown(0xDD, 0x3A+index)),
+
+	new OpcodeDD(0x44, "LD   B,IXH    "),
+	new OpcodeDD(0x45, "LD   B,IXL    "),
+	new OpcodeDD(0x46, "LD   B,(IX+0) "),
+	...Array<number>(0x05).fill(0).map((value, index) => new OpcodeUnknown(0xDD, 0x47+index)),
+
+	new OpcodeDD(0x4C, "LD   C,IXH    "),
+	new OpcodeDD(0x4D, "LD   C,IXL    "),
+	new OpcodeDD(0x4E, "LD   C,(IX+0) "),
+	...Array<number>(0x05).fill(0).map((value, index) => new OpcodeUnknown(0xDD, 0x4F+index)),
+
+	new OpcodeDD(0x54, "LD   D,IXH    "),
+	new OpcodeDD(0x55, "LD   D,IXL    "),
+	new OpcodeDD(0x56, "LD   D,(IX+0) "),
+	...Array<number>(0x05).fill(0).map((value, index) => new OpcodeUnknown(0xDD, 0x57+index)),
+
+	new OpcodeDD(0x5C, "LD   E,IXH    "),
+	new OpcodeDD(0x5D, "LD   E,IXL    "),
+	new OpcodeDD(0x5E, "LD   E,(IX+0) "),
+
+	new OpcodeUnknown(0xDD, 0x5F),
+
+	new OpcodeDD(0x60, "LD   IXH,B    "),
+	new OpcodeDD(0x61, "LD   IXH,C    "),
+	new OpcodeDD(0x62, "LD   IXH,D    "),
+	new OpcodeDD(0x63, "LD   IXH,E    "),
+	new OpcodeDD(0x64, "LD   IXH,IXH  "),
+	new OpcodeDD(0x65, "LD   IXH,IXL  "),
+	new OpcodeDD(0x66, "LD   H,(IX+0) "),
+	new OpcodeDD(0x67, "LD   IXH,A    "),
+	new OpcodeDD(0x68, "LD   IXL,B    "),
+	new OpcodeDD(0x69, "LD   IXL,C    "),
+	new OpcodeDD(0x6A, "LD   IXL,D    "),
+	new OpcodeDD(0x6B, "LD   IXL,E    "),
+	new OpcodeDD(0x6C, "LD   IXL,IXH  "),
+	new OpcodeDD(0x6D, "LD   IXL,IXL  "),
+	new OpcodeDD(0x6E, "LD   L,(IX+0) "),
+	new OpcodeDD(0x6F, "LD   IXL,A    "),
+	new OpcodeDD(0x70, "LD   (IX+0),B "),
+	new OpcodeDD(0x71, "LD   (IX+0),C "),
+	new OpcodeDD(0x72, "LD   (IX+0),D "),
+	new OpcodeDD(0x73, "LD   (IX+0),E "),
+	new OpcodeDD(0x74, "LD   (IX+0),H "),
+	new OpcodeDD(0x75, "LD   (IX+0),L "),
+
+	new OpcodeUnknown(0xDD, 0x76),
+
+	new OpcodeDD(0x77, "LD   (IX+0),A "),
+	...Array<number>(0x04).fill(0).map((value, index) => new OpcodeUnknown(0xDD, 0x78+index)),
+
+	new OpcodeDD(0x7C, "LD   A,IXH    "),
+	new OpcodeDD(0x7D, "LD   A,IXL    "),
+	new OpcodeDD(0x7E, "LD   A,(IX+0) "),
+	...Array<number>(0x05).fill(0).map((value, index) => new OpcodeUnknown(0xDD, 0x7F+index)),
+
+	new OpcodeDD(0x84, "ADD  A,IXH    "),
+	new OpcodeDD(0x85, "ADD  A,IXL    "),
+	new OpcodeDD(0x86, "ADD  A,(IX+0) "),
+	...Array<number>(0x05).fill(0).map((value, index) => new OpcodeUnknown(0xDD, 0x87+index)),
+
+	new OpcodeDD(0x8C, "ADC  A,IXH    "),
+	new OpcodeDD(0x8D, "ADC  A,IXL    "),
+	new OpcodeDD(0x8E, "ADC  A,(IX+0) "),
+	...Array<number>(0x05).fill(0).map((value, index) => new OpcodeUnknown(0xDD, 0x8F+index)),
+
+	new OpcodeDD(0x94, "SUB  A,IXH    "),
+	new OpcodeDD(0x95, "SUB  A,IXL    "),
+	new OpcodeDD(0x96, "SUB  A,(IX+0) "),
+	...Array<number>(0x05).fill(0).map((value, index) => new OpcodeUnknown(0xDD, 0x97+index)),
+
+	new OpcodeDD(0x9C, "SBC  A,IXH    "),
+	new OpcodeDD(0x9D, "SBC  A,IXL    "),
+	new OpcodeDD(0x9E, "SBC  A,(IX+0) "),
+	...Array<number>(0x05).fill(0).map((value, index) => new OpcodeUnknown(0xDD, 0x9F+index)),
+
+	new OpcodeDD(0xA4, "AND  IXH      "),
+	new OpcodeDD(0xA5, "AND  IXL      "),
+	new OpcodeDD(0xA6, "AND  (IX+0)   "),
+	...Array<number>(0x05).fill(0).map((value, index) => new OpcodeUnknown(0xDD, 0xA7+index)),
+
+	new OpcodeDD(0xAC, "XOR  IXH      "),
+	new OpcodeDD(0xAD, "XOR  IXL      "),
+	new OpcodeDD(0xAE, "XOR  (IX+0)   "),
+	...Array<number>(0x05).fill(0).map((value, index) => new OpcodeUnknown(0xDD, 0xAF+index)),
+
+	new OpcodeDD(0xB4, "OR   IXH      "),
+	new OpcodeDD(0xB5, "OR   IXL      "),
+	new OpcodeDD(0xB6, "OR   (IX+0)   "),
+	...Array<number>(0x05).fill(0).map((value, index) => new OpcodeUnknown(0xDD, 0xB7+index)),
+
+	new OpcodeDD(0xBC, "CP   IXH      "),
+	new OpcodeDD(0xBD, "CP   IXL      "),
+	new OpcodeDD(0xBE, "CP   (IX+0)   "),
+	...Array<number>(0x22).fill(0).map((value, index) => new OpcodeUnknown(0xDD, 0xBF+index)),
+
+	new OpcodeDD(0xE1, "POP  IX       "),
+
+	new OpcodeUnknown(0xDD, 0xE2),
+
+	new OpcodeDD(0xE3, "EX   (SP),IX  "),
+
+	new OpcodeUnknown(0xDD, 0xE4),
+
+	new OpcodeDD(0xE5, "PUSH IX       "),
+	...Array<number>(0x03).fill(0).map((value, index) => new OpcodeUnknown(0xDD, 0xE6+index)),
+
+	new OpcodeDD(0xE9, "JP   (IX)     "),
+	...Array<number>(0x100-0xE9-1).fill(0).map((value, index) => new OpcodeUnknown(0xDD, 0xEA+index))
 ];
 
 /// Opcodes that start with 0xED.
@@ -401,7 +562,7 @@ export const Opcodes: Array<Opcode> = [
 	new Opcode(0xC8, "RET	Z"),
 	new Opcode(0xC9, "RET	"),
 	new Opcode(0xCA, "JP	Z,#nn"),
-	new OpcodeCB(0xCB, "CB-----"),	// TODO
+	OpcodesCB as any,
 	new Opcode(0xCC, "CALL	Z,#nn"),
 	new Opcode(0xCD, "CALL	#nn"),
 	new Opcode(0xCE, "ADC	A,#n"),
@@ -435,7 +596,7 @@ export const Opcodes: Array<Opcode> = [
 	new Opcode(0xEA, "JP	PE,#nn"),
 	new Opcode(0xEB, "EX	DE,HL"),
 	new Opcode(0xEC, "CALL	PE,#nn"),
-	new OpcodeED(0xED, "ED-----"),	// TODO
+	OpcodesED as any,
 	new Opcode(0xEE, "XOR	#n"),
 	new Opcode(0xEF, "RST	&28"),
 	new Opcode(0xF0, "RET	P"),
@@ -451,7 +612,7 @@ export const Opcodes: Array<Opcode> = [
 	new Opcode(0xFA, "JP	M,#nn"),
 	new Opcode(0xFB, "EI	"),
 	new Opcode(0xFC, "CALL	M,#nn"),
-	new OpcodeFDCB(0xFD, "FD-----"),	// TODO
+	OpcodesFD as any,
 	new Opcode(0xFE, "CP	#n"),
 	new Opcode(0xFF, "RST	&38"),
 ];
