@@ -47,6 +47,24 @@ suite('Opcodes', () => {
 	});
 
 
+	test('Check all ED opcode numbers', () => {
+		const length = OpcodesED.length;
+//		const arr = OpcodesDD;
+
+		// Check opcode for each element
+		for(let i=0; i<length; i++) {
+			const opcode = OpcodesED[i];
+			assert(opcode != undefined);
+			if(!Array.isArray(opcode)) {
+//				console.log('ED ' + i + ', ' + i.toString(16) + ', ' + opcode.name);
+				assert(i == opcode.code);
+			}
+//			else
+//				console.log('DD ' + i + ', ' + i.toString(16) + ' -> Array');
+		}
+	});
+
+
 	test('Opcode flags', () => {
 		// CALL
 		assert(Opcodes[0xCD].flags == (OpcodeFlag.CALL|OpcodeFlag.BRANCH_ADDRESS));

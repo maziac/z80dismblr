@@ -2,7 +2,6 @@
 //import * as assert from 'assert';
 //import { Memory, MAX_MEM_SIZE } from './memory';
 import { LabelType } from './label'
-//import { Opcode } from './opcodes';
 
 
 /// Classifies opcodes.
@@ -38,7 +37,7 @@ export class Opcode {
 	/**
 	 * Constructor.
 	 */
-	constructor(code: number, name: string, value?: LabelType.NONE, length?: number) {
+	constructor(code: number, name: string, length?: number) {
 		name = name.trim();
 		this.code = code;
 		this.flags = OpcodeFlag.NONE;
@@ -143,28 +142,41 @@ class OpcodeUnknown extends Opcode {
 			bCode >>= 8;
 		} while(bCode);
 		name = 'defb ' + name.substr(0, name.length-2) + '\t; UNKNOWN OPCODE';
-		super(code, name, LabelType.NONE, length);
+		super(code, name, length);
 	}
 }
 
 
 class OpcodeCB extends Opcode {
-	constructor(code: number, name: string, value?: LabelType.NONE, length?: number) {
-		super(code, name, value, length);
+	constructor(code: number, name: string, length?: number) {
+		super(code, name, length);
 		this.length += 1;	// one more
 	}
 }
 
 class OpcodeDD extends Opcode {
-	constructor(code: number, name: string, value?: LabelType.NONE, length?: number) {
-		super(code, name, value, length);
+	constructor(code: number, name: string, length?: number) {
+		super(code, name, length);
 		this.length += 1;	// one more
 	}
 }
 
+class OpcodeDDCB extends OpcodeCB {
+	constructor(code: number, name: string, length?: number) {
+		super(code, name, length);
+		this.length += 1;	// one more
+	}
+}
+
+class OpcodeFDCB extends OpcodeDDCB {
+}
+
+class OpcodeFD extends OpcodeDD {
+}
+
 class OpcodeED extends Opcode {
-	constructor(code: number, name: string, value?: LabelType.NONE, length?: number) {
-		super(code, name, value, length);
+	constructor(code: number, name: string, length?: number) {
+		super(code, name, length);
 		this.length += 1;	// one more
 	}
 }
@@ -172,30 +184,13 @@ class OpcodeED extends Opcode {
 
 /// Special opcodes for the ZX Spectrum next
 class OpcodeNext extends OpcodeED {
-		constructor(code: number, name: string, value?: LabelType.NONE, length?: number) {
-			super(code, name, value, length);
+		constructor(code: number, name: string, length?: number) {
+			super(code, name, length);
 			this.name += '\t; ZX Next opcode'
 		}
 }
 
 
-class OpcodeFDCB extends Opcode {
-}
-
-
-
-/// Opcode table
-/*
-nn nn             DD nn          CB nn       FD CB ff nn      ED nn
---------------------------------------------------------------------------
-00 NOP            -              RLC  B      rlc (iy+0)->b    MOS_QUIT
-01 LD   BC,&0000  -              RLC  C      rlc (iy+0)->c    MOS_CLI
-02 LD   (BC),A    -              RLC  D      rlc (iy+0)->d    MOS_BYTE
-03 INC  BC        -              RLC  E      rlc (iy+0)->e    MOS_WORD
-04 INC  B         -              RLC  H      rlc (iy+0)->h    MOS_WRCH
-05 DEC  B         -              RLC  L      rlc (iy+0)->l    MOS_RDCH
-06 LD   B,&00     -              RLC  (HL)   RLC  (IY+0)      MOS_FILE
-*/
 
 
 /// Opcodes that start with 0xCB.
@@ -458,6 +453,8 @@ export const OpcodesCB: Array<Opcode> = [
 	new OpcodeCB(0xFF, "SET  7,A"),
 ];
 
+//declare const OpcodesDD: Array<Opcode>;
+//declare var OpcodesDD: Array<Opcode>;
 
 /// Opcodes that start with 0xDD.
 export const OpcodesDD: Array<Opcode> = [
@@ -602,6 +599,7 @@ export const OpcodesDD: Array<Opcode> = [
 	...Array<number>(0x100-0xE9-1).fill(0).map((value, index) => new OpcodeUnknown(0xDD, 0xEA+index))
 ];
 
+
 /// Opcodes that start with 0xED.
 export const OpcodesED: Array<Opcode> = [
 	...Array<number>(0x23).fill(0).map((value, index) => new OpcodeUnknown(0xED, index)),
@@ -620,7 +618,7 @@ export const OpcodesED: Array<Opcode> = [
 	new OpcodeNext(0x34, "ADD HL,$nnnn"),     // ZX Spectrum Next
 	new OpcodeNext(0x35, "ADD DE,$nnnn"),     // ZX Spectrum Next
 	new OpcodeNext(0x36, "ADD BC,$nnnn"),     // ZX Spectrum Next
-	...Array<number>(0x0B).fill(0).map((value, index) => new OpcodeUnknown(0xED, 0x37+index)),
+	...Array<number>(0x09).fill(0).map((value, index) => new OpcodeUnknown(0xED, 0x37+index)),
 
 	new OpcodeED(0x40, "IN   B,(C)"),
 	new OpcodeED(0x41, "OUT  (C),B"),
@@ -723,30 +721,21 @@ export const OpcodesED: Array<Opcode> = [
 	new OpcodeED(0xB3, "OUTIR"),
 
 	new OpcodeNext(0xB4, "LDIRX"),     // ZX Spectrum Next
-	new OpcodeUnknown(0xED, 0xB7),
+	new OpcodeUnknown(0xED, 0xB5),
 	new OpcodeNext(0xB6, "LDIRSCALE"),     // ZX Spectrum Next
 	new OpcodeNext(0xB7, "LDPIRX"),     // ZX Spectrum Next
 
 	new OpcodeED(0xB8, "LDDR"),
 	new OpcodeED(0xB9, "CPDR"),
 	new OpcodeED(0xBA, "INDR"),
-	new OpcodeED(0xBB, "OUTDR"),,
+	new OpcodeED(0xBB, "OUTDR"),
 
 	new OpcodeNext(0xBC, "LDDRX"),     // ZX Spectrum Next
 
-	...Array<number>(0x100-0xBC-1).fill(0).map((value, index) => new OpcodeUnknown(0xDD, 0xBC+index))
+	...Array<number>(0x100-0xBC-1).fill(0).map((value, index) => new OpcodeUnknown(0xDD, 0xBD+index))
 ];
 
 
-/// Opcodes that start with 0xFDCB.
-export const OpcodesFDCB: Array<Opcode> = [
-	new OpcodeFDCB(0x7E, "LD A,(IX+#n)"),
-];
-
-/// Opcodes that start with 0xFD.
-export const OpcodesFD: Array<Opcode> = [
-	OpcodesFDCB as any,
-];
 
 
 // Normal Opcodes
@@ -954,7 +943,7 @@ export const Opcodes: Array<Opcode> = [
 	new Opcode(0xC8, "RET	Z"),
 	new Opcode(0xC9, "RET	"),
 	new Opcode(0xCA, "JP	Z,#nn"),
-	OpcodesCB as any,
+	undefined as any,
 	new Opcode(0xCC, "CALL	Z,#nn"),
 	new Opcode(0xCD, "CALL	#nn"),
 	new Opcode(0xCE, "ADC	A,#n"),
@@ -972,7 +961,7 @@ export const Opcodes: Array<Opcode> = [
 	new Opcode(0xDA, "JP	C,#nn"),
 	new Opcode(0xDB, "IN	A,(#n)"),
 	new Opcode(0xDC, "CALL	C,#nn"),
-	OpcodesDD as any,
+	undefined as any,
 	new Opcode(0xDE, "SBC	A,#n"),
 	new Opcode(0xDF, "RST	&18"),
 	new Opcode(0xE0, "RET	PO"),
@@ -988,7 +977,7 @@ export const Opcodes: Array<Opcode> = [
 	new Opcode(0xEA, "JP	PE,#nn"),
 	new Opcode(0xEB, "EX	DE,HL"),
 	new Opcode(0xEC, "CALL	PE,#nn"),
-	OpcodesED as any,
+	undefined as any,
 	new Opcode(0xEE, "XOR	#n"),
 	new Opcode(0xEF, "RST	&28"),
 	new Opcode(0xF0, "RET	P"),
@@ -1004,9 +993,62 @@ export const Opcodes: Array<Opcode> = [
 	new Opcode(0xFA, "JP	M,#nn"),
 	new Opcode(0xFB, "EI	"),
 	new Opcode(0xFC, "CALL	M,#nn"),
-	OpcodesFD as any,
+	undefined as any,
 	new Opcode(0xFE, "CP	#n"),
 	new Opcode(0xFF, "RST	&38"),
 ];
 
 
+/// Opcodes that start with 0xFD.
+/// Create FD (use IY instead of IX)
+export const OpcodesFD = OpcodesDD.map((opcode, index) => {
+	let name = opcode.name.replace('IX', 'IY');
+	name = opcode.name.replace('IX', 'IY');	// at most there are 2 occurences
+	const opcodeFD = new OpcodeFD(opcode.code, name, opcode.length);
+	return opcodeFD;
+});
+
+
+/// Opcodes that start with 0xDDCB.
+/// Create DDCB (use IX+n instead of or plus register)
+export const OpcodesDDCB = OpcodesCB.map((opcode, index) => {
+	// Check if opcodes ends with '(HL)'
+	let name = opcode.name;
+	if(name.endsWith('(HL)')) {
+		// Just exchange (HL) with IX
+		name = name.replace('HL', 'IX%s');	// e.g. "(IX+6)"
+	}
+	else {
+		// Add '(IX+d)' before register name.
+		// E.g. 'RLC B' -> 'RLC (IX+d)->B'
+		const len = name.length;
+		name = name.substr(0,len-1) + '(IX%s) -> ' + name.substr(len-1);
+	}
+	const opcodeFD = new OpcodeDDCB(opcode.code, name, opcode.length);
+	return opcodeFD;
+});
+
+/// Opcodes that start with 0xFDCB.
+/// Create FDCB (use IY instead of IX)
+export const OpcodesFDCB = OpcodesDDCB.map((opcode, index) => {
+	const name = opcode.name.replace('IX', 'IY');
+	const opcodeFD = new OpcodeFDCB(opcode.code, name, opcode.length);
+	return opcodeFD;
+});
+
+
+// Do additional assignments:
+Opcodes[0xCB] = OpcodesCB as any;
+Opcodes[0xDD] = OpcodesDD as any;
+Opcodes[0xED] = OpcodesED as any;
+Opcodes[0xFD] = OpcodesFD as any;
+
+OpcodesDD[0xCB] = OpcodesDDCB as any;
+OpcodesDD[0xDD] = OpcodesDD as any;
+OpcodesDD[0xED] = OpcodesED as any;
+OpcodesDD[0xFD] = OpcodesFD as any;
+
+OpcodesDD[0xCB] = OpcodesFDCB as any;
+OpcodesFD[0xDD] = OpcodesDD as any;
+OpcodesFD[0xED] = OpcodesED as any;
+OpcodesFD[0xFD] = OpcodesFD as any;

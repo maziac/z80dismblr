@@ -193,7 +193,7 @@ export class Disassembler extends EventEmitter {
 			// disassemble until stop-code
 			do {
 				// Trace address
-				console.log('collectLabels: address=' + this.getHexString(address) + 'h');
+				//console.log('collectLabels: address=' + this.getHexString(address) + 'h');
 
 				// Check if memory has already been disassembled
 				let attr = this.memory.getAttributeAt(address);
@@ -646,6 +646,12 @@ export class Disassembler extends EventEmitter {
 			const label = this.labels.get(opcode.value);
 			if(label)
 				valueName = label.name;
+		}
+		else if(opcode.valueType == LabelType.RELATIVE_INDEX){
+			// E.g. in 'LD (IX+n),a'
+			let val = opcode.value;
+			valueName = (val >= 0) ? '+' : '';
+			valueName += val.toString();
 		}
 		else {
 			// Use direct value

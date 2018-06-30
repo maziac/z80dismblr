@@ -102,16 +102,31 @@ export class Memory {
 	public getOpcodeAt(address: number): Opcode {
 		let opcodeArray = Opcodes;
 		let opcode;
+		let k = 1;
 		while(true) {
 			let val = this.memory[address&(MAX_MEM_SIZE-1)];
 			address ++;
+			k ++;
 			opcode = opcodeArray[val];
 			// Check if it is a combined opcode
 			if(!Array.isArray(opcode))
 				break;
+			// If it is a 3 byte opcode the next byte after the 1rst 2 bytes is a
+			// number and should be skipped
+			if(k == 2) {
+				address ++;
+			}
 			// Next
 			opcodeArray = opcode;
 		}
+
+		// Check for 4 byte code (3 byte opcode + n)
+		if(k == 3) {
+			// the value was on an address before
+			address -= 2;
+		}
+		assert(k <= 3);
+
 		// Get value (if any)
 		switch(opcode.valueType) {
 			case LabelType.NONE:
@@ -125,6 +140,7 @@ export class Memory {
 				// word value
 				opcode.value = this.getWordValueAt(address);
 			break;
+			case LabelType.RELATIVE_INDEX:
 			case LabelType.CODE_RELATIVE_LBL:
 			case LabelType.CODE_RELATIVE_LOOP:
 				// byte value
