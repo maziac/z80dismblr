@@ -245,6 +245,7 @@ suite('Opcodes', () => {
 		assert(OpcodesFDCB.length == 0x100);
 	});
 
+
 	test('length of opcodes', () => {
 		// CALL nn
 		assert(Opcodes[0xCD].length == 3);
@@ -264,7 +265,6 @@ suite('Opcodes', () => {
 		// RET
 		assert(Opcodes[0xC9].length == 1);
 	});
-
 
 
 });

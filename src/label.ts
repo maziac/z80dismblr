@@ -15,6 +15,8 @@ export const enum NumberType {
 	CODE_LBL,
 	// "SUB"-type
 	CODE_SUB,
+	// "TST"-type
+	CODE_RST,
 	// A relative index like (IX+5) or (IY-3)
 	RELATIVE_INDEX,
 	// "BYTE"-type
@@ -69,6 +71,7 @@ export class Label {
 			case NumberType.CODE_RELATIVE_LOOP:	return "CODE_RELATIVE_LOOP";
 			case NumberType.CODE_LBL:	return "CODE_LBL";
 			case NumberType.CODE_SUB:	return "CODE_SUB";
+			case NumberType.CODE_RST:	return "CODE_RST";
 			case NumberType.RELATIVE_INDEX:	return "RELATIVE_INDEX";
 			case NumberType.NUMBER_BYTE:	return "NUMBER_BYTE";
 			case NumberType.NUMBER_WORD:	return "NUMBER_WORD";

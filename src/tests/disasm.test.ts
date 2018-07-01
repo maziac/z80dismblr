@@ -534,6 +534,48 @@ suite('Disassembler', () => {
 
 	suite('disassemble', () => {
 
+		test('combined opcodes', () => {
+			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
+
+			const memory = [
+				0x04,				// inc b
+				0xDD, 0x09,			// add ix,bc
+				0xFD, 0x19,			// add iy,de
+				0xCB, 0x05,			// rlc l
+				0xCB, 0x06,			// rlc (hl)
+				0xED, 0x40,			// in b,(c)
+
+
+/*8000*/ 0x3e, 0xfd,		// ld a,0xfd (-3)
+/*8002*/ 0x21, 0xdc, 0xfe,	// ld hl,0xfedc
+/*8005*/ 0xc9,	// ret
+			];
+
+			dasm.labelSubPrefix = "SUB";
+			dasm.labelLblPrefix = "LBL";
+			dasm.labelDataLblPrefix = "DATA";
+			dasm.labelLocalLablePrefix = "_lbl";
+			dasm.labelLoopPrefix = "_loop";
+
+			const org = 0x0000;
+			dasm.memory.setMemory(org, new Uint8Array(memory));
+			dasm.setLabel(org);
+			const lines = dasm.disassemble();
+
+			//dasm.printLabels();
+			//console.log('\n');
+			//console.log(lines.join('\n'));
+
+			assert(lines.length == 5);
+
+			assert(lines[0] == '; Label is referenced by 0 location.')
+			assert(lines[1] == '0000	LBL1:');
+			assert(lines[2] == '0000		ld	a,-3	; FDh');
+			assert(lines[3] == '0002		ld	hl,65244	; FEDCh, -292');
+			assert(lines[4] == '0005		ret	');
+		});
+
+
 		test('simple', () => {
 			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
 
@@ -565,7 +607,6 @@ suite('Disassembler', () => {
 			assert(lines[2] == '0000		ld	a,-3	; FDh');
 			assert(lines[3] == '0002		ld	hl,65244	; FEDCh, -292');
 			assert(lines[4] == '0005		ret	');
-
 		});
 
 
