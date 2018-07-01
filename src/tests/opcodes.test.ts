@@ -40,7 +40,8 @@ suite('Opcodes', () => {
 			if(!Array.isArray(opcode)) {
 //				console.log('ED ' + i + ', ' + i.toString(16) + ', ' + opcode.name);
 				assert(i == opcode.code);
-			}
+				assert(2 == opcode.length);
+}
 //			else
 //				console.log('DD ' + i + ', ' + i.toString(16) + ' -> Array');
 		}
@@ -266,5 +267,18 @@ suite('Opcodes', () => {
 		assert(Opcodes[0xC9].length == 1);
 	});
 
+
+	test('RST n', () => {
+		assert(Opcodes[0xC7].value == 0x00);	// rst 0
+		assert(Opcodes[0xCF].value == 0x08);	// rst 8
+		assert(Opcodes[0xD7].value == 0x10);	// rst 10
+		assert(Opcodes[0xDF].value == 0x18);	// rst 18
+		assert(Opcodes[0xE7].value == 0x20);	// rst 20
+		assert(Opcodes[0xEF].value == 0x28);	// rst 28
+		assert(Opcodes[0xF7].value == 0x30);	// rst 30
+		assert(Opcodes[0xFF].value == 0x38);	// rst 38
+
+		assert(Opcodes[0xC7].flags & OpcodeFlag.STOP);
+	});
 
 });

@@ -539,32 +539,27 @@ suite('Disassembler', () => {
 
 			const memory = [
 				0x04,				// inc b
-				0xDD, 0x09,			// add ix,bc
-				0xFD, 0x19,			// add iy,de
 				0xCB, 0x05,			// rlc l
 				0xCB, 0x06,			// rlc (hl)
+				0xDD, 0x09,			// add ix,bc
 				0xED, 0x40,			// in b,(c)
+				0xFD, 0x19,			// add iy,de
+				0xED, 0xCB, 3, 4,	// rlc (ix+1),h
+				0xFD, 0xCB, 1, 2,	// rlc (iy+1),d
+				0xED, 0xCB, -5, 6,	// rlc (ix-6)
+				0xFD, 0xCB, -9, 6,	// rlc (iy-9)
 
-
-/*8000*/ 0x3e, 0xfd,		// ld a,0xfd (-3)
-/*8002*/ 0x21, 0xdc, 0xfe,	// ld hl,0xfedc
-/*8005*/ 0xc9,	// ret
 			];
 
-			dasm.labelSubPrefix = "SUB";
-			dasm.labelLblPrefix = "LBL";
-			dasm.labelDataLblPrefix = "DATA";
-			dasm.labelLocalLablePrefix = "_lbl";
-			dasm.labelLoopPrefix = "_loop";
 
 			const org = 0x0000;
 			dasm.memory.setMemory(org, new Uint8Array(memory));
 			dasm.setLabel(org);
+			dasm.startLinesWithAddress = false;
 			const lines = dasm.disassemble();
 
-			//dasm.printLabels();
-			//console.log('\n');
-			//console.log(lines.join('\n'));
+			console.log('\n');
+			console.log(lines.join('\n'));
 
 			assert(lines.length == 5);
 

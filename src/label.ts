@@ -23,6 +23,8 @@ export const enum NumberType {
 	NUMBER_BYTE,
 	// "WORD"-type
 	NUMBER_WORD,
+	// "WORD"-type for ZX Next command "PUSH $nnnn"
+	NUMBER_WORD_BIG_ENDIAN,
 	// "Data LBL"-type
 	DATA_LBL,
 	// Label for "out/in" command
@@ -75,6 +77,7 @@ export class Label {
 			case NumberType.RELATIVE_INDEX:	return "RELATIVE_INDEX";
 			case NumberType.NUMBER_BYTE:	return "NUMBER_BYTE";
 			case NumberType.NUMBER_WORD:	return "NUMBER_WORD";
+			case NumberType.NUMBER_WORD_BIG_ENDIAN:	return "NUMBER_WORD_BIG_ENDIAN";
 			case NumberType.DATA_LBL:	return "DATA_LBL";
 			case NumberType.PORT_LBL:	return "PORT_LBL";
 		}

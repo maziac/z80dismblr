@@ -95,6 +95,17 @@ export class Memory {
 
 
 	/**
+	 * Returns the word memory value at address in big endian.
+	 * @param address The address to retrieve.
+	 * @returns It's value.
+	 */
+	public getBigEndianWordValueAt(address: number) {
+		const word = 256*this.memory[address&(MAX_MEM_SIZE-1)] + this.memory[(address+1)&(MAX_MEM_SIZE-1)];
+		return word;
+	}
+
+
+	/**
 	 * Returns the Opcode at address.
 	 * @param address The address to retrieve.
 	 * @returns It's opcode.
