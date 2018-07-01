@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { Opcode, Opcodes } from './opcodes';
-import { LabelType } from './label';
+import { NumberType } from './label';
 
 //import * as util from 'util';
 import * as assert from 'assert';
@@ -129,33 +129,33 @@ export class Memory {
 
 		// Get value (if any)
 		switch(opcode.valueType) {
-			case LabelType.NONE:
+			case NumberType.NONE:
 				// no value
 			break;
-			case LabelType.CODE_LBL:
-			case LabelType.CODE_SUB:
-			case LabelType.CODE_SUB:
-			case LabelType.DATA_LBL:
-			case LabelType.NUMBER_WORD:
+			case NumberType.CODE_LBL:
+			case NumberType.CODE_SUB:
+			case NumberType.CODE_SUB:
+			case NumberType.DATA_LBL:
+			case NumberType.NUMBER_WORD:
 				// word value
 				opcode.value = this.getWordValueAt(address);
 			break;
-			case LabelType.RELATIVE_INDEX:
-			case LabelType.CODE_RELATIVE_LBL:
-			case LabelType.CODE_RELATIVE_LOOP:
+			case NumberType.RELATIVE_INDEX:
+			case NumberType.CODE_RELATIVE_LBL:
+			case NumberType.CODE_RELATIVE_LOOP:
 				// byte value
 				opcode.value = this.getValueAt(address);
 				if(opcode.value >= 0x80)
 					opcode.value -= 0x100;
 				// Change relative jump address to absolute
-				if(opcode.valueType == LabelType.CODE_RELATIVE_LBL || opcode.valueType == LabelType.CODE_RELATIVE_LOOP)
+				if(opcode.valueType == NumberType.CODE_RELATIVE_LBL || opcode.valueType == NumberType.CODE_RELATIVE_LOOP)
 					opcode.value += address+1;
 			break;
-			case LabelType.NUMBER_BYTE:
+			case NumberType.NUMBER_BYTE:
 				// byte value
 				opcode.value = this.getValueAt(address);
 			break;
-			case LabelType.PORT_LBL:
+			case NumberType.PORT_LBL:
 				// TODO: need to be implemented differently
 				opcode.value = this.getValueAt(address);
 			break;

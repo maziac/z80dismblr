@@ -1,9 +1,10 @@
-import * as util from 'util';
+//import * as util from 'util';
 import * as assert from 'assert';
 import { Memory, MemAttribute } from './memory';
 import { Opcode, OpcodeFlag } from './opcodes';
-import { Label, LabelType } from './label';
+import { Label, NumberType } from './label';
 import { EventEmitter } from 'events';
+import { Utility } from './utility';
 
 
 
@@ -23,9 +24,6 @@ export class Disassembler extends EventEmitter {
 
 	/// Choose opcodes in lower or upper case.
 	public opcodesLowerCase = true;
-
-	/// Choose opcodes in lower or upper case.
-	public hexNumbersLowerCase = false;
 
 	/// Choose how many lines should separate code blocks in the disassembly listing
 	public numberOfLinesBetweenBlocks = 2;
@@ -110,7 +108,7 @@ export class Disassembler extends EventEmitter {
 	 */
 	public setLabel(address: number, name?: string) {
 		this.addressQueue.push(address);
-		const label = new Label(LabelType.CODE_LBL);
+		const label = new Label(NumberType.CODE_LBL);
 		this.labels.set(address, label);
 		// Check if out of range
 		const attr = this.memory.getAttributeAt(address);
@@ -163,7 +161,7 @@ export class Disassembler extends EventEmitter {
 			// Check if EQU
 			if(label.isEqu) {
 				// "Disassemble"
-				const line = label.name + ':\t EQU ' + this.fillDigits(address.toString(), ' ', 5) + '\t; ' + this.getVariousConversionsForWord(address);
+				const line = label.name + ':\t EQU ' + Utility.fillDigits(address.toString(), ' ', 5) + '\t; ' + Utility.getVariousConversionsForWord(address);
 				// Store
 				lines.push(line);
 			}
@@ -265,7 +263,7 @@ export class Disassembler extends EventEmitter {
 	 * @param type The LabelType.
 	 * @param attr The memory attribute at address.
 	 */
-	protected setFoundLabel(address: number, opcodeAddress: number, type: LabelType, attr: MemAttribute) {
+	protected setFoundLabel(address: number, opcodeAddress: number, type: NumberType, attr: MemAttribute) {
 		// Check if label already exists
 		let label = this.labels.get(address);
 		if(label) {
@@ -333,7 +331,7 @@ export class Disassembler extends EventEmitter {
 				}
 			}
 		}
-		else if(opcode.valueType == LabelType.DATA_LBL) {
+		else if(opcode.valueType == NumberType.DATA_LBL) {
 			// It's a data label, like "LD A,(nn)"
 			const address = opcode.value;
 			const attr = this.memory.getAttributeAt(address);
@@ -363,13 +361,13 @@ export class Disassembler extends EventEmitter {
 		// Loop through all labels
 		for( let [,label] of this.labels) {
 			switch(label.type) {
-				case LabelType.CODE_SUB:
+				case NumberType.CODE_SUB:
 					this.labelSubCount++;
 				break;
-				case LabelType.CODE_LBL:
+				case NumberType.CODE_LBL:
 					this.labelLblCount++;
 				break;
-				case LabelType.DATA_LBL:
+				case NumberType.DATA_LBL:
 					this.labelDataLblCount++;
 				break;
 			}
@@ -405,7 +403,7 @@ export class Disassembler extends EventEmitter {
 			const type = label.type;
 
 			// Check for parent label
-			if(type == LabelType.CODE_SUB || type == LabelType.CODE_LBL) {
+			if(type == NumberType.CODE_SUB || type == NumberType.CODE_LBL) {
 				// process previous local labels
 				this.assignRelLabelNames(relLabels, parentLabel);
 				this.assignRelLabelNames(relLoopLabels, parentLabel);
@@ -417,7 +415,7 @@ export class Disassembler extends EventEmitter {
 
 			// Process label
 			switch(type) {
-				case LabelType.CODE_SUB:
+				case NumberType.CODE_SUB:
 					// Set name
 					label.name = this.labelSubPrefix + this.getIndex(subIndex, this.labelSubCountDigits);
 					// Use for local prefix
@@ -425,7 +423,7 @@ export class Disassembler extends EventEmitter {
 					// Next
 					subIndex++;
 				break;
-				case LabelType.CODE_LBL:
+				case NumberType.CODE_LBL:
 					// Set name
 					label.name = this.labelLblPrefix + this.getIndex(lblIndex, this.labelLblCountDigits);
 					// Use for local prefix
@@ -433,7 +431,7 @@ export class Disassembler extends EventEmitter {
 					// Next
 					lblIndex++;
 				break;
-				case LabelType.DATA_LBL:
+				case NumberType.DATA_LBL:
 					// Set name
 					label.name = this.labelDataLblPrefix + this.getIndex(dataLblIndex, this.labelDataLblCountDigits);
 					// Use for local prefix
@@ -441,13 +439,13 @@ export class Disassembler extends EventEmitter {
 					// Next
 					dataLblIndex++;
 				break;
-				case LabelType.CODE_RELATIVE_LOOP:
+				case NumberType.CODE_RELATIVE_LOOP:
 					// Set name
 					label.name = localPrefix + this.labelLoopPrefix;
 					// Remember label
 					relLoopLabels.push(label);
 				break;
-				case LabelType.CODE_RELATIVE_LBL:
+				case NumberType.CODE_RELATIVE_LBL:
 					// Set name
 					label.name = localPrefix + this.labelLocalLablePrefix;
 					// Remember label
@@ -519,16 +517,16 @@ export class Disassembler extends EventEmitter {
 				if(addrLabel) {
 					// Add empty lines in case this is a SUB or LBL label
 					const type = addrLabel.type;
-					if(type == LabelType.CODE_SUB || type == LabelType.CODE_LBL || type == LabelType.DATA_LBL) {
+					if(type == NumberType.CODE_SUB || type == NumberType.CODE_LBL || type == NumberType.DATA_LBL) {
 						this.addEmptyLines(lines);
 					}
 					// Add comment with references
-					if((type == LabelType.CODE_SUB && this.addReferencesToSubroutines)
-					|| (type == LabelType.CODE_LBL && this.addReferencesToAbsoluteLabels)
-					|| (type == LabelType.DATA_LBL && this.addReferencesToDataLabels)) {
+					if((type == NumberType.CODE_SUB && this.addReferencesToSubroutines)
+					|| (type == NumberType.CODE_LBL && this.addReferencesToAbsoluteLabels)
+					|| (type == NumberType.DATA_LBL && this.addReferencesToDataLabels)) {
 						// First line: Reference count
 						const refCount = addrLabel.references.length;
-						let refLine = (type == LabelType.CODE_SUB) ? '; Subroutine' : '; Label';
+						let refLine = (type == NumberType.CODE_SUB) ? '; Subroutine' : '; Label';
 						refLine += ' is referenced by ' + refCount + ' location';
 						if(refCount != 1)
 							refLine += 's';
@@ -553,7 +551,7 @@ export class Disassembler extends EventEmitter {
 					// Add label on separate line
 					let labelLine = addrLabel.name + ':';
 					if(this.startLinesWithAddress) {
-						labelLine =  this.getHexString(address) + '\t' + labelLine;
+						labelLine =  Utility.getHexString(address) + '\t' + labelLine;
 					}
 					lines.push(labelLine);
 				}
@@ -571,7 +569,7 @@ export class Disassembler extends EventEmitter {
 
 					// Add address
 					if(this.startLinesWithAddress) {
-						line = this.getHexString(address) + '\t' + line;
+						line = Utility.getHexString(address) + '\t' + line;
 					}
 
 					// Store
@@ -592,11 +590,11 @@ export class Disassembler extends EventEmitter {
 					let memValue = this.memory.getValueAt(address);
 
 					// Disassemble the data line
-					let line = '\t defb ' + memValue.toString() + '\t; ' + this.getVariousConversionsForByte(memValue);
+					let line = '\t defb ' + memValue.toString() + '\t; ' + Utility.getVariousConversionsForByte(memValue);
 
 					// Add address
 					if(this.startLinesWithAddress) {
-						line = this.getHexString(address) + '\t' + line;
+						line = Utility.getHexString(address) + '\t' + line;
 					}
 
 					// Store
@@ -618,66 +616,6 @@ export class Disassembler extends EventEmitter {
 
 
 	/**
-	 * Disassembles one opcode together with a referenced label (if there
-	 * is one).
-	 * @param opcode The Opcode to disassemble.
-	 * @returns A string that contains the disassembly, e.g. "LD A,(DATA_LBL1)"
-	 * or "JR Z,.sub1_lbl3".
-	 */
-	protected disassembleOpcode(opcode: Opcode) {
-		// optional comment
-		let comment = '';
-
-		// Check if there is any value
-		if(opcode.valueType == LabelType.NONE) {
-			let name = opcode.name;
-			if(this.opcodesLowerCase)
-				name = name.toLowerCase();
-			return name;
-		}
-
-		// Get referenced label name
-		let valueName = '';
-		if(opcode.valueType == LabelType.CODE_LBL
-			|| opcode.valueType == LabelType.CODE_RELATIVE_LBL
-			|| opcode.valueType == LabelType.CODE_RELATIVE_LOOP
-			|| opcode.valueType == LabelType.CODE_SUB
-			|| opcode.valueType == LabelType.DATA_LBL) {
-			const label = this.labels.get(opcode.value);
-			if(label)
-				valueName = label.name;
-		}
-		else if(opcode.valueType == LabelType.RELATIVE_INDEX){
-			// E.g. in 'LD (IX+n),a'
-			let val = opcode.value;
-			valueName = (val >= 0) ? '+' : '';
-			valueName += val.toString();
-		}
-		else {
-			// Use direct value
-			let val = opcode.value;
-			valueName = val.toString();	// decimal
-			// Add comment
-			if(opcode.valueType == LabelType.NUMBER_BYTE) {
-				// byte
-				comment = '\t; ' + this.getVariousConversionsForByte(val);
-			}
-			else {
-				// word
-				comment = '\t; ' + this.getVariousConversionsForWord(val);
-			}
-		}
-
-		// Disassemble
-		let name = opcode.name;
-		if(this.opcodesLowerCase)
-			name = name.toLowerCase();
-		const opCodeString = util.format(name, valueName) + comment;
-		return opCodeString;
-	}
-
-
-	/**
 	 * Finds the parent label. I.e. the first non relative label that is lower than the given address.
 	 * @param address
 	 */
@@ -685,7 +623,7 @@ export class Disassembler extends EventEmitter {
 		let prevLabel;
 		for(let [addr, label] of this.labels) {
 			const type = label.type;
-			if(type == LabelType.CODE_SUB || type == LabelType.CODE_LBL) {
+			if(type == NumberType.CODE_SUB || type == NumberType.CODE_LBL) {
 				if(addr >= address) {
 					// found
 					return prevLabel;
@@ -721,79 +659,6 @@ export class Disassembler extends EventEmitter {
 		}
 	}
 
-
-	/**
-	 * Returns a hex string with a fixed number of digits.
-	 * @param value The value to convert.
-	 * @param countDigits The number of digits.
-	 * @returns a string, e.g. "04fd".
-	 */
-	protected getHexString(value:number, countDigits = 4): string {
-		let s = value.toString(16);
-		if(!this.hexNumbersLowerCase)
-			s = s.toUpperCase();
-		return this.fillDigits(s, '0', countDigits);
-	}
-
-
-	/**
-	 * If string is smaller than countDigits the string is filled with 'fillCharacter'.
-	 * Used to fill a number up with '0' or spaces.
-	 */
-	protected fillDigits(valueString:string, fillCharacter: string, countDigits: number): string {
-		const repeat = countDigits-valueString.length;
-		if(repeat <= 0)
-			return valueString;
-		const res = fillCharacter.repeat(repeat) + valueString;
-		return res;
-	}
-
-
-	/**
-	 * Puts together a few common conversions for a byte value.
-	 * E.g. hex, decimal and ASCII.
-	 * Used to create the comment for an opcode or a data label.
-	 * @param byteValue The value to convert. [-128;255]
-	 * @returns A string with all conversions, e.g. "20h, 32, ' '"
-	 */
-	protected getVariousConversionsForByte(byteValue: number): string {
-		// byte
-		if(byteValue < 0)
-			byteValue = 0x100 + byteValue;
-		let result = this.getHexString(byteValue, 2) + "h";
-		// Negative?
-		let convValue = byteValue;
-		if(convValue >= 0x80) {
-			convValue -= 0x100;
-			result += ', ' + this.fillDigits(convValue.toString(), ' ', 4);
-		}
-		// Check for ASCII
-		if(byteValue >= 32 /*space*/ && byteValue <= 126 /*tilde*/)
-			result += ", '" + String.fromCharCode(byteValue) + "'";
-		// return
-		return result;
-	}
-
-
-	/**
-	 * Puts together a few common conversions for a word value.
-	 * E.g. hex and decimal.
-	 * Used to create the comment for an EQU label.
-	 * @param wordValue The value to convert.
-	 * @returns A string with all conversions, e.g. "FA20h, -3212"
-	 */
-	protected getVariousConversionsForWord(wordValue: number): string {
-		// word
-		let result = this.getHexString(wordValue) + 'h';
-		// Negative?
-		let convValue = wordValue;
-		if(convValue >= 0x8000) {
-			convValue -= 0x10000;
-			result += ', ' + this.fillDigits(convValue.toString(), ' ', 6);
-		}
-		// return
-		return result;
-	}
 }
 
 

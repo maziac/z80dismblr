@@ -1,7 +1,8 @@
-//import * as util from 'util';
-//import * as assert from 'assert';
-//import { Memory, MAX_MEM_SIZE } from './memory';
-import { LabelType } from './label'
+import * as util from 'util';
+import * as assert from 'assert';
+import { Memory } from './memory';
+import { Label, NumberType } from './label'
+import { Utility } from './utility';
 
 
 /// Classifies opcodes.
@@ -26,7 +27,7 @@ export class Opcode {
 	/// Opcode flags: branch-address, call, stop
 	public flags: OpcodeFlag;
 	/// The additional value in the opcode, e.g. nn or n
-	public valueType: LabelType;
+	public valueType: NumberType;
 	/// The length of the opcode + value
 	public length: number;
 
@@ -36,14 +37,17 @@ export class Opcode {
 
 	/**
 	 * Constructor.
+	 * @param code The opcode number equivalent.
+	 * @param name The mnemonic.
+	 * @param addLength A constant to add to the opcode length.
 	 */
-	constructor(code: number, name: string, length?: number) {
+	constructor(code: number, name: string, addLength = 0) {
 		name = name.trim();
 		this.code = code;
 		this.flags = OpcodeFlag.NONE;
-		this.valueType = LabelType.NONE;
+		this.valueType = NumberType.NONE;
 		this.value = 0;
-		this.length = 1;	// default
+		this.length = 1 + addLength;	// default
 		// Retrieve valueType and opcode flags from name
 		let k;
 	// TODO: multiple #n implementieren
@@ -57,17 +61,17 @@ export class Opcode {
 				const indirect = name.substr(k-1,1);
 				if(indirect == '(') {
 					// Enclosed in brackets ? E.g. "(20fe)" -> indirect (this is no call or jp)
-					this.valueType = LabelType.DATA_LBL;
+					this.valueType = NumberType.DATA_LBL;
 				}
 				else {
 					// now check for opcode flags
 					if(name.startsWith("CALL")) {
 						this.flags |= OpcodeFlag.CALL | OpcodeFlag.BRANCH_ADDRESS;
-						this.valueType = LabelType.CODE_SUB;
+						this.valueType = NumberType.CODE_SUB;
 					}
 					else if(name.startsWith("JP")) {
 						this.flags |= OpcodeFlag.BRANCH_ADDRESS;
-						this.valueType = LabelType.CODE_LBL;
+						this.valueType = NumberType.CODE_LBL;
 						// Now check if it is conditional, i.e. if there is a ',' in the opcode
 						// If it is not conditional it is a stop-code.
 						if(name.indexOf(',') < 0) {
@@ -77,7 +81,7 @@ export class Opcode {
 					}
 					else {
 						// Either call nor jp
-						this.valueType = LabelType.NUMBER_WORD;
+						this.valueType = NumberType.NUMBER_WORD;
 					}
 				}
 			}
@@ -87,15 +91,15 @@ export class Opcode {
 				// substitute formatting
 				name = name.substr(0,k) + '%s' + name.substr(k+2);
 				// store type
-				this.valueType = LabelType.NUMBER_BYTE;
+				this.valueType = NumberType.NUMBER_BYTE;
 
 				// now check for opcode flags
 				if(name.startsWith("DJNZ")) {
-					this.valueType = LabelType.CODE_RELATIVE_LOOP;
+					this.valueType = NumberType.CODE_RELATIVE_LOOP;
 					this.flags |= OpcodeFlag.BRANCH_ADDRESS;
 				}
 				if(name.startsWith("JR")) {
-					this.valueType = LabelType.CODE_RELATIVE_LBL;
+					this.valueType = NumberType.CODE_RELATIVE_LBL;
 					this.flags |= OpcodeFlag.BRANCH_ADDRESS;
 					// Now check if it is conditional, i.e. if there is a ',' in the opcode
 					// If it is not conditional it is a stop-code.
@@ -106,7 +110,7 @@ export class Opcode {
 				}
 				else if(name.startsWith("IN") || name.startsWith("OUT")) {
 					// a port
-					this.valueType = LabelType.PORT_LBL;
+					this.valueType = NumberType.PORT_LBL;
 				}
 			}
 		}
@@ -121,6 +125,129 @@ export class Opcode {
 		// Store
 		this.name = name;
 	}
+
+
+	/**
+	 * Returns the Opcode at address.
+	 * @param address The address to retrieve.
+	 * @returns It's opcode.
+	 */
+	public static getOpcodeAt(memory: Memory, address: number, opcodes = Opcodes): Opcode {
+		const memValue = memory.getValueAt(address);
+		const opcode = opcodes[memValue];
+		const realOpcode = opcode.getOpcodeAt(memory, address);
+		return realOpcode;
+	}
+
+
+	/**
+	 * The 1 byte opcodes just return self (this).
+	 * @param memory Unused
+	 * @param address Unused
+	 * @returns this
+	 */
+	public getOpcodeAt(memory: Memory, address: number): Opcode {
+		// Get value (if any)
+		switch(this.valueType) {
+			case NumberType.NONE:
+				// no value
+			break;
+			case NumberType.CODE_LBL:
+			case NumberType.CODE_SUB:
+			case NumberType.CODE_SUB:
+			case NumberType.DATA_LBL:
+			case NumberType.NUMBER_WORD:
+				// word value
+				this.value = memory.getWordValueAt(address);
+			break;
+			case NumberType.RELATIVE_INDEX:
+			case NumberType.CODE_RELATIVE_LBL:
+			case NumberType.CODE_RELATIVE_LOOP:
+				// byte value
+				this.value = memory.getValueAt(address);
+				if(this.value >= 0x80)
+					this.value -= 0x100;
+				// Change relative jump address to absolute
+				if(this.valueType == NumberType.CODE_RELATIVE_LBL || this.valueType == NumberType.CODE_RELATIVE_LOOP)
+					this.value += address+1;
+			break;
+			case NumberType.NUMBER_BYTE:
+				// byte value
+				this.value = memory.getValueAt(address);
+			break;
+			case NumberType.PORT_LBL:
+				// TODO: need to be implemented differently
+				this.value = memory.getValueAt(address);
+			break;
+			default:
+				assert(false);
+			break;
+
+		}
+		return this;
+	}
+
+
+	/**
+	 * Disassembles one opcode together with a referenced label (if there
+	 * is one).
+	 * @param labels Array with all the labels.
+	 * @param opcodesLowerCase true if the opcodes should be printed lower case.
+	 * @returns A string that contains the disassembly, e.g. "LD A,(DATA_LBL1)"
+	 * or "JR Z,.sub1_lbl3".
+	 */
+	public disassemble(labels: Map<number, Label>, opcodesLowerCase: boolean) {
+		// optional comment
+		let comment = '';
+
+		// Check if there is any value
+		if(this.valueType == NumberType.NONE) {
+			let name = this.name;
+			if(opcodesLowerCase)
+				name = name.toLowerCase();
+			return name;
+		}
+
+		// Get referenced label name
+		let valueName = '';
+		if(this.valueType == NumberType.CODE_LBL
+			|| this.valueType == NumberType.CODE_RELATIVE_LBL
+			|| this.valueType == NumberType.CODE_RELATIVE_LOOP
+			|| this.valueType == NumberType.CODE_SUB
+			|| this.valueType == NumberType.DATA_LBL) {
+			const label = labels.get(this.value);
+			if(label)
+				valueName = label.name;
+		}
+		else if(this.valueType == NumberType.RELATIVE_INDEX){
+			// E.g. in 'LD (IX+n),a'
+			let val = this.value;
+			valueName = (val >= 0) ? '+' : '';
+			valueName += val.toString();
+		}
+		else {
+			// Use direct value
+			let val = this.value;
+			valueName = val.toString();	// decimal
+			// Add comment
+			if(this.valueType == NumberType.NUMBER_BYTE) {
+				// byte
+				comment = '\t; ' + Utility.getVariousConversionsForByte(val);
+			}
+			else {
+				// word
+				comment = '\t; ' + Utility.getVariousConversionsForWord(val);
+			}
+		}
+
+		// Disassemble
+		let name = this.name;
+		if(opcodesLowerCase)
+			name = name.toLowerCase();
+		const opCodeString = util.format(name, valueName) + comment;
+		return opCodeString;
+	}
+
 }
 
 
@@ -148,27 +275,59 @@ class OpcodeUnknown extends Opcode {
 
 
 class OpcodeCB extends Opcode {
-	constructor(code: number, name: string, length?: number) {
+	constructor(code: number, name: string) {
 		super(code, name, length);
 		this.length += 1;	// one more
 	}
+
+	/**
+	 * The 2 byte opcodes must return the next byte.
+	 * @param memory Unused
+	 * @param address Unused
+	 * @returns The opcode from the address after the current one.
+	 */
+	public getOpcodeAt(memory: Memory, address: number): Opcode {
+		return Opcode.getOpcodeAt(memory, address+1, OpcodesCB);
+	}
 }
 
-class OpcodeDD extends Opcode {
-	constructor(code: number, name: string, length?: number) {
-		super(code, name, length);
-		this.length += 1;	// one more
+class OpcodeDD extends OpcodeCB {
+	public getOpcodeAt(memory: Memory, address: number): Opcode {
+		return Opcode.getOpcodeAt(memory, address+1, OpcodesDD);
 	}
 }
 
 class OpcodeDDCB extends OpcodeCB {
-	constructor(code: number, name: string, length?: number) {
-		super(code, name, length);
+	constructor(code: number, name: string) {
+		super(code, name);
 		this.length += 1;	// one more
+	}
+
+	/**
+	 * This is a 3 byte opcode.
+	 * The first 2 bytes are DDCB followed by a value (for the index),
+	 * followed by the rest of the opcode.
+	 */
+	 public getOpcodeAt(memory: Memory, address: number): Opcode {
+		// index (register)
+		this.value = memory.getValueAt(address+1);
+		if( this.value >= 0x80)
+			this.value -= 0x100;
+		this.valueType = NumberType.RELATIVE_INDEX;
+		return Opcode.getOpcodeAt(memory, address+2, OpcodesDDCB);
 	}
 }
 
+
 class OpcodeFDCB extends OpcodeDDCB {
+	public getOpcodeAt(memory: Memory, address: number): Opcode {
+		// index (register)
+		this.value = memory.getValueAt(address+1);
+		if( this.value >= 0x80)
+			this.value -= 0x100;
+		this.valueType = NumberType.RELATIVE_INDEX;
+		return Opcode.getOpcodeAt(memory, address+2, OpcodesFDCB);
+	}
 }
 
 class OpcodeFD extends OpcodeDD {

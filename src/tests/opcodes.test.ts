@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { Opcodes, OpcodesCB, OpcodesDD, OpcodesED, OpcodesFD, OpcodesFDCB, OpcodeFlag } from '../opcodes';
-import { LabelType } from '../label';
+import { NumberType } from '../label';
 
 
 
@@ -64,6 +64,8 @@ suite('Opcodes', () => {
 		}
 	});
 
+// TODO: Check all auch für CB, FD, DDCB und OpcodesFDCB.
+
 
 	test('Opcode flags', () => {
 		// CALL
@@ -120,49 +122,49 @@ suite('Opcodes', () => {
 
 	test('LabelTypes', () => {
 		// CALL
-		assert(Opcodes[0xCD].valueType == LabelType.CODE_SUB);
+		assert(Opcodes[0xCD].valueType == NumberType.CODE_SUB);
 
 		// CALL cc
-		assert(Opcodes[0xC4].valueType == LabelType.CODE_SUB);
+		assert(Opcodes[0xC4].valueType == NumberType.CODE_SUB);
 
 		// JP
-		assert(Opcodes[0xC3].valueType == LabelType.CODE_LBL);
+		assert(Opcodes[0xC3].valueType == NumberType.CODE_LBL);
 
 		// JP cc
-		assert(Opcodes[0xD2].valueType == LabelType.CODE_LBL);
+		assert(Opcodes[0xD2].valueType == NumberType.CODE_LBL);
 
 		// JR
-		assert(Opcodes[0x18].valueType == LabelType.CODE_RELATIVE_LBL);
+		assert(Opcodes[0x18].valueType == NumberType.CODE_RELATIVE_LBL);
 
 		// JR cc
-		assert(Opcodes[0x20].valueType == LabelType.CODE_RELATIVE_LBL);
+		assert(Opcodes[0x20].valueType == NumberType.CODE_RELATIVE_LBL);
 
 		// DJNZ
-		assert(Opcodes[0x10].valueType == LabelType.CODE_RELATIVE_LOOP);
+		assert(Opcodes[0x10].valueType == NumberType.CODE_RELATIVE_LOOP);
 
 		// RET
-		assert(Opcodes[0xC9].valueType == LabelType.NONE);
+		assert(Opcodes[0xC9].valueType == NumberType.NONE);
 
 		// LD HL,nn
-		assert(Opcodes[0x21].valueType == LabelType.NUMBER_WORD);
+		assert(Opcodes[0x21].valueType == NumberType.NUMBER_WORD);
 
 		// LD (nn),A
-		assert(Opcodes[0x32].valueType == LabelType.DATA_LBL);
+		assert(Opcodes[0x32].valueType == NumberType.DATA_LBL);
 
 		// LD (nn),HL
-		assert(Opcodes[0x22].valueType == LabelType.DATA_LBL);
+		assert(Opcodes[0x22].valueType == NumberType.DATA_LBL);
 
 		// LD C,n
-		assert(Opcodes[0x0E].valueType == LabelType.NUMBER_BYTE);
+		assert(Opcodes[0x0E].valueType == NumberType.NUMBER_BYTE);
 
 		// LD A,B
-		assert(Opcodes[0x78].valueType == LabelType.NONE);
+		assert(Opcodes[0x78].valueType == NumberType.NONE);
 
 		// IN
-		assert(Opcodes[0xDB].valueType == LabelType.PORT_LBL);
+		assert(Opcodes[0xDB].valueType == NumberType.PORT_LBL);
 
 		// OUT
-		assert(Opcodes[0xD3].valueType == LabelType.PORT_LBL);
+		assert(Opcodes[0xD3].valueType == NumberType.PORT_LBL);
 	});
 
 	test('length of opcode arrays', () => {

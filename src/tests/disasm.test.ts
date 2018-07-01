@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { Disassembler } from '../disasm';
-import { LabelType } from '../label';
+import { NumberType } from '../label';
 //import { Warning } from '../warning';
 
 
@@ -199,47 +199,47 @@ suite('Disassembler', () => {
 
 			label = dasm.labels.get(0x4000);
 			assert(label != undefined);
-			assert(label.type == LabelType.CODE_LBL);
+			assert(label.type == NumberType.CODE_LBL);
 			assert(label.isEqu == false);
 
 			label = dasm.labels.get(0x4002);
 			assert(label != undefined);
-			assert(label.type == LabelType.CODE_LBL);
+			assert(label.type == NumberType.CODE_LBL);
 			assert(label.isEqu == false);
 
 			label = dasm.labels.get(0x4007);
 			assert(label != undefined);
-			assert(label.type == LabelType.CODE_RELATIVE_LOOP);
+			assert(label.type == NumberType.CODE_RELATIVE_LOOP);
 			assert(label.isEqu == false);
 
 			label = dasm.labels.get(0x400a);
 			assert(label != undefined);
-			assert(label.type == LabelType.DATA_LBL);
+			assert(label.type == NumberType.DATA_LBL);
 			assert(label.isEqu == false);
 
 			label = dasm.labels.get(0x4018);
 			assert(label != undefined);
-			assert(label.type == LabelType.CODE_RELATIVE_LBL);
+			assert(label.type == NumberType.CODE_RELATIVE_LBL);
 			assert(label.isEqu == false);
 
 			label = dasm.labels.get(0x401a);
 			assert(label != undefined);
-			assert(label.type == LabelType.CODE_SUB);
+			assert(label.type == NumberType.CODE_SUB);
 			assert(label.isEqu == false);
 
 			label = dasm.labels.get(0x4036);
 			assert(label != undefined);
-			assert(label.type == LabelType.DATA_LBL);
+			assert(label.type == NumberType.DATA_LBL);
 			assert(label.isEqu == false);
 
 			label = dasm.labels.get(0x5000);
 			assert(label != undefined);
-			assert(label.type == LabelType.DATA_LBL);
+			assert(label.type == NumberType.DATA_LBL);
 			assert(label.isEqu == true);
 
 			label = dasm.labels.get(0x5100);
 			assert(label != undefined);
-			assert(label.type == LabelType.CODE_LBL);
+			assert(label.type == NumberType.CODE_LBL);
 			assert(label.isEqu == true);
 		});
 
@@ -272,23 +272,23 @@ suite('Disassembler', () => {
 
 			label = dasm.labels.get(0x0000);
 			assert(label != undefined);
-			assert(label.type == LabelType.CODE_LBL);
+			assert(label.type == NumberType.CODE_LBL);
 			assert(label.isEqu == true);
 
 			label = dasm.labels.get(org);
 			assert(label != undefined);
-			assert(label.type == LabelType.CODE_LBL);
+			assert(label.type == NumberType.CODE_LBL);
 			assert(label.isEqu == false);
 
 			label = dasm.labels.get(org+3);
 			assert(label != undefined);
-			assert(label.type == LabelType.CODE_LBL);
+			assert(label.type == NumberType.CODE_LBL);
 			assert(label.isEqu == false);
 
 			// self.modifying label
 			label = dasm.labels.get(org+1);
 			assert(label != undefined);
-			assert(label.type == LabelType.DATA_LBL);
+			assert(label.type == NumberType.DATA_LBL);
 			assert(label.isEqu == false);
 		});
 
