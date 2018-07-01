@@ -564,7 +564,7 @@ export class Disassembler extends EventEmitter {
 					const opcode = this.memory.getOpcodeAt(address);
 
 					// Disassemble the single opcode
-					const opCodeString = this.disassembleOpcode(opcode);
+					const opCodeString = opcode.disassemble(this.labels, this.opcodesLowerCase);
 					let line = '\t' + opCodeString;
 
 					// Add address

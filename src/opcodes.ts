@@ -331,12 +331,29 @@ class OpcodeFDCB extends OpcodeDDCB {
 }
 
 class OpcodeFD extends OpcodeDD {
+	public getOpcodeAt(memory: Memory, address: number): Opcode {
+		return Opcode.getOpcodeAt(memory, address+1, OpcodesFD);
+	}
 }
 
 class OpcodeED extends Opcode {
 	constructor(code: number, name: string, length?: number) {
 		super(code, name, length);
 		this.length += 1;	// one more
+	}
+
+	public getOpcodeAt(memory: Memory, address: number): Opcode {
+		return Opcode.getOpcodeAt(memory, address+1, OpcodesDD);
+	}
+}
+
+
+/// Special opcode that works as a NOP.
+/// E.g. 2 0xDD after each other: Then the first 0xDD is like a nop.
+class OpcodeNOP extends Opcode {
+	constructor(code: number) {
+		super(code, '');
+		this.name = '[NOP]\t; because of following 0x' + Utility.getHexString(code, 2);
 	}
 }
 
@@ -616,7 +633,7 @@ export const OpcodesCB: Array<Opcode> = [
 //declare var OpcodesDD: Array<Opcode>;
 
 /// Opcodes that start with 0xDD.
-export const OpcodesDD: Array<Opcode> = [
+export const OpcodesDD_REMOVE: Array<Opcode> = [
 	...Array<number>(0x09).fill(0).map((value, index) => new OpcodeUnknown(0xDD, index)),
 
 	new OpcodeDD(0x09, "ADD  IX,BC    "),
@@ -1158,12 +1175,45 @@ export const Opcodes: Array<Opcode> = [
 ];
 
 
+/// Opcodes that start with 0xDD.
+/// Same as normal opcodes but exchanges HL with IX.
+export const OpcodesDD = Opcodes.map((opcode, index) => {
+	let name = opcode.name;
+	const nameArray = name.split(' ');
+	if(nameArray.length > 1) {
+		const last = nameArray.length-1;
+		let name2 = nameArray[last];
+		const match = /\(HL\)/.exec(name2);
+		if(match) {
+			// something like "LD A,(HL)" becomes "LD A,(IX+n)"
+			name2 = name2.replace('HL', 'IX+#n');
+		}
+		else {
+			// Exchange HL/IX, L/IXL, H/IXH
+			name2 = name2.replace('HL', 'IX');
+			name2 = name2.replace('HL', 'IX');	// at most there are 2 occurences
+			// Now the single register
+			name2 = name2.replace('L,L', 'L,IXL');
+			name2 = name2.replace('H,H', 'H,IXH');
+			name2 = name2.replace('L', 'IXL');
+			name2 = name2.replace('H', 'IXH');
+		}
+		// combine name
+		nameArray[last] = name2;
+		name = nameArray.join(' ');
+	}
+	const opcodeDD = new Opcode(opcode.code, name);
+	opcodeDD.length ++;
+	return opcodeDD;
+});
+
+
 /// Opcodes that start with 0xFD.
 /// Create FD (use IY instead of IX)
 export const OpcodesFD = OpcodesDD.map((opcode, index) => {
 	let name = opcode.name.replace('IX', 'IY');
 	name = opcode.name.replace('IX', 'IY');	// at most there are 2 occurences
-	const opcodeFD = new OpcodeFD(opcode.code, name, opcode.length);
+	const opcodeFD = new OpcodeFD(opcode.code, name);
 	return opcodeFD;
 });
 
@@ -1183,7 +1233,7 @@ export const OpcodesDDCB = OpcodesCB.map((opcode, index) => {
 		const len = name.length;
 		name = name.substr(0,len-1) + '(IX%s) -> ' + name.substr(len-1);
 	}
-	const opcodeFD = new OpcodeDDCB(opcode.code, name, opcode.length);
+	const opcodeFD = new OpcodeDDCB(opcode.code, name);
 	return opcodeFD;
 });
 
@@ -1191,7 +1241,7 @@ export const OpcodesDDCB = OpcodesCB.map((opcode, index) => {
 /// Create FDCB (use IY instead of IX)
 export const OpcodesFDCB = OpcodesDDCB.map((opcode, index) => {
 	const name = opcode.name.replace('IX', 'IY');
-	const opcodeFD = new OpcodeFDCB(opcode.code, name, opcode.length);
+	const opcodeFD = new OpcodeFDCB(opcode.code, name);
 	return opcodeFD;
 });
 
@@ -1203,11 +1253,11 @@ Opcodes[0xED] = OpcodesED as any;
 Opcodes[0xFD] = OpcodesFD as any;
 
 OpcodesDD[0xCB] = OpcodesDDCB as any;
-OpcodesDD[0xDD] = OpcodesDD as any;
-OpcodesDD[0xED] = OpcodesED as any;
-OpcodesDD[0xFD] = OpcodesFD as any;
+OpcodesDD[0xDD] = new OpcodeNOP(0xDD);
+OpcodesDD[0xED] = new OpcodeNOP(0xED);
+OpcodesDD[0xFD] = new OpcodeNOP(0xFD);
 
-OpcodesDD[0xCB] = OpcodesFDCB as any;
-OpcodesFD[0xDD] = OpcodesDD as any;
-OpcodesFD[0xED] = OpcodesED as any;
-OpcodesFD[0xFD] = OpcodesFD as any;
+OpcodesFD[0xCB] = OpcodesFDCB as any;
+OpcodesFD[0xDD] = new OpcodeNOP(0xDD);
+OpcodesFD[0xED] = new OpcodeNOP(0xED);
+OpcodesFD[0xFD] = new OpcodeNOP(0xFD);
