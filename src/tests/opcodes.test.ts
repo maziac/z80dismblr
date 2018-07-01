@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { Opcodes, OpcodesCB, OpcodesDD, OpcodesED, OpcodesFD, OpcodesFDCB, OpcodeFlag } from '../opcodes';
+import { Opcodes, OpcodesCB, OpcodesDD, OpcodesED, OpcodesFD, OpcodesFDCB, OpcodeFlag, OpcodesDDCB } from '../opcodes';
 import { NumberType } from '../label';
 
 
@@ -29,6 +29,23 @@ suite('Opcodes', () => {
 	});
 
 
+	test('Check all CB opcode numbers', () => {
+		const length = OpcodesCB.length;
+//		const arr = OpcodesCB;
+
+		// Check opcode for each element
+		for(let i=0; i<length; i++) {
+			const opcode = OpcodesCB[i];
+			assert(opcode != undefined);
+			if(!Array.isArray(opcode)) {
+//				console.log('ED ' + i + ', ' + i.toString(16) + ', ' + opcode.name);
+				assert(i == opcode.code);
+			}
+//			else
+//				console.log('DD ' + i + ', ' + i.toString(16) + ' -> Array');
+		}
+	});
+
 	test('Check all DD opcode numbers', () => {
 		const length = OpcodesDD.length;
 //		const arr = OpcodesDD;
@@ -49,7 +66,7 @@ suite('Opcodes', () => {
 
 	test('Check all ED opcode numbers', () => {
 		const length = OpcodesED.length;
-//		const arr = OpcodesDD;
+//		const arr = OpcodesED;
 
 		// Check opcode for each element
 		for(let i=0; i<length; i++) {
@@ -64,7 +81,57 @@ suite('Opcodes', () => {
 		}
 	});
 
-// TODO: Check all auch für CB, FD, DDCB und OpcodesFDCB.
+
+	test('Check all FD opcode numbers', () => {
+		const length = OpcodesFD.length;
+//		const arr = OpcodesFD;
+
+		// Check opcode for each element
+		for(let i=0; i<length; i++) {
+			const opcode = OpcodesFD[i];
+			assert(opcode != undefined);
+			if(!Array.isArray(opcode)) {
+//				console.log('ED ' + i + ', ' + i.toString(16) + ', ' + opcode.name);
+				assert(i == opcode.code);
+			}
+//			else
+//				console.log('DD ' + i + ', ' + i.toString(16) + ' -> Array');
+		}
+	});
+
+	test('Check all DDCB opcode numbers', () => {
+		const length = OpcodesDDCB.length;
+//		const arr = OpcodesDDCB;
+
+		// Check opcode for each element
+		for(let i=0; i<length; i++) {
+			const opcode = OpcodesDDCB[i];
+			assert(opcode != undefined);
+			if(!Array.isArray(opcode)) {
+//				console.log('ED ' + i + ', ' + i.toString(16) + ', ' + opcode.name);
+				assert(i == opcode.code);
+			}
+//			else
+//				console.log('DD ' + i + ', ' + i.toString(16) + ' -> Array');
+		}
+	});
+
+	test('Check all FDCB opcode numbers', () => {
+		const length = OpcodesFDCB.length;
+//		const arr = OpcodesFDCB;
+
+		// Check opcode for each element
+		for(let i=0; i<length; i++) {
+			const opcode = OpcodesFDCB[i];
+			assert(opcode != undefined);
+			if(!Array.isArray(opcode)) {
+//				console.log('ED ' + i + ', ' + i.toString(16) + ', ' + opcode.name);
+				assert(i == opcode.code);
+			}
+//			else
+//				console.log('DD ' + i + ', ' + i.toString(16) + ' -> Array');
+		}
+	});
 
 
 	test('Opcode flags', () => {
@@ -173,6 +240,8 @@ suite('Opcodes', () => {
 		assert(OpcodesCB.length == 0x100);
 		assert(OpcodesDD.length == 0x100);
 		assert(OpcodesED.length == 0x100);
+		assert(OpcodesFD.length == 0x100);
+		assert(OpcodesDDCB.length == 0x100);
 		assert(OpcodesFDCB.length == 0x100);
 	});
 
@@ -197,13 +266,5 @@ suite('Opcodes', () => {
 	});
 
 
-	test('Special combined opcodes', () => {
-		assert(Array.isArray(Opcodes[0xCB]));
-		assert(Array.isArray(Opcodes[0xDD]));
-		assert(Array.isArray(Opcodes[0xED]));
-		assert(Array.isArray(Opcodes[0xFD]));
-
-		assert(Array.isArray(OpcodesFD[0xCB]));
-	});
 
 });
