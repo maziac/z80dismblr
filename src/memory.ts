@@ -1,9 +1,7 @@
 import { readFileSync } from 'fs';
-import { Opcode, Opcodes } from './opcodes';
-import { NumberType } from './label';
 
 //import * as util from 'util';
-import * as assert from 'assert';
+//import * as assert from 'assert';
 
 
 export const MAX_MEM_SIZE = 0x10000;
@@ -102,80 +100,6 @@ export class Memory {
 	public getBigEndianWordValueAt(address: number) {
 		const word = 256*this.memory[address&(MAX_MEM_SIZE-1)] + this.memory[(address+1)&(MAX_MEM_SIZE-1)];
 		return word;
-	}
-
-
-	/**
-	 * Returns the Opcode at address.
-	 * @param address The address to retrieve.
-	 * @returns It's opcode.
-	 */
-	public getOpcodeAt(address: number): Opcode {
-		let opcodeArray = Opcodes;
-		let opcode;
-		let k = 1;
-		while(true) {
-			let val = this.memory[address&(MAX_MEM_SIZE-1)];
-			address ++;
-			k ++;
-			opcode = opcodeArray[val];
-			// Check if it is a combined opcode
-			if(!Array.isArray(opcode))
-				break;
-			// If it is a 3 byte opcode the next byte after the 1rst 2 bytes is a
-			// number and should be skipped
-			if(k == 2) {
-				address ++;
-			}
-			// Next
-			opcodeArray = opcode;
-		}
-
-		// Check for 4 byte code (3 byte opcode + n)
-		if(k == 3) {
-			// the value was on an address before
-			address -= 2;
-		}
-		assert(k <= 3);
-
-		// Get value (if any)
-		switch(opcode.valueType) {
-			case NumberType.NONE:
-				// no value
-			break;
-			case NumberType.CODE_LBL:
-			case NumberType.CODE_SUB:
-			case NumberType.CODE_SUB:
-			case NumberType.DATA_LBL:
-			case NumberType.NUMBER_WORD:
-				// word value
-				opcode.value = this.getWordValueAt(address);
-			break;
-			case NumberType.RELATIVE_INDEX:
-			case NumberType.CODE_RELATIVE_LBL:
-			case NumberType.CODE_RELATIVE_LOOP:
-				// byte value
-				opcode.value = this.getValueAt(address);
-				if(opcode.value >= 0x80)
-					opcode.value -= 0x100;
-				// Change relative jump address to absolute
-				if(opcode.valueType == NumberType.CODE_RELATIVE_LBL || opcode.valueType == NumberType.CODE_RELATIVE_LOOP)
-					opcode.value += address+1;
-			break;
-			case NumberType.NUMBER_BYTE:
-				// byte value
-				opcode.value = this.getValueAt(address);
-			break;
-			case NumberType.PORT_LBL:
-				// TODO: need to be implemented differently
-				opcode.value = this.getValueAt(address);
-			break;
-			default:
-				assert(false);
-			break;
-
-		}
-		return opcode;
 	}
 
 

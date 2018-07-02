@@ -24,6 +24,8 @@ export class Opcode {
 
 	/// The name of the opcode, e.g. "LD A,%d"
 	public name: string;
+	/// An optional comment, e.g. "; ZX Next opcode"
+	protected comment: string;
 	/// Opcode flags: branch-address, call, stop
 	public flags: OpcodeFlag;
 	/// The additional value in the opcode, e.g. nn or n
@@ -46,6 +48,7 @@ export class Opcode {
 			return;	// Ignore the rest because values wil becopied anyway.
 		name = name.trim();
 		this.code = code;
+		this.comment = '';
 		this.flags = OpcodeFlag.NONE;
 		this.valueType = NumberType.NONE;
 		this.value = 0;
@@ -269,7 +272,7 @@ export class Opcode {
 		let name = this.name;
 		if(opcodesLowerCase)
 			name = name.toLowerCase();
-		const opCodeString = util.format(name, valueName) + comment;
+		const opCodeString = util.format(name, valueName) + this.comment + comment;
 		return opCodeString;
 	}
 
@@ -369,17 +372,37 @@ class OpcodeInvalid extends Opcode {
 class OpcodeNext extends Opcode {
 		constructor(code: number, name: string) {
 			super(code, name);
-			this.name += '\t; ZX Next opcode'
+			this.comment = '\t; ZX Next opcode'
 		}
 }
 
 
-class Opcode_n_n extends Opcode {
+class Opcode_n_n extends OpcodeNext {
+	// The 2nd value.
+	public value2: number;
+
 	constructor(code: number, name: string) {
 		super(code, name);
 		// There is still an '#n' to convert
-		name = name.replace('#n', '%s');
-		this.name = name + '\t; ZX Next opcode'
+		this.name = this.name.replace('#n', '%s');
+		this.length ++;
+	}
+
+	/// Collects the 2 values.
+	public getOpcodeAt(memory: Memory, address: number): Opcode {
+		this.value = memory.getValueAt(address+1);
+		this.value2 = memory.getValueAt(address+2);
+		return this;
+	}
+
+	/// Disassemble the 2 values.
+	public disassemble(labels: Map<number, Label>, opcodesLowerCase: boolean) {
+		const comment = '\t; ZX Next opcode';
+		let name = this.name;
+		if(opcodesLowerCase)
+			name = name.toLowerCase();
+		const opCodeString = util.format(name, this.value.toString(), this.value2.toString()) + comment;
+		return opCodeString;
 	}
 }
 

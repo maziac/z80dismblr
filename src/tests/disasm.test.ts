@@ -534,6 +534,22 @@ suite('Disassembler', () => {
 
 	suite('disassemble', () => {
 
+		/// Strip all labels, comments from the assembly.
+		function trimAllLines(lines: Array<string>): Array<string> {
+			const lines2 = new Array<string>();
+			for(let line of lines) {
+				// remove comment
+				const match = /(^.*:|^([0-9a-f]{4})?\s+([^;:]*).*|^[^\s].*)/.exec(line);
+				if(match)
+					line = match[3] || '';
+				line = line.trim();
+				// Remove empty lines (labels)
+				if(line.length > 0)
+					lines2.push(line);
+			}
+			return lines2;
+		}
+
 		test('combined opcodes', () => {
 			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
 
@@ -549,41 +565,167 @@ suite('Disassembler', () => {
 				0xFD, 0xCB, 1, 2,	// rlc (iy+1),d
 				0xDD, 0xCB, -5, 6,	// rlc (ix-5)
 				0xFD, 0xCB, -9, 6,	// rlc (iy-9)
-
-				0xED, 0xCB,		// invalid instruction
 			];
-
 
 			const org = 0x0000;
 			dasm.memory.setMemory(org, new Uint8Array(memory));
 			dasm.setLabel(org);
 			dasm.startLinesWithAddress = false;
 			dasm.opcodesLowerCase = false;
-			let lines = dasm.disassemble();
+			const linesUntrimmed = dasm.disassemble();
 
-			console.log('\n');
-			console.log(lines.join('\n'));
+			const lines = trimAllLines(linesUntrimmed);
+			//console.log(lines.join('\n'));
 
-			// Remove all spaces, unnecessary chars
-			lines = lines.slice(2);	// Remove first lines (label)
-			const lines2 = lines.map(line => {
-				const match = /^\s+([^;]*)/.exec(line);
-				if(match)
-					line = match[1];
-				return line.trim();
-			});
+			assert(lines[0] == 'LD BC,4660')
+			assert(lines[1] == 'INC B');
+			assert(lines[2] == 'RLC L');
+			assert(lines[3] == 'RLC (HL)');
+			assert(lines[4] == 'ADD IX,BC');
+			assert(lines[5] == 'IN B,(C)');
+			assert(lines[6] == 'ADD IY,DE');
+			assert(lines[7] == 'RLC (IX+3) -> H');
+			assert(lines[8] == 'RLC (IY+1) -> D');
+			assert(lines[9] == 'RLC (IX-5)');
+			assert(lines[10] == 'RLC (IY-9)');
+		});
 
-			assert(lines2[0] == 'LD BC,4660')
-			assert(lines2[1] == 'INC B');
-			assert(lines2[2] == 'RLC L');
-			assert(lines2[3] == 'RLC (HL)');
-			assert(lines2[4] == 'ADD IX,BC');
-			assert(lines2[5] == 'IN B,(C)');
-			assert(lines2[6] == 'ADD IY,DE');
-			assert(lines2[7] == 'RLC (IX+3) -> H');
-			assert(lines2[8] == 'RLC (IY+1) -> D');
-			assert(lines2[9] == 'RLC (IX-5)');
-			assert(lines2[10] == 'RLC (IY-9)');
+
+		test('invalid opcodes', () => {
+			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
+
+			const memory = [
+				// invalid instruction
+				0xED, 0xCB,
+				0xED, 0x10,
+				// etc.
+			];
+
+			const org = 0x0000;
+			dasm.memory.setMemory(org, new Uint8Array(memory));
+			dasm.setLabel(org);
+			dasm.startLinesWithAddress = false;
+			dasm.opcodesLowerCase = false;
+			const linesUntrimmed = dasm.disassemble();
+
+			const lines = trimAllLines(linesUntrimmed);
+			//console.log(lines.join('\n'));
+
+			for(let i=0; i< lines.length; i++ )
+				assert(lines[i] == 'INVALID INSTRUCTION');
+		});
+
+
+		test('nop opcodes', () => {
+			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
+
+			const memory = [
+				0xDD, 0xDD, 0x09,	// nop; add ix,bc
+				0xDD, 0xED, 0x40,	// nop; in b,(c)
+				0xDD, 0xFD, 0x19,	// nop; add iy,de
+
+				0xFD, 0xDD, 0x09,	// nop; add ix,bc
+				0xFD, 0xED, 0x40,	// nop; in b,(c)
+				0xFD, 0xFD, 0x19,	// nop; add iy,de
+			];
+
+			const org = 0x0000;
+			dasm.memory.setMemory(org, new Uint8Array(memory));
+			dasm.setLabel(org);
+			dasm.startLinesWithAddress = false;
+			dasm.opcodesLowerCase = false;
+			const linesUntrimmed = dasm.disassemble();
+
+			const lines = trimAllLines(linesUntrimmed);
+			//console.log(lines.join('\n'));
+
+			assert(lines[0] == '[NOP]')
+			assert(lines[1] == 'ADD IX,BC');
+			assert(lines[2] == '[NOP]')
+			assert(lines[3] == 'IN B,(C)');
+			assert(lines[4] == '[NOP]')
+			assert(lines[5] == 'ADD IY,DE');
+			assert(lines[6] == '[NOP]')
+			assert(lines[7] == 'ADD IX,BC');
+			assert(lines[8] == '[NOP]')
+			assert(lines[9] == 'IN B,(C)');
+			assert(lines[10] == '[NOP]')
+			assert(lines[11] == 'ADD IY,DE');
+		});
+
+
+		test('ZX Next opcodes', () => {
+			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
+
+			const memory = [
+				0xED, 0xA4,		// LDIX
+				0xED, 0xA5,		// LDWS
+				0xED, 0xB4,		// LDIRX
+				0xED, 0xAC,		// LDDX
+				0xED, 0xBC,		// LDDRX
+				0xED, 0xB6,		// LDIRSCALE
+				0xED, 0xB7,		// LDPIRX
+
+				0xED, 0x30,		// MUL D,E
+
+				0xED, 0x31,		// ADD HL,A
+				0xED, 0x32,		// ADD DE,A
+				0xED, 0x33,		// ADD BC,A
+				0xED, 0x34,	0x34, 0x12,	// ADD HL,#nn
+				0xED, 0x35,	0x45, 0x23,		// ADD DE,#nn
+				0xED, 0x36,	0x56, 0x34,		// ADD BC,#nn
+
+				0xED, 0x23,		// SWAPNIB
+
+				0xED, 0x24,		// MIRROR
+
+				0xED, 0x8A,	0x11, 0x88,		// PUSH 0x1188 (big endian)
+
+				0xED, 0x91,	250, 9,	// NEXREG #n,#n
+				0xED, 0x92,	40,		// NEXREG #n,A
+
+				0xED, 0x93,		// PIXELDN
+				0xED, 0x94,		// PIXELAD
+
+				0xED, 0x95,		// SETAE
+
+				0xED, 0x27,	11	// TEST #n
+			];
+
+			const org = 0x0000;
+			dasm.memory.setMemory(org, new Uint8Array(memory));
+			dasm.setLabel(org);
+			dasm.startLinesWithAddress = false;
+			dasm.opcodesLowerCase = false;
+			const linesUntrimmed = dasm.disassemble();
+
+			const lines = trimAllLines(linesUntrimmed);
+			//console.log(lines.join('\n'));
+
+			let i = -1;
+			assert(lines[++i] == 'LDIX')
+			assert(lines[++i] == 'LDWS');
+			assert(lines[++i] == 'LDIRX')
+			assert(lines[++i] == 'LDDX');
+			assert(lines[++i] == 'LDDRX')
+			assert(lines[++i] == 'LDIRSCALE');
+			assert(lines[++i] == 'LDPIRX');
+			assert(lines[++i] == 'MUL D,E')
+			assert(lines[++i] == 'ADD HL,A');
+			assert(lines[++i] == 'ADD DE,A')
+			assert(lines[++i] == 'ADD BC,A');
+			assert(lines[++i] == 'ADD HL,4660')		// 1234h
+			assert(lines[++i] == 'ADD DE,9029');		// 2345h
+			assert(lines[++i] == 'ADD BC,13398');	// 3456h
+			assert(lines[++i] == 'SWAPNIB')
+			assert(lines[++i] == 'MIRROR');
+			assert(lines[++i] == 'PUSH 34833')	// 8811h
+			assert(lines[++i] == 'NEXTREG 250,9');
+			assert(lines[++i] == 'NEXTREG 40,A')
+			assert(lines[++i] == 'PIXELDN');
+			assert(lines[++i] == 'PIXELAD');
+			assert(lines[++i] == 'SETAE');
+			assert(lines[++i] == 'TEST 11');
 		});
 
 
@@ -605,19 +747,15 @@ suite('Disassembler', () => {
 			const org = 0x0000;
 			dasm.memory.setMemory(org, new Uint8Array(memory));
 			dasm.setLabel(org);
-			const lines = dasm.disassemble();
+			const linesUntrimmed = dasm.disassemble();
 
-			//dasm.printLabels();
+			const lines = trimAllLines(linesUntrimmed);
 			//console.log('\n');
 			//console.log(lines.join('\n'));
 
-			assert(lines.length == 5);
-
-			assert(lines[0] == '; Label is referenced by 0 location.')
-			assert(lines[1] == '0000	LBL1:');
-			assert(lines[2] == '0000		ld	a,-3	; FDh');
-			assert(lines[3] == '0002		ld	hl,65244	; FEDCh, -292');
-			assert(lines[4] == '0005		ret	');
+			assert(lines[0] == 'ld a,253');
+			assert(lines[1] == 'ld hl,65244');
+			assert(lines[2] == 'ret');
 		});
 
 
@@ -660,8 +798,8 @@ suite('Disassembler', () => {
 			const lines = dasm.disassemble();
 
 			//dasm.printLabels();
-			console.log('\n');
-			console.log(lines.join('\n'));
+			//console.log('\n');
+			//console.log(lines.join('\n'));
 
 			assert(lines.length > 10);	// It's hard to find a good assert here.
 		});

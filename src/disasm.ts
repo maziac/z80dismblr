@@ -204,7 +204,7 @@ export class Disassembler extends EventEmitter {
 				}
 
 				// Read memory value
-				opcode = this.memory.getOpcodeAt(address);
+				opcode = Opcode.getOpcodeAt(this.memory, address);
 
 				// Check if memory area has already been PARTLY disassembled
 				const len = opcode.length;
@@ -215,7 +215,7 @@ export class Disassembler extends EventEmitter {
 					if(attr & MemAttribute.CODE) {
 						// It has already been disassembled -> error.
 						assert(attr & MemAttribute.CODE_FIRST, 'Internal error: Expected CODE_FIRST');
-						const otherOpcode = this.memory.getOpcodeAt(memAddress);
+						const otherOpcode = Opcode.getOpcodeAt(this.memory, memAddress);
 						// emit warning
 						this.emit('warning', 'Aborting disassembly: Ambiguous disassembly: Trying to disassemble opcode "' + opcode.name + '" at address 0x' + address.toString(16) + ' but address 0x' + memAddress.toString(16) + ' alrady contains opcode "' + otherOpcode.name + '".');
 						return;
@@ -317,7 +317,7 @@ export class Disassembler extends EventEmitter {
 						assert(branchAddress-branchOpcodeAddress > 4, 'Internal error: Could not find start of opcode.');
 					} while(!(this.memory.getAttributeAt(branchOpcodeAddress) & MemAttribute.CODE_FIRST));
 					// Get opcode to branch to
-					const branchOpcode = this.memory.getOpcodeAt(branchOpcodeAddress);
+					const branchOpcode = Opcode.getOpcodeAt(this.memory, branchOpcodeAddress);
 					// emit warning
 					this.emit('warning', 'Aborting disassembly: Ambiguous disassembly: encountered branch instruction into the middle of an opcode. Opcode "' + opcode.name + '" at address 0x' + opcodeAddress.toString(16) + ' would branch into "' + branchOpcode.name + '" at address 0x' + branchOpcodeAddress.toString(16) + '.');
 					return false;
