@@ -538,17 +538,19 @@ suite('Disassembler', () => {
 			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
 
 			const memory = [
+				0x01, 0x34, 0x12,	// ld bc,1234h
 				0x04,				// inc b
 				0xCB, 0x05,			// rlc l
 				0xCB, 0x06,			// rlc (hl)
 				0xDD, 0x09,			// add ix,bc
 				0xED, 0x40,			// in b,(c)
 				0xFD, 0x19,			// add iy,de
-				0xED, 0xCB, 3, 4,	// rlc (ix+1),h
+				0xDD, 0xCB, 3, 4,	// rlc (ix+3),h
 				0xFD, 0xCB, 1, 2,	// rlc (iy+1),d
-				0xED, 0xCB, -5, 6,	// rlc (ix-6)
+				0xDD, 0xCB, -5, 6,	// rlc (ix-5)
 				0xFD, 0xCB, -9, 6,	// rlc (iy-9)
 
+				0xED, 0xCB,		// invalid instruction
 			];
 
 
@@ -556,18 +558,32 @@ suite('Disassembler', () => {
 			dasm.memory.setMemory(org, new Uint8Array(memory));
 			dasm.setLabel(org);
 			dasm.startLinesWithAddress = false;
-			const lines = dasm.disassemble();
+			dasm.opcodesLowerCase = false;
+			let lines = dasm.disassemble();
 
 			console.log('\n');
 			console.log(lines.join('\n'));
 
-			assert(lines.length == 5);
+			// Remove all spaces, unnecessary chars
+			lines = lines.slice(2);	// Remove first lines (label)
+			const lines2 = lines.map(line => {
+				const match = /^\s+([^;]*)/.exec(line);
+				if(match)
+					line = match[1];
+				return line.trim();
+			});
 
-			assert(lines[0] == '; Label is referenced by 0 location.')
-			assert(lines[1] == '0000	LBL1:');
-			assert(lines[2] == '0000		ld	a,-3	; FDh');
-			assert(lines[3] == '0002		ld	hl,65244	; FEDCh, -292');
-			assert(lines[4] == '0005		ret	');
+			assert(lines2[0] == 'LD BC,4660')
+			assert(lines2[1] == 'INC B');
+			assert(lines2[2] == 'RLC L');
+			assert(lines2[3] == 'RLC (HL)');
+			assert(lines2[4] == 'ADD IX,BC');
+			assert(lines2[5] == 'IN B,(C)');
+			assert(lines2[6] == 'ADD IY,DE');
+			assert(lines2[7] == 'RLC (IX+3) -> H');
+			assert(lines2[8] == 'RLC (IY+1) -> D');
+			assert(lines2[9] == 'RLC (IX-5)');
+			assert(lines2[10] == 'RLC (IY-9)');
 		});
 
 

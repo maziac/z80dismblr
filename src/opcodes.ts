@@ -163,8 +163,8 @@ export class Opcode {
 
 	/**
 	 * The 1 byte opcodes just return self (this).
-	 * @param memory Unused
-	 * @param address Unused
+	 * @param memory
+	 * @param address
 	 * @returns this
 	 */
 	public getOpcodeAt(memory: Memory, address: number): Opcode {
@@ -179,30 +179,30 @@ export class Opcode {
 			case NumberType.DATA_LBL:
 			case NumberType.NUMBER_WORD:
 				// word value
-				this.value = memory.getWordValueAt(address);
+				this.value = memory.getWordValueAt(address+1);
 			break;
 			case NumberType.NUMBER_WORD_BIG_ENDIAN:
 				// e.g. for PUSH $nnnn
-				this.value = memory.getBigEndianWordValueAt(address);
+				this.value = memory.getBigEndianWordValueAt(address+1);
 			break;
 			case NumberType.RELATIVE_INDEX:
 			case NumberType.CODE_RELATIVE_LBL:
 			case NumberType.CODE_RELATIVE_LOOP:
 				// byte value
-				this.value = memory.getValueAt(address);
+				this.value = memory.getValueAt(address+1);
 				if(this.value >= 0x80)
 					this.value -= 0x100;
 				// Change relative jump address to absolute
 				if(this.valueType == NumberType.CODE_RELATIVE_LBL || this.valueType == NumberType.CODE_RELATIVE_LOOP)
-					this.value += address+1;
+					this.value += address+2;
 			break;
 			case NumberType.NUMBER_BYTE:
 				// byte value
-				this.value = memory.getValueAt(address);
+				this.value = memory.getValueAt(address+1);
 			break;
 			case NumberType.PORT_LBL:
 				// TODO: need to be implemented differently
-				this.value = memory.getValueAt(address);
+				this.value = memory.getValueAt(address+1);
 			break;
 			default:
 				assert(false);
@@ -276,6 +276,25 @@ export class Opcode {
 }
 
 
+/// Opcode that has a number index before the opcode.
+/// E.g. 0xDD 0xCB 0x03 0x04 = ld (ix+3),h  (0x04 is part of the opcode)
+class OpcodePrevIndex extends Opcode {
+	/**
+	 * Gets the value from the byte which is PREVIOUS to the opcode.
+	 * @param memory
+	 * @param address
+	 * @returns this
+	 */
+	public getOpcodeAt(memory: Memory, address: number): Opcode {
+		assert(this.valueType == NumberType.RELATIVE_INDEX);
+		this.value = memory.getValueAt(address-1);
+		if(this.value >= 0x80)
+			this.value -= 0x100;
+		return this;
+	}
+}
+
+
 class OpcodeExtended extends Opcode {
 	/// Array that holds the sub opcodes for this opcode.
 	public opcodes;
@@ -285,8 +304,9 @@ class OpcodeExtended extends Opcode {
 	 * @param code The code, e.g. 0xCD or 0xDD
 	 * @param opcodes The array with opcodes.
 	 */
-	constructor(code: number) {
+	constructor(code: number, opcodes?: Array<Opcode>) {
 		super(code);
+		this.opcodes = opcodes;
 		this.length += 1;	// one more
 	}
 
@@ -302,7 +322,7 @@ class OpcodeExtended extends Opcode {
 }
 
 
-/// 3 byte opcode
+/// 3 (4) byte opcode
 class OpcodeExtended2 extends OpcodeExtended {
 
 	/// Pass also the opcode array.
@@ -318,14 +338,10 @@ class OpcodeExtended2 extends OpcodeExtended {
 	 * followed by the rest of the opcode.
 	 */
 	 public getOpcodeAt(memory: Memory, address: number): Opcode {
-		// index (register)
-		this.value = memory.getValueAt(address+1);
-		if( this.value >= 0x80)
-			this.value -= 0x100;
-		this.valueType = NumberType.RELATIVE_INDEX;
 		return Opcode.getOpcodeAt(memory, address+2, this.opcodes);
 	}
 }
+
 
 
 
@@ -574,7 +590,7 @@ export const Opcodes: Array<Opcode> = [
 	new Opcode(0xC8, "RET Z"),
 	new Opcode(0xC9, "RET"),
 	new Opcode(0xCA, "JP Z,#nn"),
- new OpcodeExtended(0xCB),
+	 new OpcodeExtended(0xCB),
 	new Opcode(0xCC, "CALL Z,#nn"),
 	new Opcode(0xCD, "CALL #nn"),
 	new Opcode(0xCE, "ADC A,#n"),
@@ -628,6 +644,145 @@ export const Opcodes: Array<Opcode> = [
 	new Opcode(0xFE, "CP #n"),
 	new Opcode(0xFF, "RST 38h")
 ];
+
+/// Opcodes that start with 0xED.
+export const OpcodesED: Array<Opcode> = [
+	...Array<number>(0x23).fill(0).map((value, index) => new OpcodeInvalid(index)),
+
+	new OpcodeNext(0x23, "SWAPNIB"),     // ZX Spectrum Next
+	new OpcodeNext(0x24, "MIRROR"),     // ZX Spectrum Next
+	...Array<number>(0x02).fill(0).map((value, index) => new OpcodeInvalid(0x25+index)),
+
+	new OpcodeNext(0x27, "TEST #n"),     // ZX Spectrum Next
+	...Array<number>(0x08).fill(0).map((value, index) => new OpcodeInvalid(0x28+index)),
+
+	new OpcodeNext(0x30, "MUL D,E"),     // ZX Spectrum Next
+	new OpcodeNext(0x31, "ADD HL,A"),     // ZX Spectrum Next
+	new OpcodeNext(0x32, "ADD DE,A"),     // ZX Spectrum Next
+	new OpcodeNext(0x33, "ADD BC,A"),     // ZX Spectrum Next
+	new OpcodeNext(0x34, "ADD HL,#nn"),     // ZX Spectrum Next
+	new OpcodeNext(0x35, "ADD DE,#nn"),     // ZX Spectrum Next
+	new OpcodeNext(0x36, "ADD BC,#nn"),     // ZX Spectrum Next
+	...Array<number>(0x09).fill(0).map((value, index) => new OpcodeInvalid(0x37+index)),
+
+	new Opcode(0x40, "IN B,(C)"),
+	new Opcode(0x41, "OUT (C),B"),
+	new Opcode(0x42, "SBC HL,BC"),
+	new Opcode(0x43, "LD (#nn),BC"),
+	new Opcode(0x44, "NEG "),
+	new Opcode(0x45, "RETN "),
+	new Opcode(0x46, "IM 0"),
+	new Opcode(0x47, "LD I,A"),
+	new Opcode(0x48, "IN C,(C)"),
+	new Opcode(0x49, "OUT (C),C"),
+	new Opcode(0x4A, "ADC HL,BC"),
+	new Opcode(0x4B, "LD BC,(#nn)"),
+	new Opcode(0x4C, "[neg] "),
+	new Opcode(0x4D, "RETI "),
+	new Opcode(0x4E, "[im0] "),
+	new Opcode(0x4F, "LD R,A"),
+	new Opcode(0x50, "IN D,(C)"),
+	new Opcode(0x51, "OUT (C),D"),
+	new Opcode(0x52, "SBC HL,DE"),
+	new Opcode(0x53, "LD (#nn),DE"),
+	new Opcode(0x54, "[neg] "),
+	new Opcode(0x55, "[retn] "),
+	new Opcode(0x56, "IM 1"),
+	new Opcode(0x57, "LD A,I"),
+	new Opcode(0x58, "IN E,(C)"),
+	new Opcode(0x59, "OUT (C),E"),
+	new Opcode(0x5A, "ADC HL,DE"),
+	new Opcode(0x5B, "LD DE,(#nn)"),
+	new Opcode(0x5C, "[neg] "),
+	new Opcode(0x5D, "[reti] "),
+	new Opcode(0x5E, "IM 2"),
+	new Opcode(0x5F, "LD A,R"),
+	new Opcode(0x60, "IN H,(C)"),
+	new Opcode(0x61, "OUT (C),H"),
+	new Opcode(0x62, "SBC HL,HL"),
+	new Opcode(0x63, "LD (#nn),HL"),
+	new Opcode(0x64, "[neg] "),
+	new Opcode(0x65, "[retn] "),
+	new Opcode(0x66, "[im0] "),
+	new Opcode(0x67, "RRD "),
+	new Opcode(0x68, "IN L,(C)"),
+	new Opcode(0x69, "OUT (C),L"),
+	new Opcode(0x6A, "ADC HL,HL"),
+	new Opcode(0x6B, "LD HL,(#nn)"),
+	new Opcode(0x6C, "[neg] "),
+	new Opcode(0x6D, "[reti] "),
+	new Opcode(0x6E, "[im0] "),
+	new Opcode(0x6F, "RLD "),
+	new Opcode(0x70, "IN F,(C)"),
+	new Opcode(0x71, "OUT (C),F"),
+	new Opcode(0x72, "SBC HL,SP"),
+	new Opcode(0x73, "LD (#nn),SP"),
+	new Opcode(0x74, "[neg] "),
+	new Opcode(0x75, "[retn] "),
+	new Opcode(0x76, "[im1] "),
+	new Opcode(0x77, "[ld i,i?]"),
+	new Opcode(0x78, "IN A,(C)"),
+	new Opcode(0x79, "OUT (C),A"),
+	new Opcode(0x7A, "ADC HL,SP"),
+	new Opcode(0x7B, "LD SP,(#nn)"),
+	new Opcode(0x7C, "[neg]"),
+	new Opcode(0x7D, "[reti]"),
+	new Opcode(0x7E, "[im2]"),
+	new Opcode(0x7F, "[ld r,r?]"),
+	...Array<number>(0x0A).fill(0).map((value, index) => new OpcodeInvalid(0x80+index)),
+
+	new OpcodeNext(0x8A, "PUSH #nn"),     // ZX Spectrum Next
+	...Array<number>(0x06).fill(0).map((value, index) => new OpcodeInvalid(0x8B+index)),
+
+	new Opcode_n_n(0x91, "NEXTREG #n,#n"),     // ZX Spectrum Next
+	new OpcodeNext(0x92, "NEXTREG #n,A"),     // ZX Spectrum Next
+	new OpcodeNext(0x93, "PIXELDN"),     // ZX Spectrum Next
+	new OpcodeNext(0x94, "PIXELAD"),     // ZX Spectrum Next
+	new OpcodeNext(0x95, "SETAE"),     // ZX Spectrum Next
+	...Array<number>(0x0A).fill(0).map((value, index) => new OpcodeInvalid(0x96+index)),
+
+	new Opcode(0xA0, "LDI"),
+	new Opcode(0xA1, "CPI"),
+	new Opcode(0xA2, "INI"),
+	new Opcode(0xA3, "OUTI"),
+
+	new OpcodeNext(0xA4, "LDIX"),     // ZX Spectrum Next
+	new OpcodeNext(0xA5, "LDWS"),     // ZX Spectrum Next
+
+	...Array<number>(0x02).fill(0).map((value, index) => new OpcodeInvalid(0xA6+index)),
+
+	new Opcode(0xA8, "LDD"),
+	new Opcode(0xA9, "CPD"),
+	new Opcode(0xAA, "IND"),
+	new Opcode(0xAB, "OUTD"),
+
+	new OpcodeNext(0xAC, "LDDX"),     // ZX Spectrum Next
+
+	...Array<number>(0x03).fill(0).map((value, index) => new OpcodeInvalid(0xAD+index)),
+
+	new Opcode(0xB0, "LDIR"),
+	new Opcode(0xB1, "CPIR"),
+	new Opcode(0xB2, "INIR"),
+	new Opcode(0xB3, "OUTIR"),
+
+	new OpcodeNext(0xB4, "LDIRX"),     // ZX Spectrum Next
+	new OpcodeInvalid(0xB5),
+	new OpcodeNext(0xB6, "LDIRSCALE"),     // ZX Spectrum Next
+	new OpcodeNext(0xB7, "LDPIRX"),     // ZX Spectrum Next
+
+	new Opcode(0xB8, "LDDR"),
+	new Opcode(0xB9, "CPDR"),
+	new Opcode(0xBA, "INDR"),
+	new Opcode(0xBB, "OUTDR"),
+
+	new OpcodeNext(0xBC, "LDDRX"),     // ZX Spectrum Next
+
+	...Array<number>(0x100-0xBC-1).fill(0).map((value, index) => new OpcodeInvalid(0xBD+index))
+];
+// Fix length (2)
+OpcodesED.forEach(opcode => {
+	opcode.length ++;
+});
 
 /// Opcodes that start with 0xCB.
 export const OpcodesCB: Array<Opcode> = [
@@ -931,141 +1086,6 @@ export const OpcodesDD = Opcodes.map((opcode, index) => {
 });
 
 
-/// Opcodes that start with 0xED.
-export const OpcodesED: Array<Opcode> = [
-	...Array<number>(0x23).fill(0).map((value, index) => new OpcodeInvalid(index)),
-
-	new OpcodeNext(0x23, "SWAPNIB"),     // ZX Spectrum Next
-	new OpcodeNext(0x24, "MIRROR"),     // ZX Spectrum Next
-	...Array<number>(0x02).fill(0).map((value, index) => new OpcodeInvalid(0x25+index)),
-
-	new OpcodeNext(0x27, "TEST #n"),     // ZX Spectrum Next
-	...Array<number>(0x08).fill(0).map((value, index) => new OpcodeInvalid(0x28+index)),
-
-	new OpcodeNext(0x30, "MUL D,E"),     // ZX Spectrum Next
-	new OpcodeNext(0x31, "ADD HL,A"),     // ZX Spectrum Next
-	new OpcodeNext(0x32, "ADD DE,A"),     // ZX Spectrum Next
-	new OpcodeNext(0x33, "ADD BC,A"),     // ZX Spectrum Next
-	new OpcodeNext(0x34, "ADD HL,#nn"),     // ZX Spectrum Next
-	new OpcodeNext(0x35, "ADD DE,#nn"),     // ZX Spectrum Next
-	new OpcodeNext(0x36, "ADD BC,#nn"),     // ZX Spectrum Next
-	...Array<number>(0x09).fill(0).map((value, index) => new OpcodeInvalid(0x37+index)),
-
-	new Opcode(0x40, "IN B,(C)"),
-	new Opcode(0x41, "OUT (C),B"),
-	new Opcode(0x42, "SBC HL,BC"),
-	new Opcode(0x43, "LD (#nn),BC"),
-	new Opcode(0x44, "NEG "),
-	new Opcode(0x45, "RETN "),
-	new Opcode(0x46, "IM 0"),
-	new Opcode(0x47, "LD I,A"),
-	new Opcode(0x48, "IN C,(C)"),
-	new Opcode(0x49, "OUT (C),C"),
-	new Opcode(0x4A, "ADC HL,BC"),
-	new Opcode(0x4B, "LD BC,(#nn)"),
-	new Opcode(0x4C, "[neg] "),
-	new Opcode(0x4D, "RETI "),
-	new Opcode(0x4E, "[im0] "),
-	new Opcode(0x4F, "LD R,A"),
-	new Opcode(0x50, "IN D,(C)"),
-	new Opcode(0x51, "OUT (C),D"),
-	new Opcode(0x52, "SBC HL,DE"),
-	new Opcode(0x53, "LD (#nn),DE"),
-	new Opcode(0x54, "[neg] "),
-	new Opcode(0x55, "[retn] "),
-	new Opcode(0x56, "IM 1"),
-	new Opcode(0x57, "LD A,I"),
-	new Opcode(0x58, "IN E,(C)"),
-	new Opcode(0x59, "OUT (C),E"),
-	new Opcode(0x5A, "ADC HL,DE"),
-	new Opcode(0x5B, "LD DE,(#nn)"),
-	new Opcode(0x5C, "[neg] "),
-	new Opcode(0x5D, "[reti] "),
-	new Opcode(0x5E, "IM 2"),
-	new Opcode(0x5F, "LD A,R"),
-	new Opcode(0x60, "IN H,(C)"),
-	new Opcode(0x61, "OUT (C),H"),
-	new Opcode(0x62, "SBC HL,HL"),
-	new Opcode(0x63, "LD (#nn),HL"),
-	new Opcode(0x64, "[neg] "),
-	new Opcode(0x65, "[retn] "),
-	new Opcode(0x66, "[im0] "),
-	new Opcode(0x67, "RRD "),
-	new Opcode(0x68, "IN L,(C)"),
-	new Opcode(0x69, "OUT (C),L"),
-	new Opcode(0x6A, "ADC HL,HL"),
-	new Opcode(0x6B, "LD HL,(#nn)"),
-	new Opcode(0x6C, "[neg] "),
-	new Opcode(0x6D, "[reti] "),
-	new Opcode(0x6E, "[im0] "),
-	new Opcode(0x6F, "RLD "),
-	new Opcode(0x70, "IN F,(C)"),
-	new Opcode(0x71, "OUT (C),F"),
-	new Opcode(0x72, "SBC HL,SP"),
-	new Opcode(0x73, "LD (#nn),SP"),
-	new Opcode(0x74, "[neg] "),
-	new Opcode(0x75, "[retn] "),
-	new Opcode(0x76, "[im1] "),
-	new Opcode(0x77, "[ld i,i?]"),
-	new Opcode(0x78, "IN A,(C)"),
-	new Opcode(0x79, "OUT (C),A"),
-	new Opcode(0x7A, "ADC HL,SP"),
-	new Opcode(0x7B, "LD SP,(#nn)"),
-	new Opcode(0x7C, "[neg]"),
-	new Opcode(0x7D, "[reti]"),
-	new Opcode(0x7E, "[im2]"),
-	new Opcode(0x7F, "[ld r,r?]"),
-	...Array<number>(0x0A).fill(0).map((value, index) => new OpcodeInvalid(0x80+index)),
-
-	new OpcodeNext(0x8A, "PUSH #nn"),     // ZX Spectrum Next
-	...Array<number>(0x06).fill(0).map((value, index) => new OpcodeInvalid(0x8B+index)),
-
-	new Opcode_n_n(0x91, "NEXTREG #n,#n"),     // ZX Spectrum Next
-	new OpcodeNext(0x92, "NEXTREG #n,A"),     // ZX Spectrum Next
-	new OpcodeNext(0x93, "PIXELDN"),     // ZX Spectrum Next
-	new OpcodeNext(0x94, "PIXELAD"),     // ZX Spectrum Next
-	new OpcodeNext(0x95, "SETAE"),     // ZX Spectrum Next
-	...Array<number>(0x0A).fill(0).map((value, index) => new OpcodeInvalid(0x96+index)),
-
-	new Opcode(0xA0, "LDI"),
-	new Opcode(0xA1, "CPI"),
-	new Opcode(0xA2, "INI"),
-	new Opcode(0xA3, "OUTI"),
-
-	new OpcodeNext(0xA4, "LDIX"),     // ZX Spectrum Next
-	new OpcodeNext(0xA5, "LDWS"),     // ZX Spectrum Next
-
-	...Array<number>(0x02).fill(0).map((value, index) => new OpcodeInvalid(0xA6+index)),
-
-	new Opcode(0xA8, "LDD"),
-	new Opcode(0xA9, "CPD"),
-	new Opcode(0xAA, "IND"),
-	new Opcode(0xAB, "OUTD"),
-
-	new OpcodeNext(0xAC, "LDDX"),     // ZX Spectrum Next
-
-	...Array<number>(0x03).fill(0).map((value, index) => new OpcodeInvalid(0xAD+index)),
-
-	new Opcode(0xB0, "LDIR"),
-	new Opcode(0xB1, "CPIR"),
-	new Opcode(0xB2, "INIR"),
-	new Opcode(0xB3, "OUTIR"),
-
-	new OpcodeNext(0xB4, "LDIRX"),     // ZX Spectrum Next
-	new OpcodeInvalid(0xB5),
-	new OpcodeNext(0xB6, "LDIRSCALE"),     // ZX Spectrum Next
-	new OpcodeNext(0xB7, "LDPIRX"),     // ZX Spectrum Next
-
-	new Opcode(0xB8, "LDDR"),
-	new Opcode(0xB9, "CPDR"),
-	new Opcode(0xBA, "INDR"),
-	new Opcode(0xBB, "OUTDR"),
-
-	new OpcodeNext(0xBC, "LDDRX"),     // ZX Spectrum Next
-
-	...Array<number>(0x100-0xBC-1).fill(0).map((value, index) => new OpcodeInvalid(0xBD+index))
-];
-
 
 /// Opcodes that start with 0xFD.
 /// Create FD (use IY instead of IX)
@@ -1082,7 +1102,7 @@ export const OpcodesFD = OpcodesDD.map((opcode, index) => {
 /// Opcodes that start with 0xDDCB.
 /// Create DDCB (use IX+n instead of or plus register)
 export const OpcodesDDCB = OpcodesCB.map((opcode, index) => {
-	const opcodeDDCB = new Opcode();
+	const opcodeDDCB = new OpcodePrevIndex();
 	opcodeDDCB.copy(opcode);
 	opcodeDDCB.length += 2;	// 0xDD and n
 	// Check if opcodes ends with '(HL)'
@@ -1097,6 +1117,7 @@ export const OpcodesDDCB = OpcodesCB.map((opcode, index) => {
 		const len = name.length;
 		name = name.substr(0,len-1) + '(IX%s) -> ' + name.substr(len-1);
 	}
+	opcodeDDCB.valueType = NumberType.RELATIVE_INDEX;
 	opcodeDDCB.name = name;
 	return opcodeDDCB;
 });
@@ -1105,7 +1126,7 @@ export const OpcodesDDCB = OpcodesCB.map((opcode, index) => {
 /// Opcodes that start with 0xFDCB.
 /// Create FDCB (use IY instead of IX)
 export const OpcodesFDCB = OpcodesDDCB.map((opcode, index) => {
-	const opcodeFDCB = new Opcode();
+	const opcodeFDCB = new OpcodePrevIndex();
 	opcodeFDCB.copy(opcode);
 	const name = opcode.name.replace('IX', 'IY');
 	opcodeFDCB.name = name;
