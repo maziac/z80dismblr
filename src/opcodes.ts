@@ -143,6 +143,7 @@ export class Opcode {
 	 */
 	public copy(src: Opcode) {
 		this.code = src.code;
+		this.comment = '';
 		this.name = src.name;
 		this.flags = src.flags;
 		this.valueType = src.valueType;
@@ -173,6 +174,7 @@ export class Opcode {
 	public getOpcodeAt(memory: Memory, address: number): Opcode {
 		// Get value (if any)
 		switch(this.valueType) {
+			case NumberType.CODE_RST:
 			case NumberType.NONE:
 				// no value
 			break;
@@ -405,7 +407,6 @@ class Opcode_n_n extends OpcodeNext {
 		return opCodeString;
 	}
 }
-
 
 
 // Normal Opcodes

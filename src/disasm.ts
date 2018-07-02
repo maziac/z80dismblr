@@ -188,10 +188,11 @@ export class Disassembler extends EventEmitter {
 
 		// get new address from queue
 		while((address = this.addressQueue.shift()) != undefined) {
+			//console.log('address=0x' + address.toString(16));
 			// disassemble until stop-code
 			do {
 				// Trace address
-				//console.log('collectLabels: address=' + this.getHexString(address) + 'h');
+				console.log('collectLabels: address=' + Utility.getHexString(address) + 'h');
 
 				// Check if memory has already been disassembled
 				let attr = this.memory.getAttributeAt(address);
@@ -506,6 +507,7 @@ export class Disassembler extends EventEmitter {
 
 			// disassemble until stop-code
 			while(true) {
+				console.log('disMem: address=0x' + address.toString(16))
 				// Check if memory has already been disassembled
 				let attr = this.memory.getAttributeAt(address);
 				if(!(attr & MemAttribute.ASSIGNED)) {
@@ -606,7 +608,9 @@ export class Disassembler extends EventEmitter {
 					// Note:
 					// For data there is no stop-code. I.e. data is disassembled as long as there is no CODE area found. Then in the CODE area a stop-condition might be found.
 				}
-				// Check for stop code. (JP, JR, RET)
+
+				// Log
+				console.log('DISASSEMBLY: ' + lines[lines.length-1]);
 			}
 		}
 
