@@ -100,7 +100,8 @@ export class Opcode {
 
 				// now check for opcode flags
 				if(name.startsWith("DJNZ")) {
-					this.valueType = NumberType.CODE_RELATIVE_LOOP;
+					//this.valueType = NumberType.CODE_RELATIVE_LOOP;
+					this.valueType = NumberType.CODE_RELATIVE_LBL;	// Becomes a loop because it jumps backwards.
 					this.flags |= OpcodeFlag.BRANCH_ADDRESS;
 				}
 				if(name.startsWith("JR")) {
@@ -124,13 +125,12 @@ export class Opcode {
 			this.flags |= OpcodeFlag.STOP;
 		}
 		else if(name.startsWith("RST")) {	// "RST"
-			// Use like a unconditional jump
+			// Use like a CALL
 			this.valueType = NumberType.CODE_RST;
-			this.flags |= OpcodeFlag.BRANCH_ADDRESS | OpcodeFlag.STOP;
+			this.flags |= OpcodeFlag.BRANCH_ADDRESS;
 			// Get jump value
-			const len = name.length;
-			const jumpAddress = name.substr(len-3,2);
-			this.value = parseInt(jumpAddress, 16);
+			const jumpAddress = this.code & 0b00111000;
+			this.value = jumpAddress;
 		}
 
 		// Store
@@ -245,9 +245,15 @@ export class Opcode {
 			|| this.valueType == NumberType.CODE_RELATIVE_LOOP
 			|| this.valueType == NumberType.CODE_SUB
 			|| this.valueType == NumberType.DATA_LBL) {
-			const label = labels.get(this.value);
+			const val = this.value;
+			let label;
+			if(labels)
+				label = labels.get(val);
 			if(label)
 				valueName = label.name;
+			else
+				valueName = val.toString();
+				comment = '\t; ' + Utility.getConversionForAddress(val);
 		}
 		else if(this.valueType == NumberType.RELATIVE_INDEX) {
 			// E.g. in 'LD (IX+n),a'
@@ -257,7 +263,7 @@ export class Opcode {
 		}
 		else {
 			// Use direct value
-			let val = this.value;
+			const val = this.value;
 			valueName = val.toString();	// decimal
 			// Add comment
 			if(this.valueType == NumberType.NUMBER_BYTE) {
@@ -610,7 +616,7 @@ export const Opcodes: Array<Opcode> = [
 	new Opcode(0xC4, "CALL NZ,#nn"),
 	new Opcode(0xC5, "PUSH BC"),
 	new Opcode(0xC6, "ADD A,#n"),
-	new Opcode(0xC7, "RST 00h"),
+	new Opcode(0xC7, "RST %s"),
 	new Opcode(0xC8, "RET Z"),
 	new Opcode(0xC9, "RET"),
 	new Opcode(0xCA, "JP Z,#nn"),
@@ -618,7 +624,7 @@ export const Opcodes: Array<Opcode> = [
 	new Opcode(0xCC, "CALL Z,#nn"),
 	new Opcode(0xCD, "CALL #nn"),
 	new Opcode(0xCE, "ADC A,#n"),
-	new Opcode(0xCF, "RST 8h"),
+	new Opcode(0xCF, "RST %s"),
 	new Opcode(0xD0, "RET NC"),
 	new Opcode(0xD1, "POP DE"),
 	new Opcode(0xD2, "JP NC,#nn"),
@@ -626,7 +632,7 @@ export const Opcodes: Array<Opcode> = [
 	new Opcode(0xD4, "CALL NC,#nn"),
 	new Opcode(0xD5, "PUSH DE"),
 	new Opcode(0xD6, "SUB A,#n"),
-	new Opcode(0xD7, "RST 10h"),
+	new Opcode(0xD7, "RST %s"),
 	new Opcode(0xD8, "RET C"),
 	new Opcode(0xD9, "EXX"),
 	new Opcode(0xDA, "JP C,#nn"),
@@ -634,7 +640,7 @@ export const Opcodes: Array<Opcode> = [
 	new Opcode(0xDC, "CALL C,#nn"),
 	 new OpcodeExtended(0xDD),
 	new Opcode(0xDE, "SBC A,#n"),
-	new Opcode(0xDF, "RST 18h"),
+	new Opcode(0xDF, "RST %s"),
 	new Opcode(0xE0, "RET PO"),
 	new Opcode(0xE1, "POP HL"),
 	new Opcode(0xE2, "JP PO,#nn"),
@@ -642,7 +648,7 @@ export const Opcodes: Array<Opcode> = [
 	new Opcode(0xE4, "CALL PO,#nn"),
 	new Opcode(0xE5, "PUSH HL"),
 	new Opcode(0xE6, "AND #n"),
-	new Opcode(0xE7, "RST 20h"),
+	new Opcode(0xE7, "RST %s"),
 	new Opcode(0xE8, "RET PE"),
 	new Opcode(0xE9, "JP (HL)"),
 	new Opcode(0xEA, "JP PE,#nn"),
@@ -650,7 +656,7 @@ export const Opcodes: Array<Opcode> = [
 	new Opcode(0xEC, "CALL PE,#nn"),
 	 new OpcodeExtended(0xED),
 	new Opcode(0xEE, "XOR #n"),
-	new Opcode(0xEF, "RST 28h"),
+	new Opcode(0xEF, "RST %s"),
 	new Opcode(0xF0, "RET P"),
 	new Opcode(0xF1, "POP AF"),
 	new Opcode(0xF2, "JP P,#nn"),
@@ -658,7 +664,7 @@ export const Opcodes: Array<Opcode> = [
 	new Opcode(0xF4, "CALL P,#nn"),
 	new Opcode(0xF5, "PUSH AF"),
 	new Opcode(0xF6, "OR #n"),
-	new Opcode(0xF7, "RST 30h"),
+	new Opcode(0xF7, "RST %s"),
 	new Opcode(0xF8, "RET M"),
 	new Opcode(0xF9, "LD SP,HL"),
 	new Opcode(0xFA, "JP M,#nn"),
@@ -666,7 +672,7 @@ export const Opcodes: Array<Opcode> = [
 	new Opcode(0xFC, "CALL M,#nn"),
 	 new OpcodeExtended(0xFD),
 	new Opcode(0xFE, "CP #n"),
-	new Opcode(0xFF, "RST 38h")
+	new Opcode(0xFF, "RST %s")
 ];
 
 /// Opcodes that start with 0xED.
@@ -1090,6 +1096,7 @@ export const OpcodesDD = Opcodes.map((opcode, index) => {
 			// something like "LD A,(HL)" becomes "LD A,(IX+n)"
 			name2 = name2.replace('HL', 'IX%s');
 			opcodeDD.valueType = NumberType.RELATIVE_INDEX;
+			opcodeDD.length ++;
 		}
 		else {
 			// Exchange HL/IX, L/IXL, H/IXH

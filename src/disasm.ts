@@ -5,6 +5,7 @@ import { Opcode, OpcodeFlag } from './opcodes';
 import { Label, NumberType } from './label';
 import { EventEmitter } from 'events';
 import { Utility } from './utility';
+import { readFileSync } from 'fs';
 
 
 
@@ -44,7 +45,9 @@ export class Disassembler extends EventEmitter {
 	/// Label prefixes
 	public labelSubPrefix = "SUB";
 	public labelLblPrefix = "LBL";
+	public labelRstPrefix = "RST";
 	public labelDataLblPrefix = "DATA";
+	public labelSelfModifyingPrefix = "SELF_MOD";
 	public labelLocalLablePrefix = "_l";
 	public labelLoopPrefix = "_loop";
 
@@ -52,9 +55,11 @@ export class Disassembler extends EventEmitter {
 	protected labelSubCountDigits;
 	protected labelLblCountDigits;
 	protected labelDataLblCountDigits;
+	protected labelSelfModifyingCountDigits;
 	protected labelSubCount;
 	protected labelLblCount;
 	protected labelDataLblCount;
+	protected labelSelfModifyingCount;
 
 
 	/**
@@ -98,24 +103,49 @@ export class Disassembler extends EventEmitter {
 
 
 	/**
+	 * Define the memory area to disassemble.
+	 * @param origin The start address of the memory area.
+	 * @param memory The memory area.
+	 */
+	public setMemory(origin:number, memory: Uint8Array) {
+		this.memory.setMemory(origin, memory);
+		// Set start label
+		this.setLabel(origin, 'BIN_START_'+origin, NumberType.DATA_LBL);
+		//const size = memory.length;
+		//this.setLabel(origin+size, 'BIN_END_'+origin, NumberType.DATA_LBL);
+	}
+
+
+	/**
+	 * Reads a memory area as binary from a file.
+	 * @param origin The start address of the memory area.
+	 * @param path The file path to a binary file.
+	 */
+	public readBinFile(origin: number, path: string) {
+		let bin = readFileSync(path);
+		this.setMemory(origin, bin);
+	}
+
+
+	/**
 	 * You can set one (or more) initial labels here.
 	 * At least one lable should be set, so that the disassembly
-	 * algorithm knows wehre to start from.
+	 * algorithm knows where to start from.
 	 * More labels could be set e.g. to tell where the interrupt starts at.
 	 * Optionally a name for the label can be given.
 	 * @param address The address of the label.
 	 * @param name An optional name for the label.
+	 * @param type of the label. Default is CODE_LBL.
 	 */
-	public setLabel(address: number, name?: string) {
+	public setLabel(address: number, name?: string, type = NumberType.CODE_LBL) {
 		this.addressQueue.push(address);
-		const label = new Label(NumberType.CODE_LBL);
+		const label = new Label(type);
 		this.labels.set(address, label);
+		(label.name as any) = name;	// allow undefined
 		// Check if out of range
 		const attr = this.memory.getAttributeAt(address);
 		if(!(attr & MemAttribute.ASSIGNED))
 			label.isEqu = true;
-
-		// TODO: use name
 	}
 
 
@@ -192,7 +222,7 @@ export class Disassembler extends EventEmitter {
 			// disassemble until stop-code
 			do {
 				// Trace address
-				console.log('collectLabels: address=' + Utility.getHexString(address) + 'h');
+				//console.log('collectLabels: address=' + Utility.getHexString(address) + 'h');
 
 				// Check if memory has already been disassembled
 				let attr = this.memory.getAttributeAt(address);
@@ -206,6 +236,7 @@ export class Disassembler extends EventEmitter {
 
 				// Read memory value
 				opcode = Opcode.getOpcodeAt(this.memory, address);
+				console.log(Utility.getHexString(address) + '\t' + opcode.disassemble(undefined, true))
 
 				// Check if memory area has already been PARTLY disassembled
 				const len = opcode.length;
@@ -240,10 +271,12 @@ export class Disassembler extends EventEmitter {
 
 				// Check for end of disassembly (JP, RET)
 			} while(!(opcode.flags & OpcodeFlag.STOP));
+
+			console.log('\n');
 		}
 
 		// Sort all labels by address
-		this.labels = new Map([...this.labels.entries()].sort());
+		this.labels = new Map([...this.labels.entries()].sort(([a], [b]) => a-b ));
 	}
 
 
@@ -305,7 +338,13 @@ export class Disassembler extends EventEmitter {
 			const attr = this.memory.getAttributeAt(branchAddress);
 
 			// Create new label or prioritize if label already exists
-			this.setFoundLabel(branchAddress, opcodeAddress, opcode.valueType, attr);
+			let vType = opcode.valueType;
+			if(vType == NumberType.CODE_RELATIVE_LBL) {
+				// A relative jump backwards will become a "loop"
+				if(branchAddress <= opcodeAddress)
+					vType = NumberType.CODE_RELATIVE_LOOP;
+			}
+			this.setFoundLabel(branchAddress, opcodeAddress, vType, attr);
 
 			// Check if code from the branching address has already been disassembled
 			if(attr & MemAttribute.CODE) {
@@ -358,9 +397,10 @@ export class Disassembler extends EventEmitter {
 		this.labelSubCount = 0;
 		this.labelLblCount = 0;
 		this.labelDataLblCount = 0;
+		this.labelSelfModifyingCount = 0;
 
 		// Loop through all labels
-		for( let [,label] of this.labels) {
+		for( let [address,label] of this.labels) {
 			switch(label.type) {
 				case NumberType.CODE_SUB:
 					this.labelSubCount++;
@@ -369,7 +409,13 @@ export class Disassembler extends EventEmitter {
 					this.labelLblCount++;
 				break;
 				case NumberType.DATA_LBL:
+				const memAttr = this.memory.getAttributeAt(address);
+				if(memAttr & MemAttribute.CODE) {
+					this.labelSelfModifyingCount++;
+				}
+				else {
 					this.labelDataLblCount++;
+				}
 				break;
 			}
 		}
@@ -378,6 +424,7 @@ export class Disassembler extends EventEmitter {
 		this.labelSubCountDigits = this.labelSubCount.toString().length;
 		this.labelLblCountDigits = this.labelLblCount.toString().length;
 		this.labelDataLblCountDigits = this.labelDataLblCount.toString().length;
+		this.labelSelfModifyingCountDigits = this.labelSelfModifyingCount.toString().length;
 	}
 
 
@@ -391,6 +438,7 @@ export class Disassembler extends EventEmitter {
 		let subIndex = 1;	// CODE_SUB
 		let lblIndex = 1;	// CODE_LBL
 		let dataLblIndex = 1;	// DATA_LBL
+		let dataSelfModifyingIndex = 1;	// SELF_MOD
 
 		// prefixes for the local labels are dependent on the surrounding code (e.g. sub routine)
 		let localPrefix = "lbl0";	// Just in case
@@ -400,11 +448,14 @@ export class Disassembler extends EventEmitter {
 		const relLoopLabels = new Array<Label>();
 
 		// Loop through all labels (labels is sorted by address)
-		for( let [,label] of this.labels) {
-			const type = label.type;
+		for( let [address,label] of this.labels) {
+			// Check if label was already set (e.g. from commandline)
+			if(label.name)
+				continue;
 
 			// Check for parent label
-			if(type == NumberType.CODE_SUB || type == NumberType.CODE_LBL) {
+			const type = label.type;
+			if(type == NumberType.CODE_SUB || type == NumberType.CODE_LBL || type == NumberType.CODE_RST) {
 				// process previous local labels
 				this.assignRelLabelNames(relLabels, parentLabel);
 				this.assignRelLabelNames(relLoopLabels, parentLabel);
@@ -432,13 +483,33 @@ export class Disassembler extends EventEmitter {
 					// Next
 					lblIndex++;
 				break;
-				case NumberType.DATA_LBL:
+				case NumberType.CODE_RST:
 					// Set name
-					label.name = this.labelDataLblPrefix + this.getIndex(dataLblIndex, this.labelDataLblCountDigits);
+					label.name = this.labelRstPrefix + Utility.fillDigits(address.toString(), '0', 2);
 					// Use for local prefix
 					localPrefix = '.' + label.name.toLowerCase();
 					// Next
-					dataLblIndex++;
+					lblIndex++;
+				break;
+				case NumberType.DATA_LBL:
+					// Check for self.modifying code
+					const memAttr = this.memory.getAttributeAt(address);
+					if(memAttr & MemAttribute.CODE) {
+						// Yes, is selfmodifying code.
+						// Set name
+						label.name = this.labelSelfModifyingPrefix + this.getIndex(dataSelfModifyingIndex, this.labelSelfModifyingCountDigits);
+						// Next
+						dataSelfModifyingIndex++;
+					}
+					else {
+						// Normal data area.
+						// Set name
+						label.name = this.labelDataLblPrefix + this.getIndex(dataLblIndex, this.labelDataLblCountDigits);
+						// Next
+						dataLblIndex++;
+					}
+					// Use for local prefix
+					// localPrefix = '.' + label.name.toLowerCase();
 				break;
 				case NumberType.CODE_RELATIVE_LOOP:
 					// Set name
@@ -494,20 +565,50 @@ export class Disassembler extends EventEmitter {
 	protected disassembleMemory(): Array<string> {
 		let lines = new Array<string>();
 
+		// Check if anything to disassemble
+		if(this.labels.size == 0)
+			return lines;
+
 		// Loop over all labels
-		let address = 0;
-		for(const [addr,] of this.labels) {
-			// Check if address has already been disassembled
-			if(addr < address)
-				continue;
-			// Check if it is a code label
+		let address = -1;
+		for(const [addr, label] of this.labels) {
+			// If first line, print ORG
+			if(address == -1) {
+				// First line
+				if(label.isEqu)
+					continue;	// Skip EQUs
+				// Print "ORG"
+				this.addEmptyLines(lines);
+				let org = '\tORG ' + addr + '\t; ' + Utility.getConversionForAddress(addr);
+				if(this.opcodesLowerCase)
+					org = org.toLowerCase();
+				lines.push(org);
+			}
+			else {
+				// Normal case. All other lines but first line.
+				// Check if address has already been disassembled
+				const defsSize = addr - address;
+				if(defsSize < 0)
+					continue;
+
+				// Check if there is a defs-area (e.g. an undefined are between 2 mem blocks)
+				if( defsSize > 0) {
+					// Print "DEFS"
+					this.addEmptyLines(lines);
+					let defsString = '\tDEFS ' + defsSize + '\t; ' + Utility.getHexString(defsSize) + 'h, undefined data';
+					if(this.opcodesLowerCase)
+						defsString = defsString.toLowerCase();
+					lines.push(defsString);
+				}
+			}
 
 			// Use address
 			address = addr;
+			let prevMemoryAttribute = 0;
 
 			// disassemble until stop-code
 			while(true) {
-				console.log('disMem: address=0x' + address.toString(16))
+				//console.log('disMem: address=0x' + address.toString(16))
 				// Check if memory has already been disassembled
 				let attr = this.memory.getAttributeAt(address);
 				if(!(attr & MemAttribute.ASSIGNED)) {
@@ -541,11 +642,11 @@ export class Disassembler extends EventEmitter {
 								const parentLabel = this.getParentLabel(addr);
 								if(parentLabel) {
 									// Add e.g. start of subroutine
-									s += '(in ' + parentLabel.name + ') ';
+									s += '(in ' + parentLabel.name + ')';
 								}
 								return s;
 							});
-							refLine = '; ' + refArray.toString();
+							refLine = '; ' + refArray.join(', ');
 							lines.push(refLine);
 						}
 					}
@@ -579,20 +680,21 @@ export class Disassembler extends EventEmitter {
 
 					// Next address
 					address += opcode.length;
-
-					// Stop diassembly?
-					if(opcode.flags & OpcodeFlag.STOP)
-						break;
 				}
 
 				else {
 					// DATA
+					if(!(prevMemoryAttribute & MemAttribute.DATA))
+						this.addEmptyLines(lines);
+
+					// Turn memory to data memory
+					attr |= MemAttribute.DATA;
 
 					// Read memory value at address
 					let memValue = this.memory.getValueAt(address);
 
 					// Disassemble the data line
-					let line = '\t defb ' + memValue.toString() + '\t; ' + Utility.getVariousConversionsForByte(memValue);
+					let line = '\tdefb ' + memValue.toString() + '\t; ' + Utility.getVariousConversionsForByte(memValue);
 
 					// Add address
 					if(this.startLinesWithAddress) {
@@ -604,13 +706,17 @@ export class Disassembler extends EventEmitter {
 
 					// Next address
 					address ++;
-
-					// Note:
-					// For data there is no stop-code. I.e. data is disassembled as long as there is no CODE area found. Then in the CODE area a stop-condition might be found.
 				}
 
+				// Check if the next address is not assigned and put out a comment
+				let attrEnd = this.memory.getAttributeAt(address);
+				if(!(attrEnd & MemAttribute.ASSIGNED)) {
+					lines.push('; End of assigned memory area');
+				}
+
+				prevMemoryAttribute = attr;
 				// Log
-				console.log('DISASSEMBLY: ' + lines[lines.length-1]);
+//				console.log('DISASSEMBLY: ' + lines[lines.length-1]);
 			}
 		}
 

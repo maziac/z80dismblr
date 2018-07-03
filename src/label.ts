@@ -79,6 +79,7 @@ export class Label {
 			case NumberType.NUMBER_WORD:	return "NUMBER_WORD";
 			case NumberType.NUMBER_WORD_BIG_ENDIAN:	return "NUMBER_WORD_BIG_ENDIAN";
 			case NumberType.DATA_LBL:	return "DATA_LBL";
+			//case NumberType.SELF_MODIFYING_CODE:	return "SELF_MODIFYING_CODE";
 			case NumberType.PORT_LBL:	return "PORT_LBL";
 		}
 		// Unknown

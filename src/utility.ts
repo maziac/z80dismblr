@@ -61,6 +61,19 @@ export class UtilityClass {
 
 
 	/**
+	 * Converts value to a hex address.
+	 * @param value The value to convert.
+	 * @returns A string with hex conversion, e.g. "FA20h"
+	 */
+	public getConversionForAddress(value: number): string {
+		// word
+		let result = this.getHexString(value) + 'h';
+		// return
+		return result;
+	}
+
+
+	/**
 	 * Puts together a few common conversions for a word value.
 	 * E.g. hex and decimal.
 	 * Used to create the comment for an EQU label.
@@ -69,7 +82,7 @@ export class UtilityClass {
 	 */
 	public getVariousConversionsForWord(wordValue: number): string {
 		// word
-		let result = this.getHexString(wordValue) + 'h';
+		let result = this.getConversionForAddress(wordValue);
 		// Negative?
 		let convValue = wordValue;
 		if(convValue >= 0x8000) {
