@@ -35,6 +35,23 @@ export class UtilityClass {
 
 
 	/**
+	 * Adds spaces to the end of the string until the given total length
+	 * is reached.
+	 * @param s The string.
+	 * @param totalLength The total filled length of the resulting string
+	 * @returns s + ' ' (several spaces)
+	 */
+	public addSpaces(s:string, totalLength: number): string {
+		const countString = s.length;
+		const repeat = totalLength - countString;
+		if(repeat <= 0)
+			return s;
+		const res = s + ' '.repeat(repeat);
+		return res;
+	}
+
+
+	/**
 	 * Puts together a few common conversions for a byte value.
 	 * E.g. hex, decimal and ASCII.
 	 * Used to create the comment for an opcode or a data label.

@@ -222,20 +222,16 @@ export class Opcode {
 	 * Disassembles one opcode together with a referenced label (if there
 	 * is one).
 	 * @param labels Array with all the labels.
-	 * @param opcodesLowerCase true if the opcodes should be printed lower case.
 	 * @returns A string that contains the disassembly, e.g. "LD A,(DATA_LBL1)"
 	 * or "JR Z,.sub1_lbl3".
 	 */
-	public disassemble(labels: Map<number, Label>, opcodesLowerCase: boolean) {
+	public disassemble(labels: Map<number, Label>): {mnemonic: string, comment: string} {
 		// optional comment
 		let comment = '';
 
 		// Check if there is any value
 		if(this.valueType == NumberType.NONE) {
-			let name = this.name;
-			if(opcodesLowerCase)
-				name = name.toLowerCase();
-			return name;
+			return {mnemonic: this.name, comment: this.comment};
 		}
 
 		// Get referenced label name
@@ -253,7 +249,7 @@ export class Opcode {
 				valueName = label.name;
 			else
 				valueName = val.toString();
-				comment = '\t; ' + Utility.getConversionForAddress(val);
+				comment = Utility.getConversionForAddress(val);
 		}
 		else if(this.valueType == NumberType.RELATIVE_INDEX) {
 			// E.g. in 'LD (IX+n),a'
@@ -268,20 +264,22 @@ export class Opcode {
 			// Add comment
 			if(this.valueType == NumberType.NUMBER_BYTE) {
 				// byte
-				comment = '\t; ' + Utility.getVariousConversionsForByte(val);
+				comment = Utility.getVariousConversionsForByte(val);
 			}
 			else {
 				// word
-				comment = '\t; ' + Utility.getVariousConversionsForWord(val);
+				comment = Utility.getVariousConversionsForWord(val);
 			}
 		}
 
 		// Disassemble
-		let name = this.name;
-		if(opcodesLowerCase)
-			name = name.toLowerCase();
-		const opCodeString = util.format(name, valueName) + this.comment + comment;
-		return opCodeString;
+		const opCodeString = util.format(this.name, valueName);
+		if(this.comment) {
+			if(comment.length > 0)
+				comment += ', '
+			comment += this.comment;
+		}
+		return {mnemonic: opCodeString, comment: comment};
 	}
 
 }
@@ -380,7 +378,7 @@ class OpcodeInvalid extends Opcode {
 class OpcodeNext extends Opcode {
 		constructor(code: number, name: string) {
 			super(code, name);
-			this.comment = '\t; ZX Next opcode'
+			this.comment = 'ZX Next opcode'
 		}
 }
 
@@ -404,13 +402,9 @@ class Opcode_n_n extends OpcodeNext {
 	}
 
 	/// Disassemble the 2 values.
-	public disassemble(labels: Map<number, Label>, opcodesLowerCase: boolean) {
-		const comment = '\t; ZX Next opcode';
-		let name = this.name;
-		if(opcodesLowerCase)
-			name = name.toLowerCase();
-		const opCodeString = util.format(name, this.value.toString(), this.value2.toString()) + comment;
-		return opCodeString;
+	public disassemble(labels: Map<number, Label>): {mnemonic: string, comment: string} {
+		const opCodeString = util.format(this.name, this.value.toString(), this.value2.toString());
+		return {mnemonic: opCodeString, comment: this.comment};
 	}
 }
 
