@@ -5,16 +5,47 @@ import { writeFileSync } from 'fs';
 //import { Warning } from '../warning';
 
 
+var dasm: any;
+
 
 suite('Disassembler', () => {
 
-	setup( () => {
-		//Settings.Init(<any>undefined, '');
+	/// Strip all labels, comments from the assembly.
+	function trimAllLines(lines: Array<string>): Array<string> {
+		const lines2 = new Array<string>();
+		for(let line of lines) {
+			// remove comment
+			const match = /(^.*:|^([0-9a-f]{4})?\s+([^;:]*).*|^[^\s].*)/.exec(line);
+			if(match)
+				line = match[3] || '';
+			line = line.trim();
+			// compress multiple spaces into one
+			line = line.replace(/\s\s+/g, ' ');
+			// Remove empty lines (labels)
+			if(line.length > 0)
+				lines2.push(line);
+		}
+		return lines2;
+	}
+
+
+	/// Called for each test.
+	setup(() => {
+		dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
+
+		dasm.labelSubPrefix = "SUB";
+		dasm.labelLblPrefix = "LBL";
+		dasm.labelDataLblPrefix = "DATA";
+		dasm.labelLocalLablePrefix = "_lbl";
+		dasm.labelLoopPrefix = "_loop";
+
+		dasm.startLinesWithAddress = false;
+		dasm.addOpcodeBytes = false;
+		dasm.opcodesLowerCase = false;
 	});
 
-/*
-	teardown( () => dc.stop() );
-*/
+	//teardown();
+
 
 	suite('General', () => {
 		test('Constructor', () => {
@@ -22,10 +53,10 @@ suite('Disassembler', () => {
 		});
 	});
 
+
 	suite('error conditions', () => {
 
 		test('Warning: trying to disassemble unassigned area', () => {
-			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
 			let warning = undefined;
 			dasm.on('warning', msg => {
 				warning = msg;
@@ -52,8 +83,6 @@ suite('Disassembler', () => {
 	suite('collectLabels', () => {
 
 		test('0 labels', () => {
-			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
-
 			dasm.on('warning', msg => {
 				assert(false);	// no warning should occur
 			});
@@ -73,8 +102,6 @@ suite('Disassembler', () => {
 		});
 
 		test('1 label', () => {
-			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
-
 			dasm.on('warning', msg => {
 				assert(false);	// no warnign should occur
 			});
@@ -95,8 +122,6 @@ suite('Disassembler', () => {
 		});
 
 		test('2 labels UNASSIGNED', () => {
-			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
-
 			const memory = [
 				0x3e, 0x01,			// LD a,1
 				0xc3, 0x00, 0x40,	// JP 0x4000
@@ -119,8 +144,6 @@ suite('Disassembler', () => {
 		});
 
 		test('2 labels ASSIGNED', () => {
-			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
-
 			const memory = [
 				0x3e, 0x01,			// LD a,1
 			// L1002:
@@ -144,8 +167,6 @@ suite('Disassembler', () => {
 		});
 
 		test('label types', () => {
-			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
-
 			const memory = [
 /*4000*/					// START:
 /*4000*/ 0x3e, 0x01,	    //     ld a,1
@@ -220,7 +241,7 @@ suite('Disassembler', () => {
 
 			label = dasm.labels.get(0x4018);
 			assert(label != undefined);
-			assert(label.type == NumberType.CODE_RELATIVE_LBL);
+			assert(label.type == NumberType.CODE_RELATIVE_LOOP);
 			assert(label.isEqu == false);
 
 			label = dasm.labels.get(0x401a);
@@ -248,7 +269,6 @@ suite('Disassembler', () => {
 			// Note: Regex to exchange list-output with bytes:
 			// find-pattern: ^([0-9a-f]+)\s+([0-9a-f]+)?\s+([0-9a-f]+)?\s+([0-9a-f]+)?\s?(.*)
 			// subst-pattern: /*$1*/ 0x$2, 0x$3, 0x$4,\t// $5
-			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
 
 			const memory = [
 /*5000*/ 					// STARTA1:
@@ -301,8 +321,6 @@ suite('Disassembler', () => {
 	suite('countTypesOfLabels', () => {
 
 		test('label types', () => {
-			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
-
 			const memory = [
 /*6000*/ 					// BCODE_START:
 /*6000*/ 0xca, 0x03, 0x60,	// 	    jp z,BCODE2
@@ -346,8 +364,6 @@ suite('Disassembler', () => {
 	suite('references', () => {
 
 		test('count references', () => {
-			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
-
 			const memory = [
 /*8000*/ 					// DSTART:
 /*8000*/ 0x00,				// 		nop
@@ -388,8 +404,6 @@ suite('Disassembler', () => {
 	suite('assignLabelNames', () => {
 
 		test('only absolute', () => {
-			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
-
 			const memory = [
 /*6000*/ 					// BCODE_START:
 /*6000*/ 0xca, 0x03, 0x60,	// 	    jp z,BCODE2
@@ -462,8 +476,6 @@ suite('Disassembler', () => {
 
 
 		test('also relative', () => {
-			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
-
 			const memory = [
 /*7000*/ 					// CCODE_START:
 /*7000*/ 0x28, 0x00,		// 		jr z,l1_rel1
@@ -490,7 +502,8 @@ suite('Disassembler', () => {
 
 			dasm.labelSubPrefix = "CSUB";
 			dasm.labelLblPrefix = "CCODE";
-			//dasm.labelDataLblPrefix = "CDATA";
+			dasm.labelLocalLablePrefix = "_l";
+			dasm.labelLoopPrefix = "_loop";
 
 			const org = 0x7000;
 			dasm.memory.setMemory(org, new Uint8Array(memory));
@@ -535,27 +548,8 @@ suite('Disassembler', () => {
 
 	suite('disassemble', () => {
 
-		/// Strip all labels, comments from the assembly.
-		function trimAllLines(lines: Array<string>): Array<string> {
-			const lines2 = new Array<string>();
-			for(let line of lines) {
-				// remove comment
-				const match = /(^.*:|^([0-9a-f]{4})?\s+([^;:]*).*|^[^\s].*)/.exec(line);
-				if(match)
-					line = match[3] || '';
-				line = line.trim();
-				// Remove empty lines (labels)
-				if(line.length > 0)
-					lines2.push(line);
-			}
-			return lines2;
-		}
-
 		test('combined opcodes', () => {
-			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
-
 			const memory = [
-
 				0xdd, 0x71, 0xf7,  // ld   (ix-9),c
 				0xdd, 0x70, 0xf8,  // ld   (ix-8),b
 				0xdd, 0x7e, 0xf7,  // ld   a,(ix-9)
@@ -577,8 +571,6 @@ suite('Disassembler', () => {
 			const org = 0x0000;
 			dasm.memory.setMemory(org, new Uint8Array(memory));
 			dasm.setLabel(org);
-			dasm.startLinesWithAddress = false;
-			dasm.opcodesLowerCase = false;
 			const linesUntrimmed = dasm.disassemble();
 
 			const lines = trimAllLines(linesUntrimmed);
@@ -606,8 +598,6 @@ suite('Disassembler', () => {
 
 
 		test('invalid opcodes', () => {
-			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
-
 			const memory = [
 				// invalid instruction
 				0xED, 0xCB,
@@ -618,21 +608,17 @@ suite('Disassembler', () => {
 			const org = 0x0000;
 			dasm.memory.setMemory(org, new Uint8Array(memory));
 			dasm.setLabel(org);
-			dasm.startLinesWithAddress = false;
-			dasm.opcodesLowerCase = false;
 			const linesUntrimmed = dasm.disassemble();
 
 			const lines = trimAllLines(linesUntrimmed);
 			//console.log(lines.join('\n'));
 
-			for(let i=0; i< lines.length; i++ )
+			for(let i=1; i<lines.length; i++ )
 				assert(lines[i] == 'INVALID INSTRUCTION');
 		});
 
 
 		test('nop opcodes', () => {
-			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
-
 			const memory = [
 				0xDD, 0xDD, 0x09,	// nop; add ix,bc
 				0xDD, 0xED, 0x40,	// nop; in b,(c)
@@ -671,8 +657,6 @@ suite('Disassembler', () => {
 
 
 		test('RST n', () => {
-			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
-
 			const memory = [
 				0xC7,	// RST 0
 				0xCF,	// RST 8
@@ -686,8 +670,6 @@ suite('Disassembler', () => {
 
 			const org = 0x1000;
 			dasm.setMemory(org, new Uint8Array(memory));
-			dasm.startLinesWithAddress = false;
-			dasm.opcodesLowerCase = false;
 			const linesUntrimmed = dasm.disassemble();
 
 			const lines = trimAllLines(linesUntrimmed);
@@ -707,8 +689,6 @@ suite('Disassembler', () => {
 
 
 		test('ZX Next opcodes', () => {
-			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
-
 			const memory = [
 				0xED, 0xA4,		// LDIX
 				0xED, 0xA5,		// LDWS
@@ -747,8 +727,6 @@ suite('Disassembler', () => {
 			const org = 0x0000;
 			dasm.memory.setMemory(org, new Uint8Array(memory));
 			dasm.setLabel(org);
-			dasm.startLinesWithAddress = false;
-			dasm.opcodesLowerCase = false;
 			const linesUntrimmed = dasm.disassemble();
 
 			const lines = trimAllLines(linesUntrimmed);
@@ -783,23 +761,16 @@ suite('Disassembler', () => {
 
 
 		test('simple', () => {
-			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
-
 			const memory = [
 /*8000*/ 0x3e, 0xfd,		// ld a,0xfd (-3)
 /*8002*/ 0x21, 0xdc, 0xfe,	// ld hl,0xfedc
 /*8005*/ 0xc9,	// ret
 			];
 
-			dasm.labelSubPrefix = "SUB";
-			dasm.labelLblPrefix = "LBL";
-			dasm.labelDataLblPrefix = "DATA";
-			dasm.labelLocalLablePrefix = "_lbl";
-			dasm.labelLoopPrefix = "_loop";
-
 			const org = 0x0000;
 			dasm.memory.setMemory(org, new Uint8Array(memory));
 			dasm.setLabel(org);
+			dasm.opcodesLowerCase = true;
 			const linesUntrimmed = dasm.disassemble();
 
 			const lines = trimAllLines(linesUntrimmed);
@@ -815,8 +786,6 @@ suite('Disassembler', () => {
 
 
 		test('more complex', () => {
-			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
-
 			const memory = [
 /*7000*/ 					// CCODE_START:
 /*7000*/ 0x28, 0x00,		// 		jr z,l1_rel1
@@ -862,11 +831,43 @@ suite('Disassembler', () => {
 
 
 
+
+	suite('several memories', () => {
+
+		test('2 areas', () => {
+			const memory1 = [
+				0xC7,	// RST 0
+			];
+
+			const memory2 = [
+				0xE7,	// RST 32
+			];
+
+			const org1 = 0x1000;
+			dasm.setMemory(org1, new Uint8Array(memory1));
+
+			const org2 = 0x2000;
+			dasm.setMemory(org2, new Uint8Array(memory2));
+
+			const linesUntrimmed = dasm.disassemble();
+
+			const lines = trimAllLines(linesUntrimmed);
+			//console.log(lines.join('\n'));
+
+			let i = -1;
+			assert(lines[++i] == 'ORG 4096')
+			assert(lines[++i] == 'RST 0')
+			assert(lines[++i] == 'DEFS 4095');
+			assert(lines[++i] == 'RST 32')
+		});
+
+	});
+
+
+
 	suite('complete binaries', () => {
 
 		test('currah', () => {
-			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
-
 			// configure
 			dasm.labelSubPrefix = "SUB";
 			dasm.labelLblPrefix = "LBL";
@@ -894,8 +895,6 @@ suite('Disassembler', () => {
 		});
 
 		test('sw', () => {
-			let dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
-
 			// configure
 			dasm.labelSubPrefix = "SUB";
 			dasm.labelLblPrefix = "LBL";
@@ -911,7 +910,7 @@ suite('Disassembler', () => {
 			// Disassemble
 			const lines = dasm.disassemble();
 
-			dasm.printLabels();
+			//dasm.printLabels();
 			//console.log(lines.join('\n'));
 			writeFileSync('./out/tests/out.asm', lines.join('\n'));
 

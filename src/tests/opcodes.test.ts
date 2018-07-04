@@ -208,7 +208,7 @@ suite('Opcodes', () => {
 		assert(Opcodes[0x20].valueType == NumberType.CODE_RELATIVE_LBL);
 
 		// DJNZ
-		assert(Opcodes[0x10].valueType == NumberType.CODE_RELATIVE_LOOP);
+		assert(Opcodes[0x10].valueType == NumberType.CODE_RELATIVE_LBL);
 
 		// RET
 		assert(Opcodes[0xC9].valueType == NumberType.NONE);
@@ -278,7 +278,7 @@ suite('Opcodes', () => {
 		assert(Opcodes[0xF7].value == 0x30);	// rst 30
 		assert(Opcodes[0xFF].value == 0x38);	// rst 38
 
-		assert(Opcodes[0xC7].flags & OpcodeFlag.STOP);
+		assert(!(Opcodes[0xC7].flags & OpcodeFlag.STOP));
 	});
 
 });

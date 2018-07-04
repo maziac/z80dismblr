@@ -69,6 +69,8 @@ export class Disassembler extends EventEmitter {
 	public clmnsOpcodeFirstPart = 4 + 1;	///< First part of the opcodes, e.g. "LD" in "LD A,7"
 	public clmsnOpcodeTotal = 5 + 6 + 1;		///< Total length of the opcodes. After this an optional comment may start.
 
+	/// For debugging:
+	protected DBG_COLLECT_LABELS = 0;
 
 	/**
 	 * Disassembles the  memory area.
@@ -199,7 +201,7 @@ export class Disassembler extends EventEmitter {
 			// Check if EQU
 			if(label.isEqu) {
 				// "Disassemble"
-				const line = label.name + ':\t EQU ' + Utility.fillDigits(address.toString(), ' ', 5) + '\t; ' + Utility.getVariousConversionsForWord(address);
+				const line =  Utility.addSpaces(label.name+':', this.clmnsBytes) + this.rightCase('EQU ') + Utility.fillDigits(address.toString(), ' ', 5) + ' ; ' + Utility.getVariousConversionsForWord(address);
 				// Store
 				lines.push(line);
 			}
@@ -229,9 +231,6 @@ export class Disassembler extends EventEmitter {
 			//console.log('address=0x' + address.toString(16));
 			// disassemble until stop-code
 			do {
-				// Trace address
-				//console.log('collectLabels: address=' + Utility.getHexString(address) + 'h');
-
 				// Check if memory has already been disassembled
 				let attr = this.memory.getAttributeAt(address);
 				if(attr & MemAttribute.CODE)
@@ -244,7 +243,8 @@ export class Disassembler extends EventEmitter {
 
 				// Read memory value
 				opcode = Opcode.getOpcodeAt(this.memory, address);
-				console.log(Utility.getHexString(address) + '\t' + opcode.disassemble(undefined, true).mnemonic)
+				if(this.DBG_COLLECT_LABELS)
+					console.log(Utility.getHexString(address) + '\t' + opcode.disassemble(undefined, true).mnemonic)
 
 				// Check if memory area has already been PARTLY disassembled
 				const len = opcode.length;
@@ -280,7 +280,8 @@ export class Disassembler extends EventEmitter {
 				// Check for end of disassembly (JP, RET)
 			} while(!(opcode.flags & OpcodeFlag.STOP));
 
-			console.log('\n');
+			if(this.DBG_COLLECT_LABELS)
+				console.log('\n');
 		}
 
 		// Sort all labels by address
@@ -587,10 +588,8 @@ export class Disassembler extends EventEmitter {
 					continue;	// Skip EQUs
 				// Print "ORG"
 				this.addEmptyLines(lines);
-				let org = '\tORG ' + addr + '\t; ' + Utility.getConversionForAddress(addr);
-				if(this.opcodesLowerCase)
-					org = org.toLowerCase();
-				lines.push(org);
+				const orgLine =  ' '.repeat(this.clmnsBytes) + this.rightCase('ORG ') + Utility.fillDigits(addr.toString(), ' ', 5) + ' ; ' + Utility.getConversionForAddress(addr);
+				lines.push(orgLine);
 			}
 			else {
 				// Normal case. All other lines but first line.
@@ -603,16 +602,16 @@ export class Disassembler extends EventEmitter {
 				if( defsSize > 0) {
 					// Print "DEFS"
 					this.addEmptyLines(lines);
-					let defsString = '\tDEFS ' + defsSize + '\t; ' + Utility.getHexString(defsSize) + 'h, undefined data';
-					if(this.opcodesLowerCase)
-						defsString = defsString.toLowerCase();
-					lines.push(defsString);
+					const defsString = this.rightCase('DEFS ') + defsSize;
+					const comment = Utility.getHexString(defsSize) + 'h, undefined data';
+					let line = this.formatDisassembly(address, 0, defsString, comment);
+					lines.push(line);
 				}
 			}
 
 			// Use address
 			address = addr;
-			let prevMemoryAttribute = 0;
+			let prevMemoryAttribute = MemAttribute.DATA;
 
 			// disassemble until stop-code
 			while(true) {
@@ -662,7 +661,7 @@ export class Disassembler extends EventEmitter {
 					// Add label on separate line
 					let labelLine = addrLabel.name + ':';
 					if(this.startLinesWithAddress) {
-						labelLine =  Utility.getHexString(address) + '\t' + labelLine;
+						labelLine =   Utility.addSpaces(Utility.getHexString(address), this.clmsAddress)+ labelLine;
 					}
 					lines.push(labelLine);
 				}
@@ -695,7 +694,7 @@ export class Disassembler extends EventEmitter {
 					let memValue = this.memory.getValueAt(address);
 
 					// Disassemble the data line
-					let mainString = 'defb ' + memValue.toString();
+					let mainString = this.rightCase('DEFB ') + memValue;
 					let comment = Utility.getVariousConversionsForByte(memValue);
 					line = this.formatDisassembly(address, 1, mainString, comment);
 
@@ -757,10 +756,7 @@ export class Disassembler extends EventEmitter {
 		arr[0] = Utility.addSpaces(arr[0], this.clmnsOpcodeFirstPart-1);	// 1 is added anyway when joining
 		let resMainString = arr.join(' ');
 		resMainString = Utility.addSpaces(resMainString+' ', this.clmsnOpcodeTotal);
-		// Lowercase?
-		if(this.opcodesLowerCase)
-			resMainString = resMainString.toLowerCase();
-		line += resMainString;
+		line +=  this.rightCase(resMainString);
 
 		// Add comment
 		if(commentString && commentString.length > 0) {
@@ -816,6 +812,18 @@ export class Disassembler extends EventEmitter {
 		}
 	}
 
+
+	/**
+	 * Depending on 'opcodesLowerCase' the given string will be changed to lowercase.
+	 * @param s The string to convert. Must be in upper case.
+	 * @returns The same string or the lowercased string.
+	 */
+	protected rightCase(s: string): string {
+		// Lowercase?
+		if(this.opcodesLowerCase)
+			return s.toLowerCase();
+		return s;
+	}
 }
 
 
