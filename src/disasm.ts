@@ -17,6 +17,9 @@ export class Disassembler extends EventEmitter {
 	/// The labels.
 	protected labels = new Map<number,Label>();
 
+	/// Temporarily offset labels. Just an offset number ot the address of the real label.
+	protected offsetLabels = new Map<number,number>();
+
 	// An array with the (sorted) addresses for all labels
 	//protected sortedParentLabelAddresses = new Array<number>();
 
@@ -87,16 +90,19 @@ export class Disassembler extends EventEmitter {
 		// 1. Pass: Collect labels
 		this.collectLabels();
 
-		// 2. Count number of types of labels
+		// 2. Find self-modifying code
+		this.adjustSelfModifyingLabels();
+
+		// 3. Count number of types of labels
 		this.countTypesOfLabels();
 
-		// 3. Assign label names
+		// 4. Assign label names
 		this.assignLabelNames();
 
-		// 4. Pass: Disassemble opcode with label names
+		// 5. Pass: Disassemble opcode with label names
 		const disLines = this.disassembleMemory();
 
-		// 4. Add all EQU labels to the beginning of the disassembly
+		// 6. Add all EQU labels to the beginning of the disassembly
 		const lines = this.getEquLabelsDisassembly();
 
 		// Add the real disassembly
@@ -302,11 +308,11 @@ export class Disassembler extends EventEmitter {
 	/**
 	 * Sets or creates a label and sets its type.
 	 * @param address The address for the label.
-	 * @param opcodeAddress The address that references the label.
+	 * @param referenceAddresses Array with addresses that reference the label. Usually only the opcode address.
 	 * @param type The LabelType.
 	 * @param attr The memory attribute at address.
 	 */
-	protected setFoundLabel(address: number, opcodeAddress: number, type: NumberType, attr: MemAttribute) {
+	protected setFoundLabel(address: number, referenceAddresses: number[], type: NumberType, attr: MemAttribute) {
 		// Check if label already exists
 		let label = this.labels.get(address);
 		if(label) {
@@ -324,7 +330,7 @@ export class Disassembler extends EventEmitter {
 		}
 
 		// Add reference
-		label.references.push(opcodeAddress);
+		label.references.push(...referenceAddresses);
 	}
 
 
@@ -353,7 +359,7 @@ export class Disassembler extends EventEmitter {
 				if(branchAddress <= opcodeAddress)
 					vType = NumberType.CODE_RELATIVE_LOOP;
 			}
-			this.setFoundLabel(branchAddress, opcodeAddress, vType, attr);
+			this.setFoundLabel(branchAddress, [opcodeAddress], vType, attr);
 
 			// Check if code from the branching address has already been disassembled
 			if(attr & MemAttribute.CODE) {
@@ -386,11 +392,60 @@ export class Disassembler extends EventEmitter {
 			const attr = this.memory.getAttributeAt(address);
 
 			// Create new label or prioritize if label already exists
-			this.setFoundLabel(address, opcodeAddress, opcode.valueType, attr);
+			this.setFoundLabel(address, [opcodeAddress], opcode.valueType, attr);
 		}
 
 		// Everything fine
 		return true;
+	}
+
+
+	/**
+	 * Finds data labels that point into code areas.
+	 * If the pointer points to the start of the opcode nothing needs to be done here.
+	 * Everything is handled by the assignLabelNames method.
+	 * But if the pointer points into the middle of an instruction the label
+	 * need to be adjusted:
+	 * 1. The current label is exchanged with an offset label
+	 * 2. Another label is created at the start of the opcode.
+	 */
+	protected adjustSelfModifyingLabels() {
+		const changeMap = new Map<number,Label>();
+
+		// Loop through all labels
+		for( let [address, label] of this.labels) {
+			switch(label.type) {
+				case NumberType.DATA_LBL:
+					const memAttr = this.memory.getAttributeAt(address);
+					if(memAttr & MemAttribute.CODE) {
+						if(!(memAttr & MemAttribute.CODE_FIRST)) {
+							// Hit in the middle of an opcode.
+							// Remember to change:
+							changeMap.set(address, label);
+						}
+					}
+				break;
+			}
+		}
+
+		// Now change labels in original map
+		for( let [address, label] of changeMap) {
+			// Search start of opcode.
+			let addrStart = address;
+			let attr;
+			do {
+				addrStart--;
+				assert(address - addrStart <= 4);	// Opcode should be smaller than 5 bytes
+				attr = this.memory.getAttributeAt(addrStart);
+			} while(!(attr & MemAttribute.CODE_FIRST));
+			// Use label and put it to the new address
+			this.setFoundLabel(addrStart, label.references, label.type, attr);
+			// Remove old label
+			this.labels.delete(address);
+			// Add offset label
+			const offs = addrStart - address;	// negative
+			this.offsetLabels.set(address, offs);
+		}
 	}
 
 
@@ -418,13 +473,13 @@ export class Disassembler extends EventEmitter {
 					this.labelLblCount++;
 				break;
 				case NumberType.DATA_LBL:
-				const memAttr = this.memory.getAttributeAt(address);
-				if(memAttr & MemAttribute.CODE) {
-					this.labelSelfModifyingCount++;
-				}
-				else {
-					this.labelDataLblCount++;
-				}
+					const memAttr = this.memory.getAttributeAt(address);
+					if(memAttr & MemAttribute.CODE) {
+						this.labelSelfModifyingCount++;
+					}
+					else {
+						this.labelDataLblCount++;
+					}
 				break;
 			}
 		}
@@ -472,7 +527,7 @@ export class Disassembler extends EventEmitter {
 				relLoopLabels.length = 0;
 				// Store new
 				parentLabel = label;
-		}
+			}
 
 			// Process label
 			switch(type) {
@@ -504,7 +559,8 @@ export class Disassembler extends EventEmitter {
 					// Check for self.modifying code
 					const memAttr = this.memory.getAttributeAt(address);
 					if(memAttr & MemAttribute.CODE) {
-						// Yes, is selfmodifying code.
+						assert(memAttr & MemAttribute.CODE_FIRST);
+						// Yes, is self-modifying code.
 						// Set name
 						label.name = this.labelSelfModifyingPrefix + this.getIndex(dataSelfModifyingIndex, this.labelSelfModifyingCountDigits);
 						// Next
@@ -676,7 +732,7 @@ export class Disassembler extends EventEmitter {
 					const opcode = Opcode.getOpcodeAt(this.memory, address);
 
 					// Disassemble the single opcode
-					const opCodeDescription = opcode.disassemble(this.labels);
+					const opCodeDescription = opcode.disassemble(this.labels, this.offsetLabels);
 					line = this.formatDisassembly(address, opcode.length, opCodeDescription.mnemonic, opCodeDescription.comment);
 
 					addAddress = opcode.length;

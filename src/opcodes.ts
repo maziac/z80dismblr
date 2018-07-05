@@ -222,10 +222,11 @@ export class Opcode {
 	 * Disassembles one opcode together with a referenced label (if there
 	 * is one).
 	 * @param labels Array with all the labels.
+	 * @param offsetLabels Array with offsets for the self modifying code.
 	 * @returns A string that contains the disassembly, e.g. "LD A,(DATA_LBL1)"
 	 * or "JR Z,.sub1_lbl3".
 	 */
-	public disassemble(labels: Map<number, Label>): {mnemonic: string, comment: string} {
+	public disassemble(labels: Map<number,Label>, offsetLabels: Map<number,number>): {mnemonic: string, comment: string} {
 		// optional comment
 		let comment = '';
 
@@ -239,14 +240,35 @@ export class Opcode {
 		if(this.valueType == NumberType.CODE_LBL
 			|| this.valueType == NumberType.CODE_RELATIVE_LBL
 			|| this.valueType == NumberType.CODE_RELATIVE_LOOP
-			|| this.valueType == NumberType.CODE_SUB
-			|| this.valueType == NumberType.DATA_LBL) {
+			|| this.valueType == NumberType.CODE_SUB) {
 			const val = this.value;
 			let label;
 			if(labels)
 				label = labels.get(val);
 			if(label)
 				valueName = label.name;
+			else
+				valueName = val.toString();
+				comment = Utility.getConversionForAddress(val);
+		}
+		else if(this.valueType == NumberType.DATA_LBL) {
+			const val = this.value;
+			let label;
+			let offsString = '';
+			if(labels)
+				label = labels.get(val);
+			if(!label) {
+				// Check for offset label
+				assert(this.valueType == NumberType.DATA_LBL);
+				const offs = offsetLabels.get(val);
+				if(offs) {
+					label = labels.get(val+offs);
+					if(label)
+						offsString = (offs > 0) ? ''+(-offs) : '+'+(-offs);
+				}
+			}
+			if(label)
+				valueName = label.name + offsString;
 			else
 				valueName = val.toString();
 				comment = Utility.getConversionForAddress(val);

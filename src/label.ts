@@ -85,5 +85,12 @@ export class Label {
 		// Unknown
 		assert(false);
 	}
-}
 
+
+	/**
+	 * @returns The label name.
+	 */
+	public getName() {
+		return this.name;
+	}
+}
