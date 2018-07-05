@@ -905,7 +905,7 @@ suite('Disassembler', () => {
 			dasm.labelLoopPrefix = "_loop";
 
 			const org = 0x8000;
-			dasm.memory.readBinFile(org, './src/tests/data/currah.bin');
+			dasm.readBinFile(org, './src/tests/data/currah.bin');
 			dasm.setLabel(org);
 
 			// Set the 3 call tables
@@ -930,9 +930,40 @@ suite('Disassembler', () => {
 			dasm.labelDataLblPrefix = "DATA";
 			dasm.labelLocalLablePrefix = "_lbl";
 			dasm.labelLoopPrefix = "_loop";
+			dasm.startLinesWithAddress = true;
+			dasm.addOpcodeBytes = true;
 
 			const org = 0x4000;
 			dasm.memory.readBinFile(org, './src/tests/data/sw.obj');
+			dasm.setLabel(0xA660, "LBL_MAIN");
+			dasm.setLabel(0xA5F7, "LBL_MAIN_INTERRUPT");
+
+			// Disassemble
+			const lines = dasm.disassemble();
+
+			//dasm.printLabels();
+			//console.log(lines.join('\n'));
+			writeFileSync('./out/tests/out.asm', lines.join('\n'));
+
+			// There is no special check, basically just that it does not crash.
+			assert(lines.length > 1000);
+		});
+
+    });
+
+	suite('complete sna files', () => {
+
+
+		test('sw', () => {
+			//return;
+			// configure
+			dasm.labelSubPrefix = "SUB";
+			dasm.labelLblPrefix = "LBL";
+			dasm.labelDataLblPrefix = "DATA";
+			dasm.labelLocalLablePrefix = "_lbl";
+			dasm.labelLoopPrefix = "_loop";
+
+			dasm.readSnaFile('./src/tests/data/sw.sna');
 			dasm.setLabel(0xA660, "LBL_MAIN");
 			dasm.setLabel(0xA5F7, "LBL_MAIN_INTERRUPT");
 

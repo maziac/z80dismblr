@@ -138,8 +138,22 @@ export class Disassembler extends EventEmitter {
 	 * @param path The file path to a binary file.
 	 */
 	public readBinFile(origin: number, path: string) {
-		let bin = readFileSync(path);
+		const bin = readFileSync(path);
 		this.setMemory(origin, bin);
+	}
+
+	/**
+	 * Reads a .sna (ZX snapshot) file directly. Takes the start address from the .sna file.
+	 * @param path The file path to a binary file.
+	 */
+	public readSnaFile(path: string) {
+		let sna = readFileSync(path);
+		const header = sna.slice(0, 27);
+		const bin = sna.slice(27);
+		// Read start address
+		const sp = header[23] + 256*header[24];	// Stackpointer
+		const start = bin[sp-0x4000] + 256*bin[sp-1-0x4000];	// Get start address from stack
+		this.setMemory(start, bin);
 	}
 
 
@@ -369,7 +383,8 @@ export class Disassembler extends EventEmitter {
 					let branchOpcodeAddress = branchAddress;
 					do {	// Find start of opcode.
 						branchOpcodeAddress --;
-						assert(branchAddress-branchOpcodeAddress > 4, 'Internal error: Could not find start of opcode.');
+						if(branchAddress-branchOpcodeAddress > 4)
+							assert(false, 'Internal error: Could not find start of opcode.');
 					} while(!(this.memory.getAttributeAt(branchOpcodeAddress) & MemAttribute.CODE_FIRST));
 					// Get opcode to branch to
 					const branchOpcode = Opcode.getOpcodeAt(this.memory, branchOpcodeAddress);
