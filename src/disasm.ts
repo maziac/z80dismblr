@@ -76,6 +76,34 @@ export class Disassembler extends EventEmitter {
 	/// For debugging:
 	protected DBG_COLLECT_LABELS = 0;
 
+
+	/**
+	 * Initializes the Opcode formatting.
+	 */
+	constructor() {
+		super();
+		Opcode.setConvertToLabelHandler(value => {
+			let valueName;
+			let label;
+			let offsString = '';
+			if(this.labels)
+				label = this.labels.get(value);
+			if(!label) {
+				// Check for offset label
+				const offs = this.offsetLabels.get(value);
+				if(offs) {
+					label = this.labels.get(value+offs);
+					if(label)
+						offsString = (offs > 0) ? ''+(-offs) : '+'+(-offs);
+				}
+			}
+			if(label)
+				valueName = label.name + offsString;
+			return valueName;
+		});
+	}
+
+
 	/**
 	 * Disassembles the  memory area.
 	 * Disassembly is done in a few passes.
@@ -754,7 +782,7 @@ export class Disassembler extends EventEmitter {
 					const opcode = Opcode.getOpcodeAt(this.memory, address);
 
 					// Disassemble the single opcode
-					const opCodeDescription = opcode.disassemble(this.labels, this.offsetLabels);
+					const opCodeDescription = opcode.disassemble();
 					line = this.formatDisassembly(address, opcode.length, opCodeDescription.mnemonic, opCodeDescription.comment);
 
 					addAddress = opcode.length;

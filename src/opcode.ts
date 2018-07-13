@@ -2,7 +2,6 @@ import * as util from 'util';
 import * as assert from 'assert';
 import { Memory } from './memory';
 import { NumberType } from './numbertype'
-import { Label } from './label'
 import { Utility } from './utility';
 
 
@@ -37,6 +36,37 @@ export class Opcode {
 	/// The value (if any) used in the opcode, e.g. nn in "LD HL,nn"
 	/// Is only a temporary value, decoded for the current instruction.
 	public value: number;
+
+
+	/**
+	 * Sets the handler to convert a number into a label string.
+	 * If handler is undefined then value will not be converted, i.e. it remains
+	 * a hex value.
+	 * @param handler Gets the value and should return a string with the label.
+	 * If label string does not exist it can return undefinde and the value will be converted into a hex string.
+	 */
+	public static setConvertToLabelHandler(handler: (value: number)=>string) {
+		Opcode.convertToLabelHandler = handler;
+	}
+
+	/// The static member that holds the label converter handler.
+	protected static convertToLabelHandler: (value: number)=>string;
+
+
+	/// Converts a value to a label or a hex string.
+	protected static convertToLabel(value: number): string {
+		let valueString;
+		if(Opcode.convertToLabelHandler)
+			valueString = Opcode.convertToLabelHandler(value);
+		if(!valueString)
+			valueString = value.toString();
+		return valueString;
+	}
+
+
+	/// If true comments might be added to the opcode.
+	/// I.e. the hex, decimal etc. conversion of  value.
+	public static enableComments = true;
 
 
 	/**
@@ -227,7 +257,7 @@ export class Opcode {
 	 * @returns A string that contains the disassembly, e.g. "LD A,(DATA_LBL1)"
 	 * or "JR Z,.sub1_lbl3".
 	 */
-	public disassemble(labels: Map<number,Label>, offsetLabels: Map<number,number>): {mnemonic: string, comment: string} {
+	public disassemble(): {mnemonic: string, comment: string} {
 		// optional comment
 		let comment = '';
 
@@ -243,36 +273,14 @@ export class Opcode {
 			|| this.valueType == NumberType.CODE_RELATIVE_LOOP
 			|| this.valueType == NumberType.CODE_SUB) {
 			const val = this.value;
-			let label;
-			if(labels)
-				label = labels.get(val);
-			if(label)
-				valueName = label.name;
-			else
-				valueName = val.toString();
-				comment = Utility.getConversionForAddress(val);
+			valueName = Opcode.convertToLabel(val);
+			comment = Utility.getConversionForAddress(val);
 		}
 		else if(this.valueType == NumberType.DATA_LBL) {
+			// TODO: can be moved to "if" above.
 			const val = this.value;
-			let label;
-			let offsString = '';
-			if(labels)
-				label = labels.get(val);
-			if(!label) {
-				// Check for offset label
-				assert(this.valueType == NumberType.DATA_LBL);
-				const offs = offsetLabels.get(val);
-				if(offs) {
-					label = labels.get(val+offs);
-					if(label)
-						offsString = (offs > 0) ? ''+(-offs) : '+'+(-offs);
-				}
-			}
-			if(label)
-				valueName = label.name + offsString;
-			else
-				valueName = val.toString();
-				comment = Utility.getConversionForAddress(val);
+			valueName = Opcode.convertToLabel(val);
+			comment = Utility.getConversionForAddress(val);
 		}
 		else if(this.valueType == NumberType.RELATIVE_INDEX) {
 			// E.g. in 'LD (IX+n),a'
@@ -297,11 +305,19 @@ export class Opcode {
 
 		// Disassemble
 		const opCodeString = util.format(this.name, valueName);
-		if(this.comment) {
-			if(comment.length > 0)
-				comment += ', '
-			comment += this.comment;
+
+		if(Opcode.enableComments) {
+			if(this.comment) {
+				if(comment.length > 0)
+					comment += ', '
+				comment += this.comment;
+			}
 		}
+		else {
+			// no comment
+			comment = '';
+		}
+
 		return {mnemonic: opCodeString, comment: comment};
 	}
 
@@ -425,7 +441,7 @@ class Opcode_n_n extends OpcodeNext {
 	}
 
 	/// Disassemble the 2 values.
-	public disassemble(labels: Map<number, Label>): {mnemonic: string, comment: string} {
+	public disassemble(): {mnemonic: string, comment: string} {
 		const opCodeString = util.format(this.name, this.value.toString(), this.value2.toString());
 		return {mnemonic: opCodeString, comment: this.comment};
 	}
