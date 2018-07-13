@@ -23,7 +23,7 @@ export class Disassembler extends EventEmitter {
 	// An array with the (sorted) addresses for all labels
 	//protected sortedParentLabelAddresses = new Array<number>();
 
-	/// Queue for start addresses.
+	/// Queue for start addresses only addresses of opcodes
 	protected addressQueue = new Array<number>();
 
 	/// Choose opcodes in lower or upper case.
@@ -153,7 +153,9 @@ export class Disassembler extends EventEmitter {
 		// Read start address
 		const sp = header[23] + 256*header[24];	// Stackpointer
 		const start = bin[sp-0x4000] + 256*bin[sp-1-0x4000];	// Get start address from stack
-		this.setMemory(start, bin);
+		this.setMemory(0x4000, bin);
+		// Set start label
+		this.setLabel(start, 'LBL_MAIN_START_'+start, NumberType.CODE_LBL);
 	}
 
 
@@ -168,14 +170,24 @@ export class Disassembler extends EventEmitter {
 	 * @param type of the label. Default is CODE_LBL.
 	 */
 	public setLabel(address: number, name?: string, type = NumberType.CODE_LBL) {
-		this.addressQueue.push(address);
 		const label = new Label(type);
 		this.labels.set(address, label);
 		(label.name as any) = name;	// allow undefined
 		// Check if out of range
 		const attr = this.memory.getAttributeAt(address);
-		if(!(attr & MemAttribute.ASSIGNED))
+		if(attr & MemAttribute.ASSIGNED) {
+			if(type == NumberType.CODE_LBL
+				|| type == NumberType.CODE_RELATIVE_LBL
+				|| type == NumberType.CODE_RELATIVE_LOOP
+				|| type == NumberType.CODE_RST
+				|| type == NumberType.CODE_SUB
+			)
+				this.addressQueue.push(address);
+		}
+		else {
+			// out of range -> EQU
 			label.isEqu = true;
+		}
 	}
 
 

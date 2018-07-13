@@ -669,6 +669,7 @@ suite('Disassembler', () => {
 
 			const org = 0x1000;
 			dasm.setMemory(org, new Uint8Array(memory));
+			dasm.setLabel(org);
 			const linesUntrimmed = dasm.disassemble();
 
 			const lines = trimAllLines(linesUntrimmed);
@@ -874,9 +875,11 @@ suite('Disassembler', () => {
 
 			const org1 = 0x1000;
 			dasm.setMemory(org1, new Uint8Array(memory1));
+			dasm.setLabel(org1);
 
 			const org2 = 0x2000;
 			dasm.setMemory(org2, new Uint8Array(memory2));
+			dasm.setLabel(org2);
 
 			const linesUntrimmed = dasm.disassemble();
 
@@ -953,7 +956,6 @@ suite('Disassembler', () => {
 
 	suite('complete sna files', () => {
 
-
 		test('sw', () => {
 			//return;
 			// configure
@@ -963,8 +965,10 @@ suite('Disassembler', () => {
 			dasm.labelLocalLablePrefix = "_lbl";
 			dasm.labelLoopPrefix = "_loop";
 
+			dasm.startLinesWithAddress = true;
+			dasm.addOpcodeBytes = true;
+
 			dasm.readSnaFile('./src/tests/data/sw.sna');
-			dasm.setLabel(0xA660, "LBL_MAIN");
 			dasm.setLabel(0xA5F7, "LBL_MAIN_INTERRUPT");
 
 			// Disassemble
