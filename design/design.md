@@ -1,4 +1,4 @@
-# SW Design
+# Z80DISMBLR SW Design
 
 ## Overview
 
@@ -16,7 +16,7 @@
 └──────────────┘   └──────────────┘  └──────────────┘   └──────────┘
 ~~~~
 
-**Disassembler**: The main program. Does step through the process shown in the flow diagram below.
+**Disassembler**: The main class. Does step through the process shown in the flow diagram below.
 
 **Memory**: The bin file is loaded here. Several memory areas are possible.
 
