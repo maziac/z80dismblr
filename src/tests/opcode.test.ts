@@ -1,10 +1,10 @@
 import * as assert from 'assert';
-import { Opcodes, OpcodesCB, OpcodesDD, OpcodesED, OpcodesFD, OpcodesFDCB, OpcodeFlag, OpcodesDDCB } from '../opcodes';
-import { NumberType } from '../label';
+import { Opcodes, OpcodesCB, OpcodesDD, OpcodesED, OpcodesFD, OpcodesFDCB, OpcodeFlag, OpcodesDDCB } from '../opcode';
+import { NumberType } from '../numbertype';
 
 
 
-suite('Opcodes', () => {
+suite('Opcode', () => {
 
 	setup( () => {
 		//Settings.Init(<any>undefined, '');

@@ -1,7 +1,8 @@
 import * as util from 'util';
 import * as assert from 'assert';
 import { Memory } from './memory';
-import { Label, NumberType } from './label'
+import { NumberType } from './numbertype'
+import { Label } from './label'
 import { Utility } from './utility';
 
 

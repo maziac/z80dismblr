@@ -1,8 +1,9 @@
 //import * as util from 'util';
 import * as assert from 'assert';
 import { Memory, MemAttribute } from './memory';
-import { Opcode, OpcodeFlag } from './opcodes';
-import { Label, NumberType } from './label';
+import { Opcode, OpcodeFlag } from './opcode';
+import { NumberType } from './numbertype'
+import { Label } from './label'
 import { EventEmitter } from 'events';
 import { Utility } from './utility';
 import { readFileSync } from 'fs';
@@ -77,13 +78,7 @@ export class Disassembler extends EventEmitter {
 
 	/**
 	 * Disassembles the  memory area.
-	 * Disassembly is done in a few passes:
-	 * 1. Pass: Retrieve labels
-	 * 	- Prioritize labels
-	 *  - find number ranges for labels
-	 * 2. Pass: Disassemble
-	 * 	- disassemble opcode
-	 *  - add label to opcode
+	 * Disassembly is done in a few passes.
 	 * @returns An array of strings with the disassembly.
 	 */
 	public disassemble(): Array<string> {
