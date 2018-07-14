@@ -9,7 +9,6 @@ import { Format } from './format';
 import { readFileSync } from 'fs';
 
 
-
 export class Disassembler extends EventEmitter {
 
 	/// The memory area to disassemble.
@@ -68,7 +67,7 @@ export class Disassembler extends EventEmitter {
 	protected labelSelfModifyingCount;
 
 	/// Column areas. e.g. area for the bytes shown before each command
-	public clmsAddress = 5;		///< size for the starting address (if any)
+	public clmnsAddress = 5;		///< size for the starting address (if any)
 	public clmnsBytes = 4*3 + 1;	///< 4* length of hex-byte
 	public clmnsOpcodeFirstPart = 4 + 1;	///< First part of the opcodes, e.g. "LD" in "LD A,7"
 	public clmsnOpcodeTotal = 5 + 6 + 1;		///< Total length of the opcodes. After this an optional comment may start.
@@ -767,7 +766,7 @@ export class Disassembler extends EventEmitter {
 					// Add label on separate line
 					let labelLine = addrLabel.name + ':';
 					if(this.startLinesWithAddress) {
-						labelLine =   Format.addSpaces(Format.getHexString(address), this.clmsAddress)+ labelLine;
+						labelLine = Format.addSpaces(Format.getHexString(address), this.clmnsAddress)+ labelLine;
 					}
 					lines.push(labelLine);
 				}
@@ -839,38 +838,9 @@ export class Disassembler extends EventEmitter {
 	 * @param commentString An optional comment string.
 	 */
 	protected formatDisassembly(address: number, size: number, mainString: string, commentString?: string): string {
-		let line = '';
-
-		// Add address field?
-		if(this.startLinesWithAddress) {
-			line = Format.addSpaces(Format.getHexString(address)+' ', this.clmsAddress);
-		}
-
-		// Add bytes of opcode?
-		let bytesString = '';
-		if(this.addOpcodeBytes) {
-			for(let i=0; i<size; i++) {
-				const memVal = this.memory.getValueAt(address+i);
-				bytesString += Format.getHexString(memVal, 2) + ' ';
-			}
-		}
-		line += Format.addSpaces(bytesString, this.clmnsBytes);
-
-		// Add opcode (or defb)
-		const arr = mainString.split(' ');
-		assert(arr.length > 0);
-		arr[0] = Format.addSpaces(arr[0], this.clmnsOpcodeFirstPart-1);	// 1 is added anyway when joining
-		let resMainString = arr.join(' ');
-		resMainString = Format.addSpaces(resMainString+' ', this.clmsnOpcodeTotal);
-		line +=  this.rightCase(resMainString);
-
-		// Add comment
-		if(commentString && commentString.length > 0) {
-			line += '; ' + commentString;
-		}
-
-		// return
-		return line;
+		const memory = (this.addOpcodeBytes) ? this.memory : undefined;
+		const clmnsAddress = (this.startLinesWithAddress) ? this.clmnsAddress : 0;
+		return Format.formatDisassembly(memory, this.opcodesLowerCase, clmnsAddress, this.clmnsBytes, this.clmnsOpcodeFirstPart, this.clmsnOpcodeTotal, address, size, mainString, commentString);
 	}
 
 
