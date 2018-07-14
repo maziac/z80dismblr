@@ -2,7 +2,7 @@
 //var assert = require('assert');
 
 
-export class Utility {
+export class Format {
 
 	/// Choose opcodes in lower or upper case.
 	public static hexNumbersLowerCase = false;
@@ -15,9 +15,9 @@ export class Utility {
 	 */
 	public static getHexString(value:number, countDigits = 4): string {
 		let s = value.toString(16);
-		if(!Utility.hexNumbersLowerCase)
+		if(!Format.hexNumbersLowerCase)
 			s = s.toUpperCase();
-		return Utility.fillDigits(s, '0', countDigits);
+		return Format.fillDigits(s, '0', countDigits);
 	}
 
 
@@ -62,12 +62,12 @@ export class Utility {
 		// byte
 		if(byteValue < 0)
 			byteValue = 0x100 + byteValue;
-		let result = Utility.getHexString(byteValue, 2) + "h";
+		let result = Format.getHexString(byteValue, 2) + "h";
 		// Negative?
 		let convValue = byteValue;
 		if(convValue >= 0x80) {
 			convValue -= 0x100;
-			result += ', ' + Utility.fillDigits(convValue.toString(), ' ', 4);
+			result += ', ' + Format.fillDigits(convValue.toString(), ' ', 4);
 		}
 		// Check for ASCII
 		if(byteValue >= 32 /*space*/ && byteValue <= 126 /*tilde*/)
@@ -84,7 +84,7 @@ export class Utility {
 	 */
 	public static getConversionForAddress(value: number): string {
 		// word
-		let result = Utility.getHexString(value) + 'h';
+		let result = Format.getHexString(value) + 'h';
 		// return
 		return result;
 	}

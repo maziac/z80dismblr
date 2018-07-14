@@ -2,7 +2,7 @@ import * as util from 'util';
 import * as assert from 'assert';
 import { Memory } from './memory';
 import { NumberType } from './numbertype'
-import { Utility } from './utility';
+import { Format } from './format';
 
 
 /// Classifies opcodes.
@@ -274,13 +274,13 @@ export class Opcode {
 			|| this.valueType == NumberType.CODE_SUB) {
 			const val = this.value;
 			valueName = Opcode.convertToLabel(val);
-			comment = Utility.getConversionForAddress(val);
+			comment = Format.getConversionForAddress(val);
 		}
 		else if(this.valueType == NumberType.DATA_LBL) {
 			// TODO: can be moved to "if" above.
 			const val = this.value;
 			valueName = Opcode.convertToLabel(val);
-			comment = Utility.getConversionForAddress(val);
+			comment = Format.getConversionForAddress(val);
 		}
 		else if(this.valueType == NumberType.RELATIVE_INDEX) {
 			// E.g. in 'LD (IX+n),a'
@@ -295,11 +295,11 @@ export class Opcode {
 			// Add comment
 			if(this.valueType == NumberType.NUMBER_BYTE) {
 				// byte
-				comment = Utility.getVariousConversionsForByte(val);
+				comment = Format.getVariousConversionsForByte(val);
 			}
 			else {
 				// word
-				comment = Utility.getVariousConversionsForWord(val);
+				comment = Format.getVariousConversionsForWord(val);
 			}
 		}
 
@@ -398,7 +398,7 @@ class OpcodeExtended2 extends OpcodeExtended {
 class OpcodeNOP extends Opcode {
 	constructor(code: number) {
 		super(code, '');
-		this.name = '[NOP]\t; because of following 0x' + Utility.getHexString(code, 2);
+		this.name = '[NOP]\t; because of following 0x' + Format.getHexString(code, 2);
 	}
 }
 

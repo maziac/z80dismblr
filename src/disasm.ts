@@ -5,7 +5,7 @@ import { Opcode, OpcodeFlag } from './opcode';
 import { NumberType } from './numbertype'
 import { Label } from './label'
 import { EventEmitter } from 'events';
-import { Utility } from './utility';
+import { Format } from './format';
 import { readFileSync } from 'fs';
 
 
@@ -256,7 +256,7 @@ export class Disassembler extends EventEmitter {
 			// Check if EQU
 			if(label.isEqu) {
 				// "Disassemble"
-				const line =  Utility.addSpaces(label.name+':', this.clmnsBytes) + this.rightCase('EQU ') + Utility.fillDigits(address.toString(), ' ', 5) + ' ; ' + Utility.getVariousConversionsForWord(address);
+				const line =  Format.addSpaces(label.name+':', this.clmnsBytes) + this.rightCase('EQU ') + Format.fillDigits(address.toString(), ' ', 5) + ' ; ' + Format.getVariousConversionsForWord(address);
 				// Store
 				lines.push(line);
 			}
@@ -299,7 +299,7 @@ export class Disassembler extends EventEmitter {
 				// Read memory value
 				opcode = Opcode.getOpcodeAt(this.memory, address);
 				if(this.DBG_COLLECT_LABELS)
-					console.log(Utility.getHexString(address) + '\t' + opcode.disassemble(undefined, true).mnemonic)
+					console.log(Format.getHexString(address) + '\t' + opcode.disassemble(undefined, true).mnemonic)
 
 				// Check if memory area has already been PARTLY disassembled
 				const len = opcode.length;
@@ -599,7 +599,7 @@ export class Disassembler extends EventEmitter {
 				break;
 				case NumberType.CODE_RST:
 					// Set name
-					label.name = this.labelRstPrefix + Utility.fillDigits(address.toString(), '0', 2);
+					label.name = this.labelRstPrefix + Format.fillDigits(address.toString(), '0', 2);
 					// Use for local prefix
 					localPrefix = '.' + label.name.toLowerCase();
 					// Next
@@ -694,7 +694,7 @@ export class Disassembler extends EventEmitter {
 					continue;	// Skip EQUs
 				// Print "ORG"
 				this.addEmptyLines(lines);
-				const orgLine =  ' '.repeat(this.clmnsBytes) + this.rightCase('ORG ') + Utility.fillDigits(addr.toString(), ' ', 5) + ' ; ' + Utility.getConversionForAddress(addr);
+				const orgLine =  ' '.repeat(this.clmnsBytes) + this.rightCase('ORG ') + Format.fillDigits(addr.toString(), ' ', 5) + ' ; ' + Format.getConversionForAddress(addr);
 				lines.push(orgLine);
 			}
 			else {
@@ -709,7 +709,7 @@ export class Disassembler extends EventEmitter {
 					// Print "DEFS"
 					this.addEmptyLines(lines);
 					const defsString = this.rightCase('DEFS ') + defsSize;
-					const comment = Utility.getHexString(defsSize) + 'h, undefined data';
+					const comment = Format.getHexString(defsSize) + 'h, undefined data';
 					let line = this.formatDisassembly(address, 0, defsString, comment);
 					lines.push(line);
 				}
@@ -767,7 +767,7 @@ export class Disassembler extends EventEmitter {
 					// Add label on separate line
 					let labelLine = addrLabel.name + ':';
 					if(this.startLinesWithAddress) {
-						labelLine =   Utility.addSpaces(Utility.getHexString(address), this.clmsAddress)+ labelLine;
+						labelLine =   Format.addSpaces(Format.getHexString(address), this.clmsAddress)+ labelLine;
 					}
 					lines.push(labelLine);
 				}
@@ -801,7 +801,7 @@ export class Disassembler extends EventEmitter {
 
 					// Disassemble the data line
 					let mainString = this.rightCase('DEFB ') + memValue;
-					let comment = Utility.getVariousConversionsForByte(memValue);
+					let comment = Format.getVariousConversionsForByte(memValue);
 					line = this.formatDisassembly(address, 1, mainString, comment);
 
 					// Next address
@@ -843,7 +843,7 @@ export class Disassembler extends EventEmitter {
 
 		// Add address field?
 		if(this.startLinesWithAddress) {
-			line = Utility.addSpaces(Utility.getHexString(address)+' ', this.clmsAddress);
+			line = Format.addSpaces(Format.getHexString(address)+' ', this.clmsAddress);
 		}
 
 		// Add bytes of opcode?
@@ -851,17 +851,17 @@ export class Disassembler extends EventEmitter {
 		if(this.addOpcodeBytes) {
 			for(let i=0; i<size; i++) {
 				const memVal = this.memory.getValueAt(address+i);
-				bytesString += Utility.getHexString(memVal, 2) + ' ';
+				bytesString += Format.getHexString(memVal, 2) + ' ';
 			}
 		}
-		line += Utility.addSpaces(bytesString, this.clmnsBytes);
+		line += Format.addSpaces(bytesString, this.clmnsBytes);
 
 		// Add opcode (or defb)
 		const arr = mainString.split(' ');
 		assert(arr.length > 0);
-		arr[0] = Utility.addSpaces(arr[0], this.clmnsOpcodeFirstPart-1);	// 1 is added anyway when joining
+		arr[0] = Format.addSpaces(arr[0], this.clmnsOpcodeFirstPart-1);	// 1 is added anyway when joining
 		let resMainString = arr.join(' ');
-		resMainString = Utility.addSpaces(resMainString+' ', this.clmsnOpcodeTotal);
+		resMainString = Format.addSpaces(resMainString+' ', this.clmsnOpcodeTotal);
 		line +=  this.rightCase(resMainString);
 
 		// Add comment
