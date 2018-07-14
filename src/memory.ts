@@ -1,10 +1,9 @@
 import { readFileSync } from 'fs';
+import { BaseMemory, MAX_MEM_SIZE } from './basememory';
 
 //import * as util from 'util';
 //import * as assert from 'assert';
 
-
-export const MAX_MEM_SIZE = 0x10000;
 
 
 /// Classification of memory addresses.
@@ -24,10 +23,7 @@ export enum MemAttribute {
 /**
  * Class to hold and access the memory.
  */
-export class Memory {
-
-	/// The resulting memory area.
-	protected memory = new Uint8Array(MAX_MEM_SIZE);
+export class Memory extends BaseMemory {
 
 	/// An attribute field for the memory.
 	protected memoryAttr = new Array<MemAttribute>(MAX_MEM_SIZE);
@@ -37,6 +33,7 @@ export class Memory {
 	 * Constructor: Initializes memory.
 	 */
  	constructor () {
+		super(0, MAX_MEM_SIZE);
 		// Init memory
 		for(let i=0; i<MAX_MEM_SIZE; i++) {
 			this.memory[i] = 0;
@@ -68,38 +65,6 @@ export class Memory {
 	public readBinFile(origin: number, path: string) {
 		let bin = readFileSync(path);
 		this.setMemory(origin, bin);
-	}
-
-
-	/**
-	 * Returns the memory value at address.
-	 * @param address The address to retrieve.
-	 * @returns It's value.
-	 */
-	public getValueAt(address: number) {
-		return this.memory[address&(MAX_MEM_SIZE-1)];
-	}
-
-
-	/**
-	 * Returns the word memory value at address.
-	 * @param address The address to retrieve.
-	 * @returns It's value.
-	 */
-	public getWordValueAt(address: number) {
-		const word = this.memory[address&(MAX_MEM_SIZE-1)] + 256*this.memory[(address+1)&(MAX_MEM_SIZE-1)];
-		return word;
-	}
-
-
-	/**
-	 * Returns the word memory value at address in big endian.
-	 * @param address The address to retrieve.
-	 * @returns It's value.
-	 */
-	public getBigEndianWordValueAt(address: number) {
-		const word = 256*this.memory[address&(MAX_MEM_SIZE-1)] + this.memory[(address+1)&(MAX_MEM_SIZE-1)];
-		return word;
 	}
 
 

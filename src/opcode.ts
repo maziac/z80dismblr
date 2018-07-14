@@ -1,6 +1,6 @@
 import * as util from 'util';
 import * as assert from 'assert';
-import { Memory } from './memory';
+import { BaseMemory } from './basememory';
 import { NumberType } from './numbertype'
 import { Format } from './format';
 
@@ -188,7 +188,7 @@ export class Opcode {
 	 * @param address The address to retrieve.
 	 * @returns It's opcode.
 	 */
-	public static getOpcodeAt(memory: Memory, address: number, opcodes = Opcodes): Opcode {
+	public static getOpcodeAt(memory: BaseMemory, address: number, opcodes = Opcodes): Opcode {
 		const memValue = memory.getValueAt(address);
 		const opcode = opcodes[memValue];
 		const realOpcode = opcode.getOpcodeAt(memory, address);
@@ -202,7 +202,7 @@ export class Opcode {
 	 * @param address
 	 * @returns this
 	 */
-	public getOpcodeAt(memory: Memory, address: number): Opcode {
+	public getOpcodeAt(memory: BaseMemory, address: number): Opcode {
 		// Get value (if any)
 		switch(this.valueType) {
 			case NumberType.CODE_RST:
@@ -333,7 +333,7 @@ class OpcodePrevIndex extends Opcode {
 	 * @param address
 	 * @returns this
 	 */
-	public getOpcodeAt(memory: Memory, address: number): Opcode {
+	public getOpcodeAt(memory: BaseMemory, address: number): Opcode {
 		assert(this.valueType == NumberType.RELATIVE_INDEX);
 		this.value = memory.getValueAt(address-1);
 		if(this.value >= 0x80)
@@ -364,7 +364,7 @@ class OpcodeExtended extends Opcode {
 	 * @param address Unused
 	 * @returns The opcode from the address after the current one.
 	 */
-	public getOpcodeAt(memory: Memory, address: number): Opcode {
+	public getOpcodeAt(memory: BaseMemory, address: number): Opcode {
 		return Opcode.getOpcodeAt(memory, address+1, this.opcodes);
 	}
 }
@@ -385,7 +385,7 @@ class OpcodeExtended2 extends OpcodeExtended {
 	 * The first 2 bytes are DDCB followed by a value (for the index),
 	 * followed by the rest of the opcode.
 	 */
-	 public getOpcodeAt(memory: Memory, address: number): Opcode {
+	 public getOpcodeAt(memory: BaseMemory, address: number): Opcode {
 		return Opcode.getOpcodeAt(memory, address+2, this.opcodes);
 	}
 }
@@ -434,7 +434,7 @@ class Opcode_n_n extends OpcodeNext {
 	}
 
 	/// Collects the 2 values.
-	public getOpcodeAt(memory: Memory, address: number): Opcode {
+	public getOpcodeAt(memory: BaseMemory, address: number): Opcode {
 		this.value = memory.getValueAt(address+1);
 		this.value2 = memory.getValueAt(address+2);
 		return this;
