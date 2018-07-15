@@ -28,12 +28,17 @@ class Startup {
             // Go through arguments
             this.processArgs(args);
 
+            // Execute
+            const lines = this.dasm.disassemble();
+
+            // Temporary output
+            console.log(lines.slice(0,20).join('\n'));
+
         }
         catch(e) {
             console.log(e);
             return 1;
         }
-        // Execute
 
         return 0;
     }
@@ -43,7 +48,49 @@ class Startup {
      * Prints command line help.
      */
     protected static printHelp() {
-        console.log('Help');
+        console.log(`
+z80dismblr is a disassembler for Z80 code binaries. The disassembly will be
+simply written to stdout.
+
+Example usages:
+
+$ z80dismblr --sna myfile.sna > myfile.list
+This will write the disassembly of the snapshot file 'myfile.sna' to file 'myfile.list'.
+
+$ z80dismblr --bin 0x8000 myfile.obj --codelable 0x9000 > myfile.list
+This will write the disassembly of the binary file file 'myfile.obj' to file 'myfile.list'.
+The binary file starts at address 0x8000 and the code entry point start at
+0x9000 (i.e. here begins the code area).
+
+General usage:
+z80dismblr [options]
+    -h|-help|--help Print this help.
+    --args file: Instead of an argument list on the command line it is also possible
+        to provide the arguments in a file. There is no special format, just
+        provide the arguments. May conatin newlines.
+    --sna file: Read in a snapshot file. (Snapshot files contain a code start
+        address.)
+    --bin start file: Read in a plain binary. 'start' is the address in memory for the read binary.
+        --codelabel or --tr is mandatory to
+        obtain any disassembly results.
+    --tr file: Add a MAME trace file. This can be used instead of --codelabel.
+        Providing a trace file will increase the quality of the
+        disassembly output.
+    --codelabel address [labelname]: Known addresses (like the code start
+        address) can be given here. If no sna file is given at least one
+        codelabel is required so  that disassembly can start from that address.
+    --jmptable address size: If it is known that a jump-table exists in memory
+        then its address and size can be given here. 'size' is the number of addresses.
+
+    Prefixes: It is possible to customize the label naming. There are different
+    types of labels. For each label type you can define its prefix.
+        --subprefix prefix: Prefix for subroutines, e.g. '--subprefix MYSUB'.
+        --lblprefix prefix: Prefix for adresses reached by a 'JP'.
+        --datalblprefix prefix: Prefix for data areas.
+        --locallblprefix prefix: Prefix for local lable, those reached with a (positive)
+        'JR'. Note that in front of this prefix the subroutines main prefix is added.
+        --localloopprefix prefix: Similar to the local lables but for negative relative jumps.
+        `);
     }
 
 
@@ -56,6 +103,8 @@ class Startup {
         let arg;
         let path;
         let addressString;
+        let addr;
+        let text;
         while(arg = args.shift()) {
             // Check option
             switch(arg) {
@@ -82,9 +131,26 @@ class Startup {
                 case '--sna':
                     path = args.shift();
                     if(!path) {
-                        throw arg + ': No sna path given.';
+                        throw arg + ': No path given.';
                     }
                     this.dasm.readSnaFile(path);
+                    break;
+
+                // SNA file
+                case '--bin':
+                    // get origin
+                    const originString = args.shift();
+                    const origin = this.parseValue(originString);
+                    if(isNaN(origin)) {
+                        throw arg + ": Not a number: " + originString;
+                    }
+                    // get path
+                    path = args.shift();
+                    if(!path) {
+                        throw arg + ': No path given.';
+                    }
+                    // set memory
+                    this.dasm.memory.readBinFile(origin, path);
                     break;
 
                 // TRACE (.tr) file
@@ -100,7 +166,7 @@ class Startup {
                 case '--codelabel':
                     // parse address
                     addressString = args.shift();
-                    const addr = this.parseValue(addressString);
+                    addr = this.parseValue(addressString);
                     if(isNaN(addr)) {
                         throw arg + ": Not a number: " + addressString;
                     }
@@ -115,6 +181,78 @@ class Startup {
                     // Set label
                     this.dasm.setLabel(addr, labelName);
                     break;
+
+                // set a jump table
+                case '--jmptable':
+                    // parse address
+                    addressString = args.shift();
+                    addr = this.parseValue(addressString);
+                    if(isNaN(addr)) {
+                        throw arg + ": Not a number: " + addressString;
+                    }
+                    // Now the size
+                    const sizeString = args.shift();
+                    const size = this.parseValue(sizeString);
+                    if(isNaN(size)) {
+                        throw arg + ": Not a number: " + sizeString;
+                    }
+                    // Set jump table
+                    this.dasm.setJmpTable(addr, size);
+                    break;
+
+
+                // Prefixes
+
+                // SUB prefix
+                case '--subprefix':
+                    // get prefix
+                    text = args.shift();
+                    if(!text || test.length == 0)
+                        throw arg + ": No prefix given";
+                    // Set prefix
+                    this.dasm.labelSubPrefix = text;
+                    break;
+
+                // LBL prefix
+                case '--lblprefix':
+                    // get prefix
+                    text = args.shift();
+                    if(!text || test.length == 0)
+                        throw arg + ": No prefix given";
+                    // Set prefix
+                    this.dasm.labelLblPrefix = text;
+                    break;
+
+                // Data label prefix
+                case '--datalblprefix':
+                    // get prefix
+                    text = args.shift();
+                    if(!text || test.length == 0)
+                        throw arg + ": No prefix given";
+                    // Set prefix
+                    this.dasm.labelDataLblPrefix = text;
+                    break;
+
+                // Local lable prefix
+                case '--locallblprefix':
+                    // get prefix
+                    text = args.shift();
+                    if(!text || test.length == 0)
+                        throw arg + ": No prefix given";
+                    // Set prefix
+                    this.dasm.labelLocalLablePrefix = text;
+                    break;
+
+                // Local loop prefix
+                case '--localloopprefix':
+                    // get prefix
+                    text = args.shift();
+                    if(!text || test.length == 0)
+                        throw arg + ": No prefix given";
+                    // Set prefix
+                    this.dasm.labelLoopPrefix = text;
+                    break;
+
 
 
             default:
@@ -222,7 +360,9 @@ class Startup {
 	 * @param valueString The string to convert. Ignores case.
 	 * @returns The value of valueString. Can also return NaN in error cases.
 	 */
-	public static parseValue(valueString: string): number {
+	public static parseValue(valueString: string|undefined): number {
+        if(!valueString)
+            return NaN;
 
 		const match = /^\s*((0x|\$)([0-9a-f]+)([^0-9a-f]*))?(([0-9a-f]+)h(.*))?(([01]+)b(.*))?(_([szhnpc]+)([^szhnpc])*)?((-?[0-9]+)([^0-9]*))?('([\S ]+)')?/i.exec(valueString);
 		if(!match)

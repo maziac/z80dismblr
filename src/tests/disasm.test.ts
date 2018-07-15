@@ -912,9 +912,9 @@ suite('Disassembler', () => {
 			dasm.setLabel(org);
 
 			// Set the 3 call tables
-			dasm.setCallTable(0x80E5, 10);
-			dasm.setCallTable(0x80FD, 10);
-			dasm.setCallTable(0x8115, 10);
+			dasm.setJmpTable(0x80E5, 10);
+			dasm.setJmpTable(0x80FD, 10);
+			dasm.setJmpTable(0x8115, 10);
 
 			// Disassemble
 			const lines = dasm.disassemble();

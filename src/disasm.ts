@@ -215,7 +215,7 @@ export class Disassembler extends EventEmitter {
 	 * @param address Address of the start of the call table.
 	 * @param count The number of jmp addresses.
 	 */
-	public setCallTable(address: number, count: number) {
+	public setJmpTable(address: number, count: number) {
 		// Loop over all jmp addresses
 		for(let i=0; i<count; i++) {
 			// Get address
