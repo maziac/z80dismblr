@@ -238,19 +238,22 @@ export class Disassembler extends EventEmitter {
 	 * Trace files can become very big, a few seconds already result in MB of data.
 	 */
 	public useMameTraceFile(path: string) {
-		const trace = readFileSync(path).toString().split('\n');;
-		if(trace.length == 0)
+		const trace = readFileSync(path).toString();
+		if(trace.length < 4)
 			return;
 		// Use first address as start address
-		const startAddress = trace[0].substr(0,4);
+		const startAddress = trace.substr(0,4);
 		this.setLabel(parseInt(startAddress, 16), 'TR_LBL_MAIN_START_'+ startAddress);
 		// Loop over the complete trace file
 		const buffer = new Array<boolean>(0x10000);	// initialized to undefined
-		for(let line of trace) {
-			const addressString = line.substr(0,4);
+		let k = 0;
+		do {
+			const addressString = trace.substr(k,4);
 			const addr = parseInt(addressString, 16);
 			buffer[addr] = true;
-		}
+			// next
+			k = trace.indexOf('\n', k+4);
+		} while(k != -1);
 		// Now add the addresses to the queue
 		for(let addr=0; addr<0x10000; addr++) {
 			if(buffer[addr])
