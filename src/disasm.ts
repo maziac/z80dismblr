@@ -20,9 +20,6 @@ export class Disassembler extends EventEmitter {
 	/// Temporarily offset labels. Just an offset number ot the address of the real label.
 	protected offsetLabels = new Map<number,number>();
 
-	// An array with the (sorted) addresses for all labels
-	//protected sortedParentLabelAddresses = new Array<number>();
-
 	/// Queue for start addresses only addresses of opcodes
 	protected addressQueue = new Array<number>();
 
@@ -177,7 +174,7 @@ export class Disassembler extends EventEmitter {
 		const start = bin[sp-0x4000] + 256*bin[sp-1-0x4000];	// Get start address from stack
 		this.setMemory(0x4000, bin);
 		// Set start label
-		this.setLabel(start, 'LBL_MAIN_START_'+start, NumberType.CODE_LBL);
+		this.setLabel(start, 'SNA_LBL_MAIN_START_'+start.toString(16), NumberType.CODE_LBL);
 	}
 
 
@@ -227,6 +224,37 @@ export class Disassembler extends EventEmitter {
 			this.setLabel(jmpAddress);
 			// Next
 			address += 2;
+		}
+	}
+
+
+	/**
+	 * Reads a MAME .tr (trace) file.
+	 * MAME trace files contain the opcode addresses of a run of the program.
+	 * These are used as starting points for the disassembly.
+	 * If a trace file is given it is normally not required to give additional
+	 * label info like start of the program or start of the interrupt rsubroutine.
+	 * @param path The file path to the trace (.tr) file. (An ASCII file).
+	 * Trace files can become very big, a few seconds already result in MB of data.
+	 */
+	public useMameTraceFile(path: string) {
+		const trace = readFileSync(path).toString().split('\n');;
+		if(trace.length == 0)
+			return;
+		// Use first address as start address
+		const startAddress = trace[0].substr(0,4);
+		this.setLabel(parseInt(startAddress, 16), 'TR_LBL_MAIN_START_'+ startAddress);
+		// Loop over the complete trace file
+		const buffer = new Array<boolean>(0x10000);	// initialized to undefined
+		for(let line of trace) {
+			const addressString = line.substr(0,4);
+			const addr = parseInt(addressString, 16);
+			buffer[addr] = true;
+		}
+		// Now add the addresses to the queue
+		for(let addr=0; addr<0x10000; addr++) {
+			if(buffer[addr])
+				this.addressQueue.push(addr);
 		}
 	}
 
@@ -718,6 +746,8 @@ export class Disassembler extends EventEmitter {
 			address = addr;
 			let prevMemoryAttribute = MemAttribute.DATA;
 
+			let prevStopCode = false;
+
 			// disassemble until stop-code
 			while(true) {
 				//console.log('disMem: address=0x' + address.toString(16))
@@ -729,6 +759,7 @@ export class Disassembler extends EventEmitter {
 
 				// Check if label needs to be added to line (print label on own line)
 				const addrLabel = this.labels.get(address);
+
 				if(addrLabel) {
 					// Add empty lines in case this is a SUB or LBL label
 					const type = addrLabel.type;
@@ -774,8 +805,16 @@ export class Disassembler extends EventEmitter {
 				// Check if code or data should be disassembled
 				let addAddress;
 				let line;
+				prevStopCode = false;
 				if(attr & MemAttribute.CODE) {
 					// CODE
+
+					// Add empty lines in case there is no label, but the previous area was DATA or there was a stop opcode.
+					if(!addrLabel) {
+						if(prevStopCode || (prevMemoryAttribute & MemAttribute.DATA)) {
+							this.addEmptyLines(lines);
+						}
+					}
 
 					// Read opcode at address
 					const opcode = Opcode.getOpcodeAt(this.memory, address);
@@ -783,6 +822,8 @@ export class Disassembler extends EventEmitter {
 					// Disassemble the single opcode
 					const opCodeDescription = opcode.disassemble();
 					line = this.formatDisassembly(address, opcode.length, opCodeDescription.mnemonic, opCodeDescription.comment);
+
+					prevStopCode = ((opcode.flags & OpcodeFlag.STOP) != 0);
 
 					addAddress = opcode.length;
 				}

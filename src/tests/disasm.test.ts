@@ -984,4 +984,38 @@ suite('Disassembler', () => {
 
     });
 
+
+	suite('mame', () => {
+
+		test('.tr trace file', () => {
+			// configure
+			dasm.labelSubPrefix = "SUB";
+			dasm.labelLblPrefix = "LBL";
+			dasm.labelDataLblPrefix = "DATA";
+			dasm.labelLocalLablePrefix = "_lbl";
+			dasm.labelLoopPrefix = "_loop";
+
+			dasm.startLinesWithAddress = true;
+			dasm.addOpcodeBytes = true;
+
+			dasm.readSnaFile('./src/tests/data/sw.sna');
+			//dasm.setLabel(0xA5F7, "LBL_MAIN_INTERRUPT");
+
+			// Set tr file
+			dasm.useMameTraceFile('./src/tests/data/sw.tr');
+
+			// Disassemble
+			const lines = dasm.disassemble();
+
+			//dasm.printLabels();
+			//console.log(lines.join('\n'));
+			writeFileSync('./out/tests/out.asm', lines.join('\n'));
+
+			// There is no special check, basically just that it does not crash.
+			assert(lines.length > 1000);
+		});
+
+    });
+
+
 });
