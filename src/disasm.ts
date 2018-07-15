@@ -38,9 +38,6 @@ export class Disassembler extends EventEmitter {
 	/// Choose if references should be added to DATA labels
 	public addReferencesToDataLabels = true;
 
-	/// Choose to start every line with the address
-	public startLinesWithAddress = true;
-
 	/// Choose to add the opcode bytes also, e.g. "CB 01" for "RLC C"
 	public addOpcodeBytes = true;
 
@@ -64,7 +61,7 @@ export class Disassembler extends EventEmitter {
 	protected labelSelfModifyingCount;
 
 	/// Column areas. e.g. area for the bytes shown before each command
-	public clmnsAddress = 5;		///< size for the starting address (if any)
+	public clmnsAddress = 5;		///< size for the address at the beginning of each line. If 0 no address is shown.
 	public clmnsBytes = 4*3 + 1;	///< 4* length of hex-byte
 	public clmnsOpcodeFirstPart = 4 + 1;	///< First part of the opcodes, e.g. "LD" in "LD A,7"
 	public clmsnOpcodeTotal = 5 + 6 + 1;		///< Total length of the opcodes. After this an optional comment may start.
@@ -799,7 +796,7 @@ export class Disassembler extends EventEmitter {
 
 					// Add label on separate line
 					let labelLine = addrLabel.name + ':';
-					if(this.startLinesWithAddress) {
+					if(this.clmnsAddress > 0) {
 						labelLine = Format.addSpaces(Format.getHexString(address), this.clmnsAddress)+ labelLine;
 					}
 					lines.push(labelLine);
@@ -883,8 +880,7 @@ export class Disassembler extends EventEmitter {
 	 */
 	protected formatDisassembly(address: number, size: number, mainString: string, commentString?: string): string {
 		const memory = (this.addOpcodeBytes) ? this.memory : undefined;
-		const clmnsAddress = (this.startLinesWithAddress) ? this.clmnsAddress : 0;
-		return Format.formatDisassembly(memory, this.opcodesLowerCase, clmnsAddress, this.clmnsBytes, this.clmnsOpcodeFirstPart, this.clmsnOpcodeTotal, address, size, mainString, commentString);
+		return Format.formatDisassembly(memory, this.opcodesLowerCase, this.clmnsAddress, this.clmnsBytes, this.clmnsOpcodeFirstPart, this.clmsnOpcodeTotal, address, size, mainString, commentString);
 	}
 
 

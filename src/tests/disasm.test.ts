@@ -40,7 +40,7 @@ suite('Disassembler', () => {
 		dasm.labelLoopPrefix = "_loop";
 		dasm.labelSelfModifyingPrefix = "SELF_MOD";
 
-		dasm.startLinesWithAddress = false;
+		dasm.clmnsAddress = 0;
 		dasm.addOpcodeBytes = false;
 		dasm.opcodesLowerCase = false;
 	});
@@ -631,7 +631,7 @@ suite('Disassembler', () => {
 			const org = 0x0000;
 			dasm.memory.setMemory(org, new Uint8Array(memory));
 			dasm.setLabel(org);
-			dasm.startLinesWithAddress = false;
+			dasm.clmnsAddress = 0;
 			dasm.opcodesLowerCase = false;
 			const linesUntrimmed = dasm.disassemble();
 
@@ -933,7 +933,7 @@ suite('Disassembler', () => {
 			dasm.labelDataLblPrefix = "DATA";
 			dasm.labelLocalLablePrefix = "_lbl";
 			dasm.labelLoopPrefix = "_loop";
-			dasm.startLinesWithAddress = true;
+			dasm.clmnsAddress = 5;
 			dasm.addOpcodeBytes = true;
 
 			const org = 0x4000;
@@ -965,7 +965,7 @@ suite('Disassembler', () => {
 			dasm.labelLocalLablePrefix = "_lbl";
 			dasm.labelLoopPrefix = "_loop";
 
-			dasm.startLinesWithAddress = true;
+			dasm.clmnsAddress = 5;
 			dasm.addOpcodeBytes = true;
 
 			dasm.readSnaFile('./src/tests/data/sw.sna');
@@ -995,7 +995,7 @@ suite('Disassembler', () => {
 			dasm.labelLocalLablePrefix = "_lbl";
 			dasm.labelLoopPrefix = "_loop";
 
-			dasm.startLinesWithAddress = true;
+			dasm.clmnsAddress = 5;
 			dasm.addOpcodeBytes = true;
 
 			dasm.readSnaFile('./src/tests/data/sw.sna');

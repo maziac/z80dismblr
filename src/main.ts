@@ -15,6 +15,9 @@ class Startup {
      */
     public static main(): number {
         try {
+            // Set defaults
+            this.dasm.opcodesLowerCase = true;
+            this.dasm.addOpcodeBytes = false;
 
             // Get arguments
             const args = process.argv.splice(2);
@@ -32,7 +35,8 @@ class Startup {
             const lines = this.dasm.disassemble();
 
             // Temporary output
-            console.log(lines.slice(0,20).join('\n'));
+            console.log(lines.slice(0,20000).join('\n'));
+
 
         }
         catch(e) {
@@ -86,16 +90,26 @@ z80dismblr [options]
     types of labels. For each label type you can define its prefix.
         --subprefix prefix: Prefix for subroutines, e.g. '--subprefix MYSUB'.
         --lblprefix prefix: Prefix for adresses reached by a 'JP'.
+        --rstprefix prefix: Prefix for adresses reached via a 'RST'.
         --datalblprefix prefix: Prefix for data areas.
         --locallblprefix prefix: Prefix for local lable, those reached with a (positive)
         'JR'. Note that in front of this prefix the subroutines main prefix is added.
         --localloopprefix prefix: Similar to the local lables but for negative relative jumps.
-        `);
+        --selfmodprefix prefix: For selfmodifying address, default is 'SELF_MOD'.
+
+    Formatting options:
+        --clmnsaddress value: The size of the address field at the beginning of the line. If 0 no address is shown. Otherwise the address is shown in hex, so senseful numbers start at 4.
+        --clmnsbytes value: The length used for the opcode bytes.
+        --clmnsopcodefirstpart value: The size of the first part of the opcode, e.g. 'LD'.
+        --clmsnOpcodeTotal value: The size of the complete opcode, e.g. 'LD  A,(HL)'.
+        --uppercase: Use upper case for the opcodes, e.g. 'ld a,(hl)'.
+        --addbytes: Print also the byte values of the opcodes (the opcode bytes).
+    `);
     }
 
 
     /**
-     * Processes teh command line arguments or the arguments read from a file.
+     * Processes the command line arguments or the arguments read from a file.
      * @param args List of arguments.
      */
     protected static processArgs(args: Array<string>) {
@@ -105,6 +119,7 @@ z80dismblr [options]
         let addressString;
         let addr;
         let text;
+        let value;
         while(arg = args.shift()) {
             // Check option
             switch(arg) {
@@ -207,7 +222,7 @@ z80dismblr [options]
                 case '--subprefix':
                     // get prefix
                     text = args.shift();
-                    if(!text || test.length == 0)
+                    if(!text || text.length == 0)
                         throw arg + ": No prefix given";
                     // Set prefix
                     this.dasm.labelSubPrefix = text;
@@ -217,27 +232,37 @@ z80dismblr [options]
                 case '--lblprefix':
                     // get prefix
                     text = args.shift();
-                    if(!text || test.length == 0)
+                    if(!text || text.length == 0)
                         throw arg + ": No prefix given";
                     // Set prefix
                     this.dasm.labelLblPrefix = text;
+                    break;
+
+                // RST prefix
+                case '--rstprefix':
+                    // get prefix
+                    text = args.shift();
+                    if(!text || text.length == 0)
+                        throw arg + ": No prefix given";
+                    // Set prefix
+                    this.dasm.labelRstPrefix = text;
                     break;
 
                 // Data label prefix
                 case '--datalblprefix':
                     // get prefix
                     text = args.shift();
-                    if(!text || test.length == 0)
+                    if(!text || text.length == 0)
                         throw arg + ": No prefix given";
                     // Set prefix
                     this.dasm.labelDataLblPrefix = text;
                     break;
 
-                // Local lable prefix
+                // Local label prefix
                 case '--locallblprefix':
                     // get prefix
                     text = args.shift();
-                    if(!text || test.length == 0)
+                    if(!text || text.length == 0)
                         throw arg + ": No prefix given";
                     // Set prefix
                     this.dasm.labelLocalLablePrefix = text;
@@ -247,15 +272,76 @@ z80dismblr [options]
                 case '--localloopprefix':
                     // get prefix
                     text = args.shift();
-                    if(!text || test.length == 0)
+                    if(!text || text.length == 0)
                         throw arg + ": No prefix given";
                     // Set prefix
                     this.dasm.labelLoopPrefix = text;
                     break;
 
+                // Self modifying prefix
+                case '--selfmodprefix':
+                    // get prefix
+                    text = args.shift();
+                    if(!text || text.length == 0)
+                        throw arg + ": No prefix given";
+                    // Set prefix
+                    this.dasm.labelSelfModifyingPrefix = text;
+                    break;
 
 
-            default:
+                // Formatting
+
+                // Start lines with address
+                case '--clmnsaddress':
+                    // get value
+                    text = args.shift();
+                    value = this.parseValue(text);
+                    if(isNaN(value))
+                       throw arg + ": Wrong value " + text;
+                    this.dasm.clmnsAddress = value;
+                    break;
+
+                // The opcode bytes
+                case '--clmnsbytes':
+                    // get value
+                    text = args.shift();
+                    value = this.parseValue(text);
+                    if(isNaN(value))
+                       throw arg + ": Wrong value " + text;
+                    this.dasm.clmnsBytes = value;
+                    break;
+
+                // The size of the first part of the opcode, e.g. 'LD'
+                case '--clmnsopcodefirstpart':
+                    // get value
+                    text = args.shift();
+                    value = this.parseValue(text);
+                    if(isNaN(value))
+                       throw arg + ": Wrong value " + text;
+                    this.dasm.clmnsOpcodeFirstPart = value;
+                    break;
+
+                // The size of the complete opcode, e.g. 'LD  A,(HL)'
+                case '--clmsnOpcodeTotal':
+                    // get value
+                    text = args.shift();
+                    value = this.parseValue(text);
+                    if(isNaN(value))
+                       throw arg + ": Wrong value " + text;
+                    this.dasm.clmsnOpcodeTotal = value;
+                    break;
+
+                // Use upper case for opcodes
+                case '--uppercase':
+                    this.dasm.opcodesLowerCase = false;
+                    break;
+
+                // print also ocode byte values
+                case '--addbytes':
+                    this.dasm.addOpcodeBytes = true;
+                    break;
+
+                default:
                     throw "Unknown argument: '" + arg + "'";
                     return 1;
             }
