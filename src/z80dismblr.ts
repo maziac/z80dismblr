@@ -1,4 +1,4 @@
-import { Disassembler } from './disasm';
+import { Disassembler } from './disassembler/disasm';
 import { readFileSync } from 'fs';
 
 
@@ -15,7 +15,7 @@ class Startup {
      */
     public static main(): number {
         try {
-            // Set defaults
+             // Set defaults
             this.dasm.opcodesLowerCase = true;
             this.dasm.addOpcodeBytes = false;
 
@@ -68,7 +68,8 @@ The binary file starts at address 0x8000 and the code entry point start at
 
 General usage:
 z80dismblr [options]
-    -h|-help|--help Print this help.
+    -h|-help|--help: Prints this help.
+    -v|-version|--version: Prints the version number.
     --args file: Instead of an argument list on the command line it is also possible
         to provide the arguments in a file. There is no special format, just
         provide the arguments. May conatin newlines.
@@ -130,7 +131,15 @@ z80dismblr [options]
                     this.printHelp();
                     return 0;
 
-                // arguments file
+                // Version
+                case '--version':
+                case '-version':
+                case '-v':
+                    const pckg = require('../package.json');
+                    console.log('Version: ' + pckg.version);
+                    return 0;
+
+                // Arguments file
                 case '--args':
                     path = args.shift();
                     if(!path) {

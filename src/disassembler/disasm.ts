@@ -3,7 +3,7 @@ import * as assert from 'assert';
 import { Memory, MemAttribute } from './memory';
 import { Opcode, OpcodeFlag } from './opcode';
 import { NumberType } from './numbertype'
-import { Label } from './label'
+import { DisLabel } from './dislabel'
 import { EventEmitter } from 'events';
 import { Format } from './format';
 import { readFileSync } from 'fs';
@@ -15,7 +15,7 @@ export class Disassembler extends EventEmitter {
 	public memory = new Memory();
 
 	/// The labels.
-	protected labels = new Map<number,Label>();
+	protected labels = new Map<number,DisLabel>();
 
 	/// Temporarily offset labels. Just an offset number ot the address of the real label.
 	protected offsetLabels = new Map<number,number>();
@@ -186,7 +186,7 @@ export class Disassembler extends EventEmitter {
 	 * @param type of the label. Default is CODE_LBL.
 	 */
 	public setLabel(address: number, name?: string, type = NumberType.CODE_LBL) {
-		const label = new Label(type);
+		const label = new DisLabel(type);
 		this.labels.set(address, label);
 		(label.name as any) = name;	// allow undefined
 		// Check if out of range
@@ -398,7 +398,7 @@ export class Disassembler extends EventEmitter {
 		}
 		else {
 			// Label does not exist yet, just add it
-			label = new Label(type);
+			label = new DisLabel(type);
 			this.labels.set(address, label);
 			// Check if out of range
 			if(!(attr & MemAttribute.ASSIGNED))
@@ -487,7 +487,7 @@ export class Disassembler extends EventEmitter {
 	 * 2. Another label is created at the start of the opcode.
 	 */
 	protected adjustSelfModifyingLabels() {
-		const changeMap = new Map<number,Label>();
+		const changeMap = new Map<number,DisLabel>();
 
 		// Loop through all labels
 		for( let [address, label] of this.labels) {
@@ -585,8 +585,8 @@ export class Disassembler extends EventEmitter {
 		let localPrefix = "lbl0";	// Just in case
 
 		let parentLabel;
-		const relLabels = new Array<Label>();
-		const relLoopLabels = new Array<Label>();
+		const relLabels = new Array<DisLabel>();
+		const relLoopLabels = new Array<DisLabel>();
 
 		// Loop through all labels (labels is sorted by address)
 		for( let [address,label] of this.labels) {
@@ -679,7 +679,7 @@ export class Disassembler extends EventEmitter {
 	 * @param relLabels The relative (relative or loop) labels within a parent.
 	 * @param parentLabel The parentLabel (SUB or LBL)
 	 */
-	protected assignRelLabelNames(relLabels: Array<Label>, parentLabel: Label) {
+	protected assignRelLabelNames(relLabels: Array<DisLabel>, parentLabel: DisLabel) {
 		const count = relLabels.length;
 		if(count == 1) {
 			// No index in case there is only one index
@@ -888,7 +888,7 @@ export class Disassembler extends EventEmitter {
 	 * Finds the parent label. I.e. the first non relative label that is lower than the given address.
 	 * @param address
 	 */
-	protected getParentLabel(address: number): Label|undefined {
+	protected getParentLabel(address: number): DisLabel|undefined {
 		let prevLabel;
 		for(let [addr, label] of this.labels) {
 			const type = label.type;

@@ -1,6 +1,6 @@
 import * as assert from 'assert';
-import { Disassembler } from '../disasm';
-import { NumberType } from '../numbertype';
+import { Disassembler } from '../disassembler/disasm';
+import { NumberType } from '../disassembler/numbertype';
 import { writeFileSync } from 'fs';
 //import { Warning } from '../warning';
 

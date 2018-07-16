@@ -1,6 +1,6 @@
 import * as assert from 'assert';
-import { Opcodes, OpcodesCB, OpcodesDD, OpcodesED, OpcodesFD, OpcodesFDCB, OpcodeFlag, OpcodesDDCB } from '../opcode';
-import { NumberType } from '../numbertype';
+import { Opcodes, OpcodesCB, OpcodesDD, OpcodesED, OpcodesFD, OpcodesFDCB, OpcodeFlag, OpcodesDDCB } from '../disassembler/opcode';
+import { NumberType } from '../disassembler/numbertype';
 
 
 

@@ -3,9 +3,9 @@ import * as assert from 'assert';
 import { NumberType } from './numbertype';
 
 /**
- * Class for the labels.
+ * Class for the labels used for disassembly.
  */
-export class Label {
+export class DisLabel {
 
 	/// The type of the label, e.g. if it is data or program code.
 	public type: NumberType;
@@ -15,7 +15,7 @@ export class Label {
 
 	/// The "parent" label: Either a subroutine or a code label.
 	/// Used for local label naming.
-	public parent: Label;
+	public parent: DisLabel;
 
 	/// The code locations that reference the label.
 	public references = Array<number>();
