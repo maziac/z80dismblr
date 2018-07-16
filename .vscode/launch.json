@@ -23,7 +23,10 @@
             "type": "node",
             "request": "launch",
             "name": "Launch Program",
-            "program": "${workspaceFolder}/out/main.js",
+			"program": "${workspaceFolder}/out/z80dismblr.js",
+			"args": [
+				"--args", "argsfile2"
+			],
             "outFiles": [
                 "${workspaceFolder}/**/*.js"
             ]

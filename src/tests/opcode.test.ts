@@ -188,7 +188,7 @@ suite('Opcode', () => {
 		assert(Opcodes[0xD3].flags == OpcodeFlag.NONE);
 	});
 
-	test('LabelTypes', () => {
+	test('NumberTypes', () => {
 		// CALL
 		assert(Opcodes[0xCD].valueType == NumberType.CODE_SUB);
 

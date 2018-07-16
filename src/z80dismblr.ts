@@ -34,13 +34,11 @@ class Startup {
             // Execute
             const lines = this.dasm.disassemble();
 
-            // Temporary output
-            console.log(lines.slice(0,20000).join('\n'));
-
-
+            // Output
+            console.log(lines.join('\n'));
         }
         catch(e) {
-            console.log(e);
+            console.error(e);
             return 1;
         }
 
@@ -75,7 +73,8 @@ z80dismblr [options]
         provide the arguments. May conatin newlines.
     --sna file: Read in a snapshot file. (Snapshot files contain a code start
         address.)
-    --bin start file: Read in a plain binary. 'start' is the address in memory for the read binary.
+    --bin start file: Read in a plain binary. 'start' is the address in memory for the read binary. You can use this
+        argument several times to read inseveral binary files.
         --codelabel or --tr is mandatory to
         obtain any disassembly results.
     --tr file: Add a MAME trace file. This can be used instead of --codelabel.
@@ -93,16 +92,18 @@ z80dismblr [options]
         --lblprefix prefix: Prefix for adresses reached by a 'JP'.
         --rstprefix prefix: Prefix for adresses reached via a 'RST'.
         --datalblprefix prefix: Prefix for data areas.
+        --selfmodprefix prefix: For selfmodifying address, default is 'SELF_MOD'.
         --locallblprefix prefix: Prefix for local lable, those reached with a (positive)
         'JR'. Note that in front of this prefix the subroutines main prefix is added.
         --localloopprefix prefix: Similar to the local lables but for negative relative jumps.
-        --selfmodprefix prefix: For selfmodifying address, default is 'SELF_MOD'.
 
     Formatting options:
-        --clmnsaddress value: The size of the address field at the beginning of the line. If 0 no address is shown. Otherwise the address is shown in hex, so senseful numbers start at 4.
+        --clmnsaddress value: The size of the address field at the beginning of the line.
+            If 0 no address is shown. Otherwise the address is shown in hex,
+            so senseful numbers start at 4.
         --clmnsbytes value: The length used for the opcode bytes.
-        --clmnsopcodefirstpart value: The size of the first part of the opcode, e.g. 'LD'.
-        --clmsnOpcodeTotal value: The size of the complete opcode, e.g. 'LD  A,(HL)'.
+        --clmnsopcodefirst value: The size of the first part of the opcode, e.g. 'LD'.
+        --clmnsopcodetotal value: The size of the complete opcode, e.g. 'LD  A,(HL)'.
         --uppercase: Use upper case for the opcodes, e.g. 'ld a,(hl)'.
         --addbytes: Print also the byte values of the opcodes (the opcode bytes).
     `);
@@ -321,7 +322,7 @@ z80dismblr [options]
                     break;
 
                 // The size of the first part of the opcode, e.g. 'LD'
-                case '--clmnsopcodefirstpart':
+                case '--clmnsopcodefirst':
                     // get value
                     text = args.shift();
                     value = this.parseValue(text);
@@ -331,7 +332,7 @@ z80dismblr [options]
                     break;
 
                 // The size of the complete opcode, e.g. 'LD  A,(HL)'
-                case '--clmsnOpcodeTotal':
+                case '--clmnsopcodetotal':
                     // get value
                     text = args.shift();
                     value = this.parseValue(text);
@@ -366,12 +367,25 @@ z80dismblr [options]
         const argsData = readFileSync(path).toString();
         const args = new Array<string>();
         let k = 0;
+        const len = argsData.length;
         while(true) {
-            // skip whitespaces
-            k = this.skipWhiteSpaces(argsData, k);
+            let val;
+            while(true) {
+                // skip whitespaces
+                k = this.skipWhiteSpaces(argsData, k);
+                if(k >= len)
+                    return args;    // End of file reached
+                // check for comment
+                val = argsData[k];
+                if(val != '#')
+                    break;
+                // skip comment
+                k = argsData.indexOf('\n', k+1);
+                if(k < 0)
+                    return args;  // End of file reached
+            }
 
             // Check if first character is a ' or "
-            const val = argsData[k];
             let l;
             if(val == '"' || val == "'") {
                 // Search for ending

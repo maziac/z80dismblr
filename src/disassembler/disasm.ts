@@ -310,7 +310,7 @@ export class Disassembler extends EventEmitter {
 
 		// get new address from queue
 		while((address = this.addressQueue.shift()) != undefined) {
-			//console.log('address=0x' + address.toString(16));
+			console.log('address=0x' + address.toString(16));
 			// disassemble until stop-code
 			do {
 				// Check if memory has already been disassembled
@@ -385,7 +385,7 @@ export class Disassembler extends EventEmitter {
 	 * Sets or creates a label and sets its type.
 	 * @param address The address for the label.
 	 * @param referenceAddresses Array with addresses that reference the label. Usually only the opcode address.
-	 * @param type The LabelType.
+	 * @param type The NumberType.
 	 * @param attr The memory attribute at address.
 	 */
 	protected setFoundLabel(address: number, referenceAddresses: number[], type: NumberType, attr: MemAttribute) {
