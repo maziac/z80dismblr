@@ -35,6 +35,9 @@ export class Disassembler extends EventEmitter {
 	/// Choose if references should be added to LBLs
 	public addReferencesToAbsoluteLabels = true;
 
+	/// Choose if references should be added to RST labels
+	public addReferencesToRstLabels = true;
+
 	/// Choose if references should be added to DATA labels
 	public addReferencesToDataLabels = true;
 
@@ -770,11 +773,17 @@ export class Disassembler extends EventEmitter {
 					// Add comment with references
 					if((type == NumberType.CODE_SUB && this.addReferencesToSubroutines)
 					|| (type == NumberType.CODE_LBL && this.addReferencesToAbsoluteLabels)
+					|| (type == NumberType.CODE_RST && this.addReferencesToRstLabels)
 					|| (type == NumberType.DATA_LBL && this.addReferencesToDataLabels)) {
 						// First line: Reference count
 						const refCount = addrLabel.references.length;
-						let refLine = (type == NumberType.CODE_SUB) ? '; Subroutine' : '; Label';
-						refLine += ' is referenced by ' + refCount + ' location';
+						let refLine;
+						switch(type) {
+							case NumberType.CODE_SUB: refLine = 'Subroutine'; break;
+							case NumberType.CODE_RST: refLine = 'Restart'; break;
+							default: refLine = 'Label'; break;
+						}
+						refLine = '; ' + refLine + ' is referenced by ' + refCount + ' location';
 						if(refCount != 1)
 							refLine += 's';
 						refLine += (refCount > 0) ? ':' : '.'
