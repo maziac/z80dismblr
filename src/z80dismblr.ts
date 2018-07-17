@@ -1,6 +1,6 @@
 import { Disassembler } from './disassembler/disasm';
 import { readFileSync } from 'fs';
-
+import { Opcode } from './disassembler/opcode';
 
 class Startup {
 
@@ -19,6 +19,16 @@ class Startup {
             this.dasm.opcodesLowerCase = true;
             this.dasm.addOpcodeBytes = false;
 
+            // Set error handler
+            this.dasm.on('error', msg => {
+                // Note: there is no error at the moment.
+                console.error('Error: ' + msg);
+                return;
+            });
+            this.dasm.on('warning', msg => {
+                console.error('Warning: ' + msg);
+            });
+
             // Get arguments
             const args = process.argv.splice(2);
 
@@ -30,6 +40,10 @@ class Startup {
 
             // Go through arguments
             this.processArgs(args);
+
+            // Lower case opcodes?
+            if(this.dasm.opcodesLowerCase)
+                Opcode.makeLowerCase();
 
             // Execute
             const lines = this.dasm.disassemble();
