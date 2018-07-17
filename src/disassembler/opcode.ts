@@ -64,6 +64,25 @@ export class Opcode {
 	}
 
 
+	/// Call this to use lower case opcodes.
+	public static makeLowerCase() {
+		for(let oc of Opcodes)
+			oc.name = oc.name.toLowerCase();
+		for(let oc of OpcodesCB)
+			oc.name = oc.name.toLowerCase();
+		for(let oc of OpcodesDD)
+			oc.name = oc.name.toLowerCase();
+		for(let oc of OpcodesED)
+			oc.name = oc.name.toLowerCase();
+		for(let oc of OpcodesFD)
+			oc.name = oc.name.toLowerCase();
+		for(let oc of OpcodesDDCB)
+			oc.name = oc.name.toLowerCase();
+		for(let oc of OpcodesFDCB)
+			oc.name = oc.name.toLowerCase();
+	}
+
+
 	/// If true comments might be added to the opcode.
 	/// I.e. the hex, decimal etc. conversion of  value.
 	public static enableComments = true;
@@ -252,8 +271,6 @@ export class Opcode {
 	/**
 	 * Disassembles one opcode together with a referenced label (if there
 	 * is one).
-	 * @param labels Array with all the labels.
-	 * @param offsetLabels Array with offsets for the self modifying code.
 	 * @returns A string that contains the disassembly, e.g. "LD A,(DATA_LBL1)"
 	 * or "JR Z,.sub1_lbl3".
 	 */
@@ -1148,7 +1165,6 @@ export const OpcodesDD = Opcodes.map((opcode, index) => {
 	opcodeDD.name = name;
 	return opcodeDD;
 });
-
 
 
 /// Opcodes that start with 0xFD.

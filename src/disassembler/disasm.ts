@@ -310,7 +310,7 @@ export class Disassembler extends EventEmitter {
 
 		// get new address from queue
 		while((address = this.addressQueue.shift()) != undefined) {
-			console.log('address=0x' + address.toString(16));
+			//console.log('address=0x' + address.toString(16));
 			// disassemble until stop-code
 			do {
 				// Check if memory has already been disassembled
@@ -319,7 +319,7 @@ export class Disassembler extends EventEmitter {
 					break;	// Yes, already disassembled
 				if(!(attr & MemAttribute.ASSIGNED)) {
 					// Error: tying to disassemble unassigned memory areas
-					this.emit('warning', 'Warning: Trying to disassemble unassigned memory area at 0x' + address.toString(16) + '.');
+					this.emit('warning', 'Trying to disassemble unassigned memory area at 0x' + address.toString(16) + '.');
 					break;
 				}
 
@@ -349,8 +349,9 @@ export class Disassembler extends EventEmitter {
 				this.memory.addAttributeAt(address, opcode.length, MemAttribute.CODE);
 
 				// Check opcode for labels
-				if(!this.disassembleForLabel(opcode, address))
+				if(!this.disassembleForLabel(opcode, address)) {
 					return;
+				}
 
 				// Check for stop code. (JP, JR, RET)
 				if(opcode.flags & OpcodeFlag.STOP)
@@ -413,7 +414,7 @@ export class Disassembler extends EventEmitter {
 	/**
 	 * "Disassembles" one label. I.e. the opcode is disassembled and checked if it includes
 	 * a label.
-	 * If so, the label is stored together with the call infromation.
+	 * If so, the label is stored together with the call information.
 	 * @param opcode The opcode to search for a label.
 	 * @param opcodeAddress The current address.
 	 * @returns false if problem occurred.
@@ -763,7 +764,7 @@ export class Disassembler extends EventEmitter {
 				if(addrLabel) {
 					// Add empty lines in case this is a SUB or LBL label
 					const type = addrLabel.type;
-					if(type == NumberType.CODE_SUB || type == NumberType.CODE_LBL || type == NumberType.DATA_LBL) {
+					if(type == NumberType.CODE_SUB || type == NumberType.CODE_LBL || type == NumberType.DATA_LBL || type == NumberType.CODE_RST) {
 						this.addEmptyLines(lines);
 					}
 					// Add comment with references

@@ -149,8 +149,7 @@ export class Format {
 		arr[0] = Format.addSpaces(arr[0], clmnsOpcodeFirstPart-1);	// 1 is added anyway when joining
 		let resMainString = arr.join(' ');
 		resMainString = Format.addSpaces(resMainString+' ', clmsnOpcodeTotal);
-		if(opcodesLowerCase)
-			resMainString = resMainString.toLowerCase();
+
 		line +=  resMainString;
 
 		// Add comment
