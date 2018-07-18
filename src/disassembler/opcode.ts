@@ -64,7 +64,7 @@ export class Opcode {
 	}
 
 
-	/// Call this to use lower case opcodes.
+	/// Call this to use lower case or upper case opcodes.
 	public static makeLowerCase() {
 		for(let oc of Opcodes)
 			oc.name = oc.name.toLowerCase();

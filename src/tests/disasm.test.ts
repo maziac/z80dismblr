@@ -3,6 +3,7 @@ import { Disassembler } from '../disassembler/disasm';
 import { NumberType } from '../disassembler/numbertype';
 import { writeFileSync } from 'fs';
 //import { Warning } from '../warning';
+import { Opcodes } from '../disassembler/opcode';
 
 
 var dasm: any;
@@ -547,6 +548,23 @@ suite('Disassembler', () => {
 
 	suite('disassemble', () => {
 
+	/// Called for each test.
+	setup(() => {
+		dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
+
+		dasm.labelSubPrefix = "SUB";
+		dasm.labelLblPrefix = "LBL";
+		dasm.labelDataLblPrefix = "DATA";
+		dasm.labelLocalLablePrefix = "_lbl";
+		dasm.labelLoopPrefix = "_loop";
+		dasm.labelSelfModifyingPrefix = "SELF_MOD";
+
+		dasm.clmnsAddress = 0;
+		dasm.addOpcodeBytes = false;
+		dasm.opcodesLowerCase = false;
+	});
+
+
 		test('combined opcodes', () => {
 			const memory = [
 				0xdd, 0x71, 0xf7,  // ld   (ix-9),c
@@ -770,7 +788,6 @@ suite('Disassembler', () => {
 			const org = 0x0000;
 			dasm.memory.setMemory(org, new Uint8Array(memory));
 			dasm.setLabel(org);
-			dasm.opcodesLowerCase = true;
 			const linesUntrimmed = dasm.disassemble();
 
 			const lines = trimAllLines(linesUntrimmed);
@@ -778,10 +795,10 @@ suite('Disassembler', () => {
 			//console.log(lines.join('\n'));
 
 			let i = -1;
-			assert(lines[++i] == 'org 0')
-			assert(lines[++i] == 'ld a,253');
-			assert(lines[++i] == 'ld hl,65244');
-			assert(lines[++i] == 'ret');
+			assert(lines[++i] == 'ORG 0')
+			assert(lines[++i] == 'LD A,253');
+			assert(lines[++i] == 'LD HL,65244');
+			assert(lines[++i] == 'RET');
 		});
 
 
@@ -889,7 +906,7 @@ suite('Disassembler', () => {
 			let i = -1;
 			assert(lines[++i] == 'ORG 4096')
 			assert(lines[++i] == 'RST 0')
-			assert(lines[++i] == 'DEFS 4095');
+			assert(lines[++i] == 'ORG 8192');
 			assert(lines[++i] == 'RST 32')
 		});
 

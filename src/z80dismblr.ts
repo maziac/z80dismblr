@@ -188,7 +188,7 @@ z80dismblr [options]
                         throw arg + ': No path given.';
                     }
                     // set memory
-                    this.dasm.memory.readBinFile(origin, path);
+                    this.dasm.readBinFile(origin, path);
                     break;
 
                 // TRACE (.tr) file

@@ -154,5 +154,115 @@ $ ./z80dismblr-macos --args argsfile > roms.list
 
 ## How it works
 
+The z80dismblr uses a [Control-Flow-Graph](https://en.wikipedia.org/wiki/Control_flow_graph) (CFG) to analyse the binary file(s).
+I.e. it runs through the code through all possible paths and disassembles it.
+
+Consider the following example:
+
+~~~
+0008h 87           ADD  A,A
+0009h 30 05        JR   NC,0010h
+000Bh 24           INC  H
+000Ch C3 10 00     JP   0010h
+
+000Fh FF           ??
+
+0010h 85           ADD  A,L
+0011h 6F           LD   L,A
+0012h D0           RET  NC
+0013h 24           INC  H
+0014h 3A 18 00     LD   A,(0018h)
+0017h C9           RET
+
+0018h FF           ??
+~~~~
+
+If z80dismblr is told to start at address 0008h it steps through the code until a branch (JR, JR cc, JP, JP cc, CALL or Call cc) is found.
+It then uses the new address as another start point to opcodes.
+Depending on the branch instruction it continues to disassemble at the following address or not (e.g. JP unconditional).
+
+For the code above the leads to the following CFG:
+~~~~
+ ┌──────────────┐
+ │ 08h: ADD A,A │      Start
+ └──────────────┘
+         │
+         ▼
+ ┌──────────────┐
+ │09h: JR NC,10h│───────────┐
+ └──────────────┘           │
+         │                  ▼
+         │          ┌──────────────┐
+         │          │  0Bh: INC H  │
+         │          └──────────────┘
+         │                  │
+         │                  ▼
+         │          ┌──────────────┐
+         │          │ 0Ch: JP 10h  │
+         │          └──────────────┘
+         │                  │
+         ▼                  │
+ ┌──────────────┐           │
+ │ 10h: ADD A,L │◀──────────┘
+ └──────────────┘
+         │
+         ▼
+ ┌──────────────┐
+ │ 11h: LD L,A  │
+ └──────────────┘
+         │
+         ▼
+ ┌──────────────┐    As the return address is unknown
+ │ 12h: RET NC  │    to the disassembler this opcode
+ └──────────────┘    doesn't imply branching.
+         │
+         ▼
+ ┌──────────────┐
+ │  13h: INC H  │
+ └──────────────┘
+         │
+         ▼
+┌─────────────────┐
+│14h: LD A,(0018h)│    Stop
+└─────────────────┘
+         │
+         ▼
+ ┌──────────────┐
+ │   17h: RET   │
+ └──────────────┘
+~~~
+
+We can see already a few important issues:
+- The data at addresses 000Fh is not disassembled as this data is not reachable.
+- The disassembly will stop if all branch addresses have been analysed.
+
+Additionally to the CFG analysis there is also a code and data label analysis.
+This is why address 0018h can be interpreted.
+The disassembler interpretes all opcodes that deal with data addresses like in 'LD A,(0018h)'.
+This adddresses are known to contain data and so the disassembler disassembles the bytes to a 'DEFB' and assigns a label to it.
+
+Here is the resulting disassembly:
+~~~
+0008 RST08:
+0008 87           ADD  A,A
+0009 30 05        JR   NC,RST16 ; 0010h
+000B 24           INC  H
+000C C3 10 00     JP   RST16  ; 0010h
+
+
+000F FF           DEFB 255    ; FFh,   -1
+
+0010 RST16:
+0010 85           ADD  A,L
+0011 6F           LD   L,A
+0012 D0           RET  NC
+0013 24           INC  H
+0014 3A 18 00     LD   A,(LBL_DATA1)
+0017 C9           RET
+
+0018 LBL_DATA1:
+0018 FF           DEFB 255    ; FFh,   -1
+~~~
+
 
 

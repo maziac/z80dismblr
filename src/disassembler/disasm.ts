@@ -775,11 +775,12 @@ export class Disassembler extends EventEmitter {
 		// Loop over all labels
 		let address = -1;
 		for(const [addr, label] of this.labels) {
+			if(label.isEqu)
+				continue;	// Skip EQUs
+
 			// If first line, print ORG
 			if(address == -1) {
 				// First line
-				if(label.isEqu)
-					continue;	// Skip EQUs
 				// Print "ORG"
 				this.addEmptyLines(lines);
 				const orgLine =  ' '.repeat(this.clmnsBytes) + this.rightCase('ORG ') + Format.fillDigits(addr.toString(), ' ', 5) + ' ; ' + Format.getConversionForAddress(addr);
@@ -787,20 +788,14 @@ export class Disassembler extends EventEmitter {
 			}
 			else {
 				// Normal case. All other lines but first line.
-				// Check if address has already been disassembled
-				const defsSize = addr - address;
-				if(defsSize < 0)
+				const unassignedSize = addr - address;
+				if(unassignedSize < 0)
 					continue;
 
-				// Check if there is a defs-area (e.g. an undefined are between 2 mem blocks)
-				if( defsSize > 0) {
-					// Print "DEFS"
-					this.addEmptyLines(lines);
-					const defsString = this.rightCase('DEFS ') + defsSize;
-					const comment = Format.getHexString(defsSize) + 'h, undefined data';
-					let line = this.formatDisassembly(address, 0, defsString, comment);
-					lines.push(line);
-				}
+				// Print new "ORG"
+				this.addEmptyLines(lines);
+				const orgLine =  ' '.repeat(this.clmnsBytes) + this.rightCase('ORG ') + Format.fillDigits(addr.toString(), ' ', 5) + ' ; ' + Format.getConversionForAddress(addr);
+				lines.push(orgLine);
 			}
 
 			// Use address
