@@ -170,7 +170,7 @@ $ ./z80dismblr-macos --args argsfile > roms.list
 ## Recommendations
 
 If you know nothing about the binary that you disassemble the output of the z80dismblr might be disappointing.
-According to the way how it executes the disassembly (see [How it works](#How-it-works)) it can easily happen that not all code paths are found.
+According to the way how it executes the disassembly (see [How it works](#how-it-works)) it can easily happen that not all code paths are found.
 
 Thus the more you know about the code and the more '--codelabel' entries you can pass as arguments the better.
 
