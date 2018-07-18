@@ -281,12 +281,23 @@ export class Disassembler extends EventEmitter {
 	 * @returns Array of strings.
 	 */
 	public getEquLabelsDisassembly(): Array<string> {
+		let firstLabel = true;
 		const lines = new Array<string>();
 		for(let [address, label] of this.labels) {
 			// Check if EQU
 			if(label.isEqu) {
+				if(firstLabel) {
+					// At the start of the EQU area print a comment.
+					lines.push('; EQU:\n; Data addresses used by the opcodes that point to uninitialized memory areas.\n');
+					firstLabel = false;
+				}
 				// "Disassemble"
-				const line =  Format.addSpaces(label.name+':', this.clmnsBytes) + this.rightCase('EQU ') + Format.fillDigits(address.toString(), ' ', 5) + ' ; ' + Format.getVariousConversionsForWord(address);
+				let line =  Format.addSpaces(label.name+':', this.clmnsBytes) + this.rightCase('EQU ') + Format.fillDigits(address.toString(), ' ', 5);
+				// Comment: number converter to hex.
+				line += ' ; ' + Format.getHexString(address, 4) + 'h.';
+				// Comment with references.
+				const refArray = this.getReferencesString(label);
+				line += ' ' + refArray.join(' ');
 				// Store
 				lines.push(line);
 			}
@@ -704,6 +715,52 @@ export class Disassembler extends EventEmitter {
 
 
 	/**
+	 * Creates a human readable string telling which locations reference this address.
+	 * @param addrLabel The label for which the references are requested.
+	 * @return An array of string: 1rst line tells how many references exist.
+	 * 2nd line tells the exact locations of these references.
+	 */
+	protected getReferencesString(addrLabel: DisLabel) {
+		const lineArray = new Array<string>();
+		const refCount = addrLabel.references.length;
+		let line1;
+
+		// 1rst line
+		const type = addrLabel.type;
+		switch(type) {
+			case NumberType.CODE_SUB: line1 = 'Subroutine'; break;
+			case NumberType.CODE_RST: line1 = 'Restart'; break;
+			case NumberType.DATA_LBL: line1 = 'Data'; break;
+			default: line1 = 'Label'; break;
+		}
+		line1 = line1 + ' is referenced by ' + refCount + ' location';
+		if(refCount != 1)
+			line1 += 's';
+		line1 += (refCount > 0) ? ':' : '.';
+		lineArray.push(line1);
+
+		// 2nd line
+		if(refCount > 0) {
+			// Second line: The references
+			const refArray = addrLabel.references.map(addr => {
+				let s = Format.getHexString(addr, 4) + 'h';
+				const parentLabel = this.getParentLabel(addr);
+				if(parentLabel) {
+					// Add e.g. start of subroutine
+					s += '(in ' + parentLabel.name + ')';
+				}
+				return s;
+			});
+			const line2 = refArray.join(', ');
+			lineArray.push(line2);
+		}
+
+		// return
+		return lineArray;
+	}
+
+
+	/**
 	 * Disassemble opcodes together with label names
 	 * Returns an array of strings whichcontains the disassembly.
 	 * @returns The disassembly.
@@ -775,33 +832,9 @@ export class Disassembler extends EventEmitter {
 					|| (type == NumberType.CODE_LBL && this.addReferencesToAbsoluteLabels)
 					|| (type == NumberType.CODE_RST && this.addReferencesToRstLabels)
 					|| (type == NumberType.DATA_LBL && this.addReferencesToDataLabels)) {
-						// First line: Reference count
-						const refCount = addrLabel.references.length;
-						let refLine;
-						switch(type) {
-							case NumberType.CODE_SUB: refLine = 'Subroutine'; break;
-							case NumberType.CODE_RST: refLine = 'Restart'; break;
-							default: refLine = 'Label'; break;
-						}
-						refLine = '; ' + refLine + ' is referenced by ' + refCount + ' location';
-						if(refCount != 1)
-							refLine += 's';
-						refLine += (refCount > 0) ? ':' : '.'
-						lines.push(refLine);
-						if(refCount > 0) {
-							// Second line: The references
-							const refArray = addrLabel.references.map(addr => {
-								let s = '0x'+addr.toString(16);
-								const parentLabel = this.getParentLabel(addr);
-								if(parentLabel) {
-									// Add e.g. start of subroutine
-									s += '(in ' + parentLabel.name + ')';
-								}
-								return s;
-							});
-							refLine = '; ' + refArray.join(', ');
-							lines.push(refLine);
-						}
+						// Get line wit hreferences
+						const refArray = this.getReferencesString(addrLabel).map(s => '; '+s);
+						lines.push(...refArray);
 					}
 
 					// Add label on separate line
