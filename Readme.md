@@ -1,4 +1,4 @@
-# z80-dismblr
+# z80dismblr
 
 z80dismblr is a Z80 commandline disassembler written in typescript.
 
@@ -28,10 +28,27 @@ Please don't hesitate to report any problem that you find.
 
 ## Installation
 
+<!--
+You can either install the npm z80dismblr package or use the provided executables directly.
+
+npm install:
+~~~
+$ npm install z80dismblr
+~~~
+
+If you want to use the executable instead you find executables for Windows, Mac and Linux [here](https://github.com/maziac/z80dismblr/releases). Simply download and execute from the command line.
+-->
+
+At the moment there is no npm install package available but you can install the executable directly.
+Executables exist for Windows, Mac and Linux.
+Simply download [here](https://github.com/maziac/z80dismblr/releases), unzip and execute from the command line.
+
 
 ## Usage
 
-Note: Usage is shown here for MacOS only, should work similar for Linux and Windows.
+Simply execute the unzipped file from the shell.
+
+_Note: Usage is shown here for MacOS only, it should work similar for Linux and Windows._
 
 To create an assembler listing for the snapshot file of 'myfile.sna' just use:
 ~~~
