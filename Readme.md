@@ -41,7 +41,7 @@ If you want to use the executable instead you find executables for Windows, Mac 
 
 At the moment there is no npm install package available but you can install the executable directly.
 Executables exist for Windows, Mac and Linux.
-Simply download [here](https://github.com/maziac/z80dismblr/releases), unzip and execute from the command line.
+Just download [here](https://github.com/maziac/z80dismblr/releases), unzip and execute from the command line.
 
 
 ## Usage
@@ -50,7 +50,7 @@ Simply execute the unzipped file from the shell.
 
 _Note: Usage is shown here for MacOS only, it should work similar for Linux and Windows._
 
-To create an assembler listing for the snapshot file of 'myfile.sna' just use:
+To create an assembler listing for the snapshot file 'myfile.sna' just use:
 ~~~
 $ ./z80dismblr-macos --sna myfile.sna > myfile.list
 ~~~~
@@ -93,7 +93,7 @@ The disassembly looks like this:
 8E95 2C           INC  L
 ~~~
 
-A SNA filecontains an entry point into the code. So it is not necessary to provide a'--codelabel'.
+A SNA file contains an entry point into the code. So it is not necessary to provide a'--codelabel'.
 However, the entry point in the SNA file might not be very good for disassembly purposes in that case
 prepare more information via '--codelabel'.
 
@@ -102,13 +102,11 @@ You can also read in binary files (without headers), e.g. MAME roms.
 For binary files you have to provide additional info of the offset address
 of the loaded file.
 ~~~
-$ ./z80dismblr-macos --bin 0 rom1.bin --bin 0x1000 rom2.bin --bin 0x2000 rom3.bin --codelabel 0x800 MAIN_START INIT > roms.list
+$ ./z80dismblr-macos --bin 0 rom1.bin --bin 0x1000 rom2.bin --bin 0x2000 rom3.bin --codelabel 0x800 MAIN_START > roms.list
 ~~~~
 This will load 3 binary files (rom1.bin, rom2.bin and rom3.bin).
 rom1.bin starts at address 0, rom2.bin at address 0x1000 and rom3.bin at address 0x2000.
 There are 2 initial labels where code starts: at 0x800 the main program starts. Address 0 is added automatically as program start.
-
-If nothing is known about a program you can only assume that program code starts at address 0, but you have to provide at least one address via --codelabel.
 
 If you know nothing about the code the better way will be to provide a MAME trace file. I.e. you run MAME with the debugger and the trace option
 and save it to a file, e.g. myfile.tr.
@@ -172,11 +170,11 @@ $ ./z80dismblr-macos --args argsfile > roms.list
 ## Recommendations
 
 If you know nothing about the binary that you disassemble the output of the z80dismblr might be disappointing.
-According to the way how it executes the disasembly (see [How it works]()) it can easily happen that not all code paths are found.
+According to the way how it executes the disassembly (see [How it works](#How-it-works)) it can easily happen that not all code paths are found.
 
 Thus the more you know about the code and the more '--codelabel' entries you can pass as arguments the better.
 
-If you still don't know nothing about the binary then you should get a trace e.g. file from MAME. This trace file is obtained from the MAME debugger while executing the binary.
+If you still don't know nothing about the binary then you should get a trace file e.g. from MAME. This trace file is obtained from the MAME debugger while executing the binary.
 It's format is a simple disassembly with the first number being the hex address (in ASCII) followed by the disassembly of the executed code.
 z80dismblr does only look for the hex address and assumes all of these addresses to be CODE area that need to be disassembled.
 
@@ -209,9 +207,9 @@ Consider the following example:
 
 If z80dismblr is told to start at address 0008h it steps through the code until a branch (JR, JR cc, JP, JP cc, CALL or Call cc) is found.
 It then uses the new address as another start point to opcodes.
-Depending on the branch instruction it continues to disassemble at the following address or not (e.g. JP unconditional).
+Depending on the branch instruction it continues to disassemble at the following address or stops (e.g. JP unconditional).
 
-For the code above the leads to the following CFG:
+For the code above this leads to the following CFG:
 ~~~~
  ┌──────────────┐
  │ 08h: ADD A,A │      Start
@@ -253,14 +251,14 @@ For the code above the leads to the following CFG:
          │
          ▼
 ┌─────────────────┐
-│14h: LD A,(0018h)│    Stop
+│14h: LD A,(0018h)│
 └─────────────────┘
          │
          ▼
  ┌──────────────┐
- │   17h: RET   │
+ │   17h: RET   │      Stop
  └──────────────┘
-~~~
+ ~~~
 
 We can see already a few important issues:
 - The data at addresses 000Fh is not disassembled as this data is not reachable.
