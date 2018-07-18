@@ -85,8 +85,7 @@ z80dismblr [options]
     --args file: Instead of an argument list on the command line it is also possible
         to provide the arguments in a file. There is no special format, just
         provide the arguments. May conatin newlines.
-    --sna file: Read in a snapshot file. (Snapshot files contain a code start
-        address.)
+    --sna file: Read in a ZX Spectrum snapshot file (48k format only, i.e. no ROM bank support).
     --bin start file: Read in a plain binary. 'start' is the address in memory for the read binary. You can use this
         argument several times to read inseveral binary files.
         --codelabel or --tr is mandatory to

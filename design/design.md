@@ -8,23 +8,26 @@
 │                   Disassembler                    │   │          │
 │                                                   │   │          │
 └───────────────────────────────────────────────────┘   │          │
-                                                        │ Utility  │
-┌──────────────┐   ┌──────────────┐  ┌──────────────┐   │          │
-│              │   │              │  │              │   │          │
-│    Memory    │   │    Opcode    │  │    Label     │   │          │
-│              │   │              │  │              │   │          │
-└──────────────┘   └──────────────┘  └──────────────┘   └──────────┘
+                                                        │          │
+┌───────────────┐  ┌──────────────┐  ┌──────────────┐   │  Format  │
+│    Memory     │  │              │  │              │   │          │
+│ ┌────────────┐│  │              │  │              │   │          │
+│ │    Base    ││  │    Opcode    │  │   DisLabel   │   │          │
+│ │   Memory   ││  │              │  │              │   │          │
+│ └────────────┘│  │              │  │              │   │          │
+└───────────────┘  └──────────────┘  └──────────────┘   └──────────┘
 ~~~~
 
 **Disassembler**: The main class. Does step through the process shown in the flow diagram below.
 
 **Memory**: The bin file is loaded here. Several memory areas are possible.
+**BaseMemory**: Base class for 'memory'.
 
 **Opcode**: Defines all opcodes for disassembly.
 
-**Label**: The found labels (addresses) are stored in an array.
+**DisLabel**: The found labels (addresses) are stored in an array.
 
-**Utility**: Helper methods.
+**Format**: Helper methods to format strings.
 
 
 ## Flow diagram
