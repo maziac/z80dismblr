@@ -96,6 +96,8 @@ z80dismblr [options]
     --codelabel address [labelname]: Known addresses (like the code start
         address) can be given here. If no sna file is given at least one
         codelabel is required so  that disassembly can start from that address.
+        Please note that address 0000h is set automatically.You could of course
+        set it e.g. to change the label name.
     --jmptable address size: If it is known that a jump-table exists in memory
         then its address and size can be given here. 'size' is the number of addresses.
 

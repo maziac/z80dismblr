@@ -106,6 +106,20 @@ export class Disassembler extends EventEmitter {
 	 * @returns An array of strings with the disassembly.
 	 */
 	public disassemble(): Array<string> {
+		// Check for code label at address 0.
+		if(this.memory.getAttributeAt(0) & MemAttribute.ASSIGNED) {
+			// Check if label exists
+			let label0 = this.labels.get(0);
+			if(!label0) {
+				this.setLabel(0, this.labelLblPrefix + '_ADDR0000h', NumberType.CODE_LBL);
+			}
+			else {
+				// Make sure it is a code label
+				label0.type = NumberType.CODE_LBL;
+			}
+			this.addressQueue.push(0);	// Note: if address 0 was already previously pushed it is now pushed again. But it doesn't harm.
+		}
+
 		// 1. Pass: Collect labels
 		this.collectLabels();
 

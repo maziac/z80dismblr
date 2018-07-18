@@ -2,8 +2,6 @@ import * as assert from 'assert';
 import { Disassembler } from '../disassembler/disasm';
 import { NumberType } from '../disassembler/numbertype';
 import { writeFileSync } from 'fs';
-//import { Warning } from '../warning';
-import { Opcodes } from '../disassembler/opcode';
 
 
 var dasm: any;

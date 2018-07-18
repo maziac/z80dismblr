@@ -84,11 +84,11 @@ You can also read in binary files (without headers), e.g. MAME roms.
 For binary files you have to provide additional info of the offset address
 of the loaded file.
 ~~~
-$ ./z80dismblr-macos --bin 0 rom1.bin --bin 0x1000 rom2.bin --bin 0x2000 rom3.bin --codelabel 0x800 MAIN_START --codelabel 0 INIT > roms.list
+$ ./z80dismblr-macos --bin 0 rom1.bin --bin 0x1000 rom2.bin --bin 0x2000 rom3.bin --codelabel 0x800 MAIN_START INIT > roms.list
 ~~~~
 This will load 3 binary files (rom1.bin, rom2.bin and rom3.bin).
 rom1.bin starts at address 0, rom2.bin at address 0x1000 and rom3.bin at address 0x2000.
-There are 2 initial labels where code starts: at 0x800 the main program starts. At address 0 the initialization starts.
+There are 2 initial labels where code starts: at 0x800 the main program starts. Address 0 is added automatically as program start.
 
 If nothing is known about a program you can only assume that program code starts at address 0, but you have to provide at least one address via --codelabel.
 
