@@ -2,12 +2,13 @@
 
 z80dismblr is a Z80 commandline disassembler written in typescript.
 
-**Note: The disassembler is not complete yet. The current version doesn't output good results yet. I have put it for myself in github. Please wait a little while (a few weeks) until this is usable.**
-
+It is available now in version 1.0.0.
+I.e. it is complete and working in general but there might be some faults still.
+Please don't hesitate to report any problem that you find.
 
 ## Features
 
-- Disassembles the given binary by stepping through all branches.
+- Disassembles the given binary via Code-Flow-Grap analysis.
 - Divides into data and code area.
 - Creates labels from hex addresses.
 - Distinguishes labels for subroutines or jump addresses.
@@ -132,7 +133,7 @@ $ ./z80dismblr-macos -h
 to print a help for all allowed arguments.
 
 
-# Config file
+### Arguments File
 
 Instead of a big argument list you can also pass all arguments via a file.
 The format is exactly the same as on the commandline.
@@ -149,6 +150,18 @@ $ cat argsfile
 ~~~
 $ ./z80dismblr-macos --args argsfile > roms.list
 ~~~
+
+
+## Recommendations
+
+If you know nothing about the binary that you disassemble the output of the z80dismblr might be disappointing.
+According to the way how it executes the disasembly (see [How it works]()) it can easily happen that not all code paths are found.
+
+Thus the more you know about the code and the more '--codelabel' entries you can pass as arguments the better.
+
+If you still don't know nothing about the binary then you should get a trace e.g. file from MAME. This trace file is obtained from the MAME debugger while executing the binary.
+It's format is a simple disassembly with the first number being the hex address (in ASCII) followed by the disassembly of the executed code.
+z80dismblr does only look for the hex address and assumes all of these addresses to be CODE area that need to be disassembled.
 
 
 
