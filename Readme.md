@@ -260,14 +260,15 @@ For the code above this leads to the following CFG:
  └──────────────┘
  ~~~
 
-We can see already a few important issues:
+We can see already a few important points:
 - The data at addresses 000Fh is not disassembled as this data is not reachable.
 - The disassembly will stop if all branch addresses have been analysed.
 
 Additionally to the CFG analysis there is also a code and data label analysis.
 This is why address 0018h can be interpreted.
 The disassembler interpretes all opcodes that deal with data addresses like in 'LD A,(0018h)'.
-This adddresses are known to contain data and so the disassembler disassembles the bytes to a 'DEFB' and assigns a label to it.
+This adddresses are known to contain data and so the disassembler disassembles the bytes
+to a 'DEFB' and assigns a label to it.
 
 Here is the resulting disassembly:
 ~~~
@@ -276,7 +277,6 @@ Here is the resulting disassembly:
 0009 30 05        JR   NC,RST16 ; 0010h
 000B 24           INC  H
 000C C3 10 00     JP   RST16  ; 0010h
-
 
 000F FF           DEFB 255    ; FFh,   -1
 
