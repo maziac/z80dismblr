@@ -69,6 +69,9 @@ export class Disassembler extends EventEmitter {
 	public clmnsOpcodeFirstPart = 4 + 1;	///< First part of the opcodes, e.g. "LD" in "LD A,7"
 	public clmsnOpcodeTotal = 5 + 6 + 1;		///< Total length of the opcodes. After this an optional comment may start.
 
+	/// The disassembled lines.
+	protected disassembledLines: Array<string>;
+
 	/// For debugging:
 	protected DBG_COLLECT_LABELS = 0;
 
@@ -99,13 +102,10 @@ export class Disassembler extends EventEmitter {
 		});
 	}
 
-
 	/**
-	 * Disassembles the  memory area.
-	 * Disassembly is done in a few passes.
-	 * @returns An array of strings with the disassembly.
+	 * Adds address 0 to the labels if it has not been added already.
 	 */
-	public disassemble(): Array<string> {
+	public addAddress0000() {
 		// Check for code label at address 0.
 		if(this.memory.getAttributeAt(0) & MemAttribute.ASSIGNED) {
 			// Check if label exists
@@ -119,7 +119,29 @@ export class Disassembler extends EventEmitter {
 			}
 			this.addressQueue.push(0);	// Note: if address 0 was already previously pushed it is now pushed again. But it doesn't harm.
 		}
+	}
 
+
+	/**
+	 * Returns the disassembled lines as a string.
+	 * Make sure to run 'disassemble' beforehand.
+	 */
+	public getDisassembly(): string {
+		if(!this.disassembledLines) {
+			this.emit('warning', 'No disassembly was done.');
+			return '';
+		}
+		return this.disassembledLines.join('\n');
+	}
+
+
+	/**
+	 * Disassembles the  memory area.
+	 * Disassembly is done in a few passes.
+	 * Afterwards the disassembledLines are set.
+	 * @returns An array of strings with the disassembly.
+	 */
+	public disassemble() {
 		// 1. Pass: Collect labels
 		this.collectLabels();
 
@@ -136,18 +158,17 @@ export class Disassembler extends EventEmitter {
 		const disLines = this.disassembleMemory();
 
 		// 6. Add all EQU labels to the beginning of the disassembly
-		const lines = this.getEquLabelsDisassembly();
+		this.disassembledLines = this.getEquLabelsDisassembly();
 
 		// Add the real disassembly
-		lines.push(...disLines);
+		this.disassembledLines.push(...disLines);
 
 		// Remove any preceeding empty lines
-		while(lines.length) {
-			if(lines[0].length > 0)
+		while(this.disassembledLines.length) {
+			if(this.disassembledLines[0].length > 0)
 				break;
-			lines.splice(0,1);
+				this.disassembledLines.splice(0,1);
 		}
-		return lines;
 	}
 
 
@@ -188,7 +209,19 @@ export class Disassembler extends EventEmitter {
 		const start = bin[sp-0x4000] + 256*bin[sp-1-0x4000];	// Get start address from stack
 		this.setMemory(0x4000, bin);
 		// Set start label
-		this.setLabel(start, 'SNA_LBL_MAIN_START_'+start.toString(16), NumberType.CODE_LBL);
+		this.setLabel(start, 'SNA_LBL_MAIN_START_'+start.toString(16).toUpperCase(), NumberType.CODE_LBL);
+	}
+
+
+	/**
+	 * Clears all labels collected so far.
+	 * Useful for dot generation of a particular subroutine.
+	 */
+	public clearLabels() {
+		// get new arrays/maps.
+		this.labels = new Map<number,DisLabel>();
+		this.offsetLabels = new Map<number,number>();
+		this.addressQueue = new Array<number>();
 	}
 
 
@@ -945,7 +978,7 @@ export class Disassembler extends EventEmitter {
 		for(let [addr, label] of this.labels) {
 			const type = label.type;
 			if(type == NumberType.CODE_SUB || type == NumberType.CODE_LBL) {
-				if(addr >= address) {
+				if(addr > address) {
 					// found
 					return prevLabel;
 				}
@@ -954,7 +987,7 @@ export class Disassembler extends EventEmitter {
 			}
 		}
 		// Nothing found
-		return undefined;
+		return prevLabel;
 	}
 
 
@@ -992,8 +1025,45 @@ export class Disassembler extends EventEmitter {
 			return s.toLowerCase();
 		return s;
 	}
+
+
+
+	/**
+	 * Returns the labels call graph in dot syntax.
+	 * Every main labels represents a bubble.
+	 * Arrows from one bubble to the other represents
+	 * calling the function.
+	 * @param name The name of the graph.
+	 */
+	public getCallGraph(name: string): string {
+		let text;
+
+		// header
+		text = 'digraph ' + name + '\n{\n';
+
+		// Iterate through all subroutine labels
+		for(let [address, label] of this.labels) {
+			// Skip other labels
+			if(label.type != NumberType.CODE_SUB && label.type != NumberType.CODE_LBL && label.type != NumberType.CODE_RST)
+				continue;
+			console.log(label.name + '(' + Format.getHexString(address) + '):')
+			// Print all references as callers:
+			for(let addr of label.references) {
+				// get parent of reference address
+				const refLabel = this.getParentLabel(addr);
+				if(refLabel)
+					text += refLabel.name + ' -> ' + label.name + ';\n';
+				console.log('  ' + Format.getHexString(addr) + ': parent=' + ((refLabel) ? refLabel.name : 'undefined'));
+			}
+		}
+
+
+		// ending
+		text += '}\n';
+
+		// return
+		return text;
+	}
+
 }
-
-
-	//export default Disassembler;
 

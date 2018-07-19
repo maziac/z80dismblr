@@ -1,6 +1,7 @@
 import { Disassembler } from './disassembler/disasm';
-import { readFileSync } from 'fs';
+import { readFileSync, writeFileSync } from 'fs';
 import { Opcode } from './disassembler/opcode';
+import * as Path from 'path';
 
 class Startup {
 
@@ -9,6 +10,15 @@ class Startup {
 
     /// The disassembler instance.
     protected static dasm = new Disassembler();
+
+    /// The disassembly output file path.
+    protected static outPath: string|undefined;
+
+    /// The dot (graphviz) output path.
+    protected static dotPath: string|undefined;
+
+    /// If set the disassemble will automatically add address 0 to the labels.
+    protected static addAddress0000 = true;
 
     /**
      * Main function. Called on startup.
@@ -41,15 +51,40 @@ class Startup {
             // Go through arguments
             this.processArgs(args);
 
+            // Check if any output is given
+            if(!this.outPath && !this.dotPath) {
+                throw "You need to set an output path via '--out' or '--dot'.";
+            }
+
             // Lower case opcodes?
             if(this.dasm.opcodesLowerCase)
                 Opcode.makeLowerCase();
 
-            // Execute
-            const lines = this.dasm.disassemble();
+            // Add address 0?
+            if(this.addAddress0000)
+                this.dasm.addAddress0000();
 
-            // Output
-            console.log(lines.join('\n'));
+            // Execute
+            this.dasm.disassemble();
+
+            // Output disassembly
+            if(this.outPath) {
+                // disssembly to file
+                const text = this.dasm.getDisassembly();
+                writeFileSync(this.outPath, text);
+            }
+
+            // Output dot (graphviz)
+            if(this.dotPath) {
+                // labels/references to dot file
+                let name = Path.basename(this.dotPath);
+                const k = name.indexOf('.');
+                if(k > 0)
+                    name = name.substr(0, k);
+                const text = this.dasm.getCallGraph(name);
+                writeFileSync(this.dotPath, text);
+            }
+
         }
         catch(e) {
             console.error(e);
@@ -70,10 +105,10 @@ simply written to stdout.
 
 Example usages:
 
-$ z80dismblr --sna myfile.sna > myfile.list
+$ z80dismblr --sna myfile.sna --out myfile.list
 This will write the disassembly of the snapshot file 'myfile.sna' to file 'myfile.list'.
 
-$ z80dismblr --bin 0x8000 myfile.obj --codelable 0x9000 > myfile.list
+$ z80dismblr --bin 0x8000 myfile.obj --codelable 0x9000 --out myfile.list
 This will write the disassembly of the binary file file 'myfile.obj' to file 'myfile.list'.
 The binary file starts at address 0x8000 and the code entry point start at
 0x9000 (i.e. here begins the code area).
@@ -90,6 +125,10 @@ z80dismblr [options]
         argument several times to read inseveral binary files.
         --codelabel or --tr is mandatory to
         obtain any disassembly results.
+    --out file: Output file. z80dismblr will write the disassembly here.
+    --dot file: Output a dot file. This file can be used for visualization
+    with graphviz. Each bubble is a function and is connected to other
+    functions that it calls. Only main labels are written (i.e. no local labels.)
     --tr file: Add a MAME trace file. This can be used instead of --codelabel.
         Providing a trace file will increase the quality of the
         disassembly output.
@@ -98,8 +137,14 @@ z80dismblr [options]
         codelabel is required so  that disassembly can start from that address.
         Please note that address 0000h is set automatically.You could of course
         set it e.g. to change the label name.
+    --noaddr0: The disassemble will automatically add addresss 0000h to the labels
+        and start disassembly here. If this option is given this behaviour is suppressed.
     --jmptable address size: If it is known that a jump-table exists in memory
         then its address and size can be given here. 'size' is the number of addresses.
+    --clrlabels: Clears all albels collected so far. E.g. can be usd to overrule
+    the automatic label found in a sna file. Afterwards new labels can be
+    defined.
+    Can be useful if you want to list a dot file only for a specfic subroutine.
 
     Prefixes: It is possible to customize the label naming. There are different
     types of labels. For each label type you can define its prefix.
@@ -193,6 +238,22 @@ z80dismblr [options]
                     this.dasm.readBinFile(origin, path);
                     break;
 
+                // output disassembly file
+                case '--out':
+                    this.outPath = args.shift();
+                    if(!this.outPath) {
+                        throw arg + ': No path given.';
+                    }
+                    break;
+
+                // output dot file
+                case '--dot':
+                    this.dotPath = args.shift();
+                    if(!this.dotPath) {
+                        throw arg + ': No path given.';
+                    }
+                    break;
+
                 // TRACE (.tr) file
                 case '--tr':
                     path = args.shift();
@@ -222,6 +283,11 @@ z80dismblr [options]
                     this.dasm.setLabel(addr, labelName);
                     break;
 
+                // set a code label
+                case '--noaddr0':
+                    this.addAddress0000 = false;
+                    break;
+
                 // set a jump table
                 case '--jmptable':
                     // parse address
@@ -238,6 +304,11 @@ z80dismblr [options]
                     }
                     // Set jump table
                     this.dasm.setJmpTable(addr, size);
+                    break;
+
+                // set a code label
+                case '--clrlabels':
+                    this.dasm.clearLabels();
                     break;
 
 

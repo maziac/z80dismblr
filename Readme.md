@@ -1,6 +1,6 @@
 # z80dismblr
 
-z80dismblr is a Z80 commandline disassembler written in typescript.
+z80dismblr is a Z80 command line disassembler written in typescript.
 
 It is available now in version 1.0.0.
 I.e. it is complete and working in general but there might be some faults still.
@@ -52,7 +52,7 @@ _Note: Usage is shown here for MacOS only, it should work similar for Linux and 
 
 To create an assembler listing for the snapshot file 'myfile.sna' just use:
 ~~~
-$ ./z80dismblr-macos --sna myfile.sna > myfile.list
+$ ./z80dismblr-macos --sna myfile.sna --out myfile.list
 ~~~~
 
 It reads in the file (which is in SNA file format) and writes it to stdout which is redirected into the 'myfile.list' file.
@@ -102,7 +102,7 @@ You can also read in binary files (without headers), e.g. MAME roms.
 For binary files you have to provide additional info of the offset address
 of the loaded file.
 ~~~
-$ ./z80dismblr-macos --bin 0 rom1.bin --bin 0x1000 rom2.bin --bin 0x2000 rom3.bin --codelabel 0x800 MAIN_START > roms.list
+$ ./z80dismblr-macos --bin 0 rom1.bin --bin 0x1000 rom2.bin --bin 0x2000 rom3.bin --codelabel 0x800 MAIN_START --out roms.list
 ~~~~
 This will load 3 binary files (rom1.bin, rom2.bin and rom3.bin).
 rom1.bin starts at address 0, rom2.bin at address 0x1000 and rom3.bin at address 0x2000.
@@ -112,7 +112,7 @@ If you know nothing about the code the better way will be to provide a MAME trac
 and save it to a file, e.g. myfile.tr.
 Now you start a disassembly and provide the file:
 ~~~
-$ ./z80dismblr-macos --bin 0 rom1.bin --bin 0x1000 rom2.bin --bin 0x2000 rom3.bin --tr myfile.tr > roms.list
+$ ./z80dismblr-macos --bin 0 rom1.bin --bin 0x1000 rom2.bin --bin 0x2000 rom3.bin --tr myfile.tr --out roms.list
 ~~~
 Note that you can but you don't have to provide a --codelable in this case.
 
@@ -163,7 +163,7 @@ $ cat argsfile
 ~~~
 
 ~~~
-$ ./z80dismblr-macos --args argsfile > roms.list
+$ ./z80dismblr-macos --args argsfile --out roms.list
 ~~~
 
 
