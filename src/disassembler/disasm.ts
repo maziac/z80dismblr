@@ -803,7 +803,8 @@ export class Disassembler extends EventEmitter {
 						// Check label
 						if(!addrLabel)
 							continue;
-						if(addrLabel.type != NumberType.CODE_LBL)
+						if(addrLabel.type != NumberType.CODE_LBL
+						&& addrLabel.type != NumberType.CODE_SUB)
 							continue;
 						// It is a CODE_LBL. Check references.
 						const refs = addrLabel.references;
@@ -859,11 +860,20 @@ export class Disassembler extends EventEmitter {
 		addrsArray.push(address);
 		// check opcode
 		const opcode = Opcode.getOpcodeAt(this.memory, address);
+
+		/*
 		// Subroutine ends here. Also at a JP. A JP is interpreted as "CALL nn; RET"
 		if(opcode.flags & OpcodeFlag.STOP) {
 			//console.log('  stop');
 			return;
 		}
+		*/
+
+		// Subroutine ends at RET (unconditional)
+		const ocName = opcode.name.toUpperCase();
+		if(ocName == "RET" || ocName == "RETI")
+			return;
+
 		// Now check next address
 		const nextAddress = address + opcode.length;
 		this.getSubroutineAddresses(nextAddress, addrsArray);
