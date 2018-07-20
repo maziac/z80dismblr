@@ -151,22 +151,25 @@ export class Disassembler extends EventEmitter {
 		// 2. Find self-modifying code
 		this.adjustSelfModifyingLabels();
 
-		// 3. Check if labels "LBL" are subroutines
+		// 3. Add more references if e.g. a SUB flows through to another SUB.
+		this.addFlowThroughReferences();
+
+		// 4. Check if labels "LBL" are subroutines
 		this.turnLBLintoSUB();
 
-		// 4. Determine local labels inside subroutines
+		// 5. Determine local labels inside subroutines
 		this.findLocalLabelsInSubroutines();
 
-		// 5. Count number of types of labels
+		// 6. Count number of types of labels
 		this.countTypesOfLabels();
 
-		// 6. Assign label names
+		// 7. Assign label names
 		this.assignLabelNames();
 
-		// 7. Pass: Disassemble opcode with label names
+		// 8. Pass: Disassemble opcode with label names
 		const disLines = this.disassembleMemory();
 
-		// 8. Add all EQU labels to the beginning of the disassembly
+		// 9. Add all EQU labels to the beginning of the disassembly
 		this.disassembledLines = this.getEquLabelsDisassembly();
 
 		// Add the real disassembly
@@ -372,7 +375,7 @@ export class Disassembler extends EventEmitter {
 	 * 4. "l"-labels: Everything jumped to by "JR n" or "JR cc,n"
 	 * "loop" and "lbl" labels are prefixed by a previous "SUB"- or "LBL"-label with a prefix
 	 * ".subNNN_" or ".lblNNN_". E.g. ".sub001_l5", ".sub001_loop1", ".lbl788_l89", ".lbl788_loop23".
-	 * All labels are stored into this.labels. At teh end the list is sorted by the address.
+	 * All labels are stored into this.labels. At the end the list is sorted by the address.
 	 */
 	protected collectLabels() {
 		let address;
@@ -594,6 +597,91 @@ export class Disassembler extends EventEmitter {
 
 
 	/**
+	 * Check if a LBL/SUB references another LBL/SUB just by flow-through.
+	 * I.e in.
+	 * 	SUB01:
+	 * 		LD A,1
+	 * 	SUB02:
+	 * 		LD B,3
+	 * SUB01 would otherwise not reference SUB02 although it flows through which
+	 * is equivalent to a JP or CALL;RET.
+	 * This "references" are added here.
+	 */
+	protected addFlowThroughReferences() {
+		// Loop through all labels
+		for( let [address, label] of this.labels) {
+			switch(label.type) {
+				case NumberType.CODE_LBL:
+				case NumberType.CODE_SUB:
+				case NumberType.CODE_RST:
+
+				// Find the next label that is reached not by a JP, JR or CALL
+				const foundLabel = this.findNextFlowThroughLabel(address);
+				if(foundLabel) {
+					// add reference
+					if(foundLabel.references.indexOf(address) < 0)
+						foundLabel.references.push(address);
+				}
+
+			}
+		}
+	}
+
+
+	/**
+	 * Finds the next label in the path.
+	 * Uses the direct path, i.e. it doesnot follow any branch addresses.
+	 * Returns at a STOP code.
+	 * Is used to find "flow-through" references. I.e. references from a SUB
+	 * to another that are creates because the program flow simply flows
+	 * through to the other subroutine instead of jumping to it or calling
+	 * it.
+	 * @param address The start address of the path.
+	 * @returns The found label or undefined if nothing found.
+	 */
+	protected findNextFlowThroughLabel(address: number,): DisLabel|undefined {
+		// Check if memory exists
+		let memAttr = this.memory.getAttributeAt(address);
+		if(!(memAttr & MemAttribute.ASSIGNED)) {
+			return undefined;
+		}
+
+		// Get opcode
+		let opcode = Opcode.getOpcodeAt(this.memory, address);
+
+		// Loop over addresses
+		while(!(opcode.flags & OpcodeFlag.STOP)) {
+			// Next address
+			address += opcode.length;
+
+			// Check if label exists
+			const foundLabel = this.labels.get(address);
+			if(foundLabel) {
+				// Check if it is LBL or SUB
+				const type = foundLabel.type;
+				switch(type) {
+					case NumberType.CODE_LBL:
+					case NumberType.CODE_SUB:
+						return foundLabel;
+				}
+			}
+
+			// Check if memory exists
+			const memAttr = this.memory.getAttributeAt(address);
+			if(!(memAttr & MemAttribute.ASSIGNED)) {
+				return undefined;
+			}
+
+			// Get opcode
+			opcode = Opcode.getOpcodeAt(this.memory, address);
+		}
+
+		// nothing found
+		return undefined;
+	}
+
+
+	/**
 	 * Checks if LBLs are SUBs and if so turns them into SUBs.
 	 * Therefore it iterates through all LBL labels.
 	 * Then it walks through the LBL and stops if it finds a RET, RET cc or RETI.
@@ -608,7 +696,7 @@ export class Disassembler extends EventEmitter {
 		// Loop through all labels
 		for( let [address, label] of this.labels) {
 			if(label.type == NumberType.CODE_LBL) {
-				// Get all addresses belonging to the path
+				// Find a "RET" on the path
 				const addrsArray = new Array<number>();
 				const opcode = this.findRET(address, addrsArray);
 				if(opcode) {

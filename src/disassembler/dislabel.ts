@@ -24,6 +24,9 @@ export class DisLabel {
 	/// I.e. outside the range of the given memory.
 	public isEqu = false;
 
+	/// Set to true if label belongs to an interrupt.
+	public belongsToInterrupt = false;
+
 	/**
 	 * Constructor: Initializes memory.
 	 */
