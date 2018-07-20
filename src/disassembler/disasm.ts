@@ -53,6 +53,9 @@ export class Disassembler extends EventEmitter {
 	public labelLocalLablePrefix = "_l";
 	public labelLoopPrefix = "_loop";
 
+	public labelIntrptPrefix = "INTRPT_";
+
+
 	/// The calculated number of occurences of a label type.
 	protected labelSubCountDigits;
 	protected labelLblCountDigits;
@@ -148,19 +151,22 @@ export class Disassembler extends EventEmitter {
 		// 2. Find self-modifying code
 		this.adjustSelfModifyingLabels();
 
-		// 3. Determine local labels inside subroutines.
+		// 3. Check if labels "LBL" are subroutines
+		this.turnLBLintoSUB();
+
+		// 4. Determine local labels inside subroutines
 		this.findLocalLabelsInSubroutines();
 
-		// 3. Count number of types of labels
+		// 5. Count number of types of labels
 		this.countTypesOfLabels();
 
-		// 4. Assign label names
+		// 6. Assign label names
 		this.assignLabelNames();
 
-		// 5. Pass: Disassemble opcode with label names
+		// 7. Pass: Disassemble opcode with label names
 		const disLines = this.disassembleMemory();
 
-		// 6. Add all EQU labels to the beginning of the disassembly
+		// 8. Add all EQU labels to the beginning of the disassembly
 		this.disassembledLines = this.getEquLabelsDisassembly();
 
 		// Add the real disassembly
@@ -588,8 +594,90 @@ export class Disassembler extends EventEmitter {
 
 
 	/**
+	 * Checks if LBLs are SUBs and if so turns them into SUBs.
+	 * Therefore it iterates through all LBL labels.
+	 * Then it walks through the LBL and stops if it finds a RET, RET cc or RETI.
+	 * (If it finds a RETI it marks the labels as interrupt.)
+	 * Note 1: It does not check necessarily all branches. Once it finds a
+	 * RET it assumes that also the other branches will end with a RET.
+	 * Note 2: When this function is done there should be only 2 LBL left:
+	 * - the main program and
+	 * - the interrupt.
+	 */
+	protected turnLBLintoSUB() {
+		// Loop through all labels
+		for( let [address, label] of this.labels) {
+			if(label.type == NumberType.CODE_LBL) {
+				// Get all addresses belonging to the path
+				const addrsArray = new Array<number>();
+				const opcode = this.findRET(address, addrsArray);
+				if(opcode) {
+					// It is a subroutine, so turn the LBL into a SUB.
+					// Check if RETI
+					if(opcode.name.toUpperCase().startsWith("RETI")) {
+						// RETI
+						label.belongsToInterrupt = true;
+					}
+					// Change to SUB
+					label.type = NumberType.CODE_SUB;
+				}
+			}
+		}
+	}
+
+
+	/**
+	 * Tries to find a "RET(I)" in the path.
+	 * @param address The start address of the path.
+	 * @param addrsArray An empty array in the beginning that is filled with
+	 * all addresses of the path.
+	 * @returns The opcode if an "RET(I)" was found otherwise undefined.
+	 */
+	protected findRET(address: number, addrsArray: Array<number>): Opcode|undefined {
+		// Check if memory exists
+		const memAttr = this.memory.getAttributeAt(address);
+		if(!(memAttr & MemAttribute.ASSIGNED)) {
+			//console.log('  stop, not assigned');
+			return undefined;
+		}
+		// Unfortunately it needs to be checked if address has been checked already
+		if(addrsArray.indexOf(address) >= 0)
+			return undefined;	// already checked
+		// Add to array
+		addrsArray.push(address);
+
+		// check opcode
+		const opcode = Opcode.getOpcodeAt(this.memory, address);
+
+		// Check if RET(I)
+		if(opcode.name.toUpperCase().startsWith("RET"))
+			return opcode;
+
+		// Now check next address
+		if(!(opcode.flags & OpcodeFlag.STOP)) {
+			const nextAddress = address + opcode.length;
+			const opcode2 = this.findRET(nextAddress, addrsArray);
+			if(opcode2)
+				return opcode2;
+		}
+
+		// And maybe branch address (but not a CALL)
+		if(opcode.flags & OpcodeFlag.BRANCH_ADDRESS) {
+			if(!(opcode.flags & OpcodeFlag.CALL)) {
+				const branchAddress = opcode.value;
+				const opcode3 = this.findRET(branchAddress, addrsArray);
+				return opcode3;
+			}
+		}
+
+		// no RET
+		return undefined;
+	}
+
+
+	/**
 	 * After Labels have been assigned:
-	 * Iterate through all Labels/Subroutines.
+	 * Iterate through all subroutine labels.
 	 * Walkthrough each subroutine and store the address belonging to the
 	 * subroutine in an (temporary) array. The subroutine ends if each branch
 	 * ends with a stop code (RET or JP).
@@ -770,7 +858,7 @@ export class Disassembler extends EventEmitter {
 			switch(type) {
 				case NumberType.CODE_SUB:
 					// Set name
-					label.name = this.labelSubPrefix + this.getIndex(subIndex, this.labelSubCountDigits);
+					label.name = (label.belongsToInterrupt) ? this.labelIntrptPrefix : '' + this.labelSubPrefix + this.getIndex(subIndex, this.labelSubCountDigits);
 					// Use for local prefix
 					localPrefix = '.' + label.name.toLowerCase();
 					// Next
@@ -778,7 +866,7 @@ export class Disassembler extends EventEmitter {
 				break;
 				case NumberType.CODE_LBL:
 					// Set name
-					label.name = this.labelLblPrefix + this.getIndex(lblIndex, this.labelLblCountDigits);
+					label.name = (label.belongsToInterrupt) ? this.labelIntrptPrefix : '' + this.labelLblPrefix + this.getIndex(lblIndex, this.labelLblCountDigits);
 					// Use for local prefix
 					localPrefix = '.' + label.name.toLowerCase();
 					// Next
