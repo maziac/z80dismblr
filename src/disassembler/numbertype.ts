@@ -5,9 +5,9 @@ export const enum NumberType {
 	// No label
 	NONE = 0,
 	// "relative-label"-type, i.e. JR
-	CODE_RELATIVE_LBL,
+	CODE_LOCAL_LBL,
 	// "loop"-type
-	CODE_RELATIVE_LOOP,
+	CODE_LOCAL_LOOP,
 	// "LBL"-type
 	CODE_LBL,
 	// "SUB"-type

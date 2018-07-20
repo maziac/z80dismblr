@@ -39,8 +39,8 @@ export class DisLabel {
 	public getTypeAsString(): string {
 		switch(this.type) {
 			case NumberType.NONE:	return "NONE";
-			case NumberType.CODE_RELATIVE_LBL:	return "CODE_RELATIVE_LBL";
-			case NumberType.CODE_RELATIVE_LOOP:	return "CODE_RELATIVE_LOOP";
+			case NumberType.CODE_LOCAL_LBL:	return "CODE_RELATIVE_LBL";
+			case NumberType.CODE_LOCAL_LOOP:	return "CODE_RELATIVE_LOOP";
 			case NumberType.CODE_LBL:	return "CODE_LBL";
 			case NumberType.CODE_SUB:	return "CODE_SUB";
 			case NumberType.CODE_RST:	return "CODE_RST";

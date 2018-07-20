@@ -16,8 +16,11 @@ export enum MemAttribute {
 	CODE = 0x02,
 	/// First byte of an opcode
 	CODE_FIRST = 0x04,
+	/// It is a stop code, e.g. a 'RET' or an unconditional 'JP nn'.
+	/// All bytes of an opcode will get this attribute.
+	//CODE_STOP = 0x08,
 	/// Data area
-	DATA = 0x08
+	DATA = 0x10
 }
 
 /**

@@ -148,6 +148,9 @@ export class Disassembler extends EventEmitter {
 		// 2. Find self-modifying code
 		this.adjustSelfModifyingLabels();
 
+		// 3. Determine local labels inside subroutines.
+		this.findLocalLabelsInSubroutines();
+
 		// 3. Count number of types of labels
 		this.countTypesOfLabels();
 
@@ -243,8 +246,8 @@ export class Disassembler extends EventEmitter {
 		const attr = this.memory.getAttributeAt(address);
 		if(attr & MemAttribute.ASSIGNED) {
 			if(type == NumberType.CODE_LBL
-				|| type == NumberType.CODE_RELATIVE_LBL
-				|| type == NumberType.CODE_RELATIVE_LOOP
+				|| type == NumberType.CODE_LOCAL_LBL
+				|| type == NumberType.CODE_LOCAL_LOOP
 				|| type == NumberType.CODE_RST
 				|| type == NumberType.CODE_SUB
 			)
@@ -409,6 +412,12 @@ export class Disassembler extends EventEmitter {
 				this.memory.addAttributeAt(address, 1, MemAttribute.CODE_FIRST);
 				this.memory.addAttributeAt(address, opcode.length, MemAttribute.CODE);
 
+				/*
+				// Mark as stop code?
+				if(opcode.flags & OpcodeFlag.STOP)
+					this.memory.addAttributeAt(address, opcode.length, MemAttribute.CODE_STOP);
+				*/
+
 				// Check opcode for labels
 				if(!this.disassembleForLabel(opcode, address)) {
 					return;
@@ -430,16 +439,6 @@ export class Disassembler extends EventEmitter {
 
 		// Sort all labels by address
 		this.labels = new Map([...this.labels.entries()].sort(([a], [b]) => a-b ));
-	}
-
-
-	/**
-	 * Check condition under which a number is counted as label.
-	 * @param value
-	 * @return true or false.
-	 */
-	protected useNumberAsLabel(value: number) {
-		return (value > 512);
 	}
 
 
@@ -487,15 +486,15 @@ export class Disassembler extends EventEmitter {
 			// It is a label.
 
 			// Get branching memory attribute
-			let branchAddress = opcode.value;
+			const branchAddress = opcode.value;
 			const attr = this.memory.getAttributeAt(branchAddress);
 
 			// Create new label or prioritize if label already exists
 			let vType = opcode.valueType;
-			if(vType == NumberType.CODE_RELATIVE_LBL) {
+			if(vType == NumberType.CODE_LOCAL_LBL) {
 				// A relative jump backwards will become a "loop"
 				if(branchAddress <= opcodeAddress)
-					vType = NumberType.CODE_RELATIVE_LOOP;
+					vType = NumberType.CODE_LOCAL_LOOP;
 			}
 			this.setFoundLabel(branchAddress, [opcodeAddress], vType, attr);
 
@@ -584,6 +583,105 @@ export class Disassembler extends EventEmitter {
 			// Add offset label
 			const offs = addrStart - address;	// negative
 			this.offsetLabels.set(address, offs);
+		}
+	}
+
+
+	/**
+	 * After Labels have been assigned:
+	 * Iterate through all Labels/Subroutines.
+	 * Walkthrough each subroutine and store the address belonging to the
+	 * subroutine in an (temporary) array. The subroutine ends if each branch
+	 * ends with a stop code (RET or JP).
+	 * Then iterate the array.
+	 * Each address with a Label of type CODE_LBL is checked. If it contains
+	 * reference addresses outside the range of the array then it stays a CODE_LBL
+	 * otherwise it is turned into a local label CODE_LOCAL_LBL or CODE_LOCAL_LOOP.
+	 */
+	protected findLocalLabelsInSubroutines() {
+		// Loop through all labels
+		for( let [address, label] of this.labels) {
+			switch(label.type) {
+				case NumberType.CODE_SUB:
+				case NumberType.CODE_RST:
+					// Get all addresses belonging to the subroutine
+					const addrsArray = new Array<number>();
+					this.getSubroutineAddresses(address, addrsArray);
+					// Iterate array
+					for(let addr of addrsArray) {
+						// get corresponding label
+						const addrLabel = this.labels.get(addr);
+						// Check label
+						if(!addrLabel)
+							continue;
+						if(addrLabel.type != NumberType.CODE_LBL)
+							continue;
+						// It is a CODE_LBL. Check references.
+						const refs = addrLabel.references;
+						let outsideFound = false;
+						for(const refAddr of refs) {
+							if(addrsArray.indexOf(refAddr) < 0) {
+								// Found an address outside of the subroutine,
+								// I.e. leave the label unchanged.
+								outsideFound = true;
+								break;
+							}
+						}
+						if(!outsideFound) {
+							// No reference outside the subroutine found
+							// -> turn CODE_LBL into local label
+							addrLabel.type = NumberType.CODE_LOCAL_LBL;
+							// If any reference addr is bigger than use CODE_LOCAL_LOOP,
+							// otherwise CODE_LOCAL_LBL
+							for(const refAddr of refs) {
+								if(refAddr >= addr) {
+									// Use loop
+									addrLabel.type = NumberType.CODE_LOCAL_LOOP;
+									break;
+								}
+							}
+						}
+					}
+			}
+		}
+	}
+
+
+	/**
+	 * Returns an array with all addresses used by the subroutine
+	 * goven at 'address'.
+	 * Works recursively.
+	 * @param address The start address of the subroutine.
+	 * @param addrsArray An empty array in the beginning that is filled with
+	 * all addresses of the subroutine.
+	 */
+	protected getSubroutineAddresses(address: number, addrsArray: Array<number>) {
+		//console.log('Address=' + address + ', addrsArray.length=' + addrsArray.length);
+		// Check if memory exists
+		const memAttr = this.memory.getAttributeAt(address);
+		if(!(memAttr & MemAttribute.ASSIGNED)) {
+			//console.log('  stop, not assigned');
+			return;
+		}
+		// Unfortunately it needs to be checked if address has been checked already
+		if(addrsArray.indexOf(address) >= 0)
+			return;	// already checked
+		// Add to array
+		addrsArray.push(address);
+		// check opcode
+		const opcode = Opcode.getOpcodeAt(this.memory, address);
+		// Subroutine ends here. Also at a JP. A JP is interpreted as "CALL nn; RET"
+		if(opcode.flags & OpcodeFlag.STOP) {
+			//console.log('  stop');
+			return;
+		}
+		// Now check next address
+		const nextAddress = address + opcode.length;
+		this.getSubroutineAddresses(nextAddress, addrsArray);
+		// And maybe branch address
+		if(opcode.flags & OpcodeFlag.BRANCH_ADDRESS) {
+			const branchAddress = opcode.value;
+			this.getSubroutineAddresses(branchAddress, addrsArray);
 		}
 	}
 
@@ -715,13 +813,13 @@ export class Disassembler extends EventEmitter {
 					// Use for local prefix
 					// localPrefix = '.' + label.name.toLowerCase();
 				break;
-				case NumberType.CODE_RELATIVE_LOOP:
+				case NumberType.CODE_LOCAL_LOOP:
 					// Set name
 					label.name = localPrefix + this.labelLoopPrefix;
 					// Remember label
 					relLoopLabels.push(label);
 				break;
-				case NumberType.CODE_RELATIVE_LBL:
+				case NumberType.CODE_LOCAL_LBL:
 					// Set name
 					label.name = localPrefix + this.labelLocalLablePrefix;
 					// Remember label

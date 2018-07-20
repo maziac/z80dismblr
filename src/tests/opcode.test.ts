@@ -202,13 +202,13 @@ suite('Opcode', () => {
 		assert(Opcodes[0xD2].valueType == NumberType.CODE_LBL);
 
 		// JR
-		assert(Opcodes[0x18].valueType == NumberType.CODE_RELATIVE_LBL);
+		assert(Opcodes[0x18].valueType == NumberType.CODE_LOCAL_LBL);
 
 		// JR cc
-		assert(Opcodes[0x20].valueType == NumberType.CODE_RELATIVE_LBL);
+		assert(Opcodes[0x20].valueType == NumberType.CODE_LOCAL_LBL);
 
 		// DJNZ
-		assert(Opcodes[0x10].valueType == NumberType.CODE_RELATIVE_LBL);
+		assert(Opcodes[0x10].valueType == NumberType.CODE_LOCAL_LBL);
 
 		// RET
 		assert(Opcodes[0xC9].valueType == NumberType.NONE);

@@ -231,7 +231,7 @@ suite('Disassembler', () => {
 
 			label = dasm.labels.get(0x4007);
 			assert(label != undefined);
-			assert(label.type == NumberType.CODE_RELATIVE_LOOP);
+			assert(label.type == NumberType.CODE_LOCAL_LOOP);
 			assert(label.isEqu == false);
 
 			label = dasm.labels.get(0x400a);
@@ -241,7 +241,7 @@ suite('Disassembler', () => {
 
 			label = dasm.labels.get(0x4018);
 			assert(label != undefined);
-			assert(label.type == NumberType.CODE_RELATIVE_LOOP);
+			assert(label.type == NumberType.CODE_LOCAL_LOOP);
 			assert(label.isEqu == false);
 
 			label = dasm.labels.get(0x401a);

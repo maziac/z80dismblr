@@ -150,12 +150,12 @@ export class Opcode {
 
 				// now check for opcode flags
 				if(name.startsWith("DJNZ")) {
-					//this.valueType = NumberType.CODE_RELATIVE_LOOP;
-					this.valueType = NumberType.CODE_RELATIVE_LBL;	// Becomes a loop because it jumps backwards.
+					//this.valueType = NumberType.CODE_LOCAL_LOOP;
+					this.valueType = NumberType.CODE_LOCAL_LBL;	// Becomes a loop because it jumps backwards.
 					this.flags |= OpcodeFlag.BRANCH_ADDRESS;
 				}
 				if(name.startsWith("JR")) {
-					this.valueType = NumberType.CODE_RELATIVE_LBL;
+					this.valueType = NumberType.CODE_LOCAL_LBL;
 					this.flags |= OpcodeFlag.BRANCH_ADDRESS;
 					// Now check if it is conditional, i.e. if there is a ',' in the opcode
 					// If it is not conditional it is a stop-code.
@@ -241,14 +241,14 @@ export class Opcode {
 				this.value = memory.getBigEndianWordValueAt(address+1);
 			break;
 			case NumberType.RELATIVE_INDEX:
-			case NumberType.CODE_RELATIVE_LBL:
-			case NumberType.CODE_RELATIVE_LOOP:
+			case NumberType.CODE_LOCAL_LBL:
+			case NumberType.CODE_LOCAL_LOOP:
 				// byte value
 				this.value = memory.getValueAt(address+1);
 				if(this.value >= 0x80)
 					this.value -= 0x100;
 				// Change relative jump address to absolute
-				if(this.valueType == NumberType.CODE_RELATIVE_LBL || this.valueType == NumberType.CODE_RELATIVE_LOOP)
+				if(this.valueType == NumberType.CODE_LOCAL_LBL || this.valueType == NumberType.CODE_LOCAL_LOOP)
 					this.value += address+2;
 			break;
 			case NumberType.NUMBER_BYTE:
@@ -286,8 +286,8 @@ export class Opcode {
 		// Get referenced label name
 		let valueName = '';
 		if(this.valueType == NumberType.CODE_LBL
-			|| this.valueType == NumberType.CODE_RELATIVE_LBL
-			|| this.valueType == NumberType.CODE_RELATIVE_LOOP
+			|| this.valueType == NumberType.CODE_LOCAL_LBL
+			|| this.valueType == NumberType.CODE_LOCAL_LOOP
 			|| this.valueType == NumberType.CODE_SUB) {
 			const val = this.value;
 			valueName = Opcode.convertToLabel(val);
