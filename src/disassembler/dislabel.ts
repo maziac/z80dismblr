@@ -2,6 +2,14 @@ import * as assert from 'assert';
 //import { CodeLocation } from './codelocation';
 import { NumberType } from './numbertype';
 
+
+export interface Reference {
+	/// The address of the reference.
+	address: number;
+	/// The parent to the address.
+	parent: DisLabel|undefined;
+}
+
 /**
  * Class for the labels used for disassembly.
  */
@@ -18,7 +26,7 @@ export class DisLabel {
 	public parent: DisLabel;
 
 	/// The code locations that reference the label.
-	public references = Array<number>();
+	public references = new Set<Reference>();
 
 	/// True if it is an EQU label. A label whose memory was not given as binary value.
 	/// I.e. outside the range of the given memory.

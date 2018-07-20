@@ -7,6 +7,7 @@ import { DisLabel } from './dislabel'
 import { EventEmitter } from 'events';
 import { Format } from './format';
 import { readFileSync } from 'fs';
+import { Reference } from './dislabel';
 
 
 export class Disassembler extends EventEmitter {
@@ -160,16 +161,19 @@ export class Disassembler extends EventEmitter {
 		// 5. Determine local labels inside subroutines
 		this.findLocalLabelsInSubroutines();
 
-		// 6. Count number of types of labels
+		// 6. Remove self referenced labels
+		this.addParentReferences();
+
+		// 7. Count number of types of labels
 		this.countTypesOfLabels();
 
-		// 7. Assign label names
+		// 8. Assign label names
 		this.assignLabelNames();
 
-		// 8. Pass: Disassemble opcode with label names
+		// 9. Pass: Disassemble opcode with label names
 		const disLines = this.disassembleMemory();
 
-		// 9. Add all EQU labels to the beginning of the disassembly
+		// 10. Add all EQU labels to the beginning of the disassembly
 		this.disassembledLines = this.getEquLabelsDisassembly();
 
 		// Add the real disassembly
@@ -324,6 +328,7 @@ export class Disassembler extends EventEmitter {
 	/**
 	 * Prints all labels to the console.
 	 */
+	/*
 	public printLabels() {
 		for(let [address, label] of this.labels) {
 			// Label
@@ -333,7 +338,7 @@ export class Disassembler extends EventEmitter {
 			console.log('\tReferenced by: ' + refArray.toString() );
 		}
 	}
-
+	*/
 
 	/**
 	 * Puts all EQU labels in an array of strings.
@@ -458,7 +463,7 @@ export class Disassembler extends EventEmitter {
 	 * @param type The NumberType.
 	 * @param attr The memory attribute at address.
 	 */
-	protected setFoundLabel(address: number, referenceAddresses: number[], type: NumberType, attr: MemAttribute) {
+	protected setFoundLabel(address: number, referenceAddresses: Set<Reference>, type: NumberType, attr: MemAttribute) {
 		// Check if label already exists
 		let label = this.labels.get(address);
 		if(label) {
@@ -475,8 +480,12 @@ export class Disassembler extends EventEmitter {
 				label.isEqu = true;
 		}
 
-		// Add reference
-		label.references.push(...referenceAddresses);
+		// Add reference(s). Do a union of both sets.
+		//label.references = new Set([...label.references, ...referenceAddresses]);
+		for(let ref of referenceAddresses) {
+			if(ref.address != address)
+				label.references.add(ref);
+		}
 	}
 
 
@@ -505,7 +514,8 @@ export class Disassembler extends EventEmitter {
 				if(branchAddress <= opcodeAddress)
 					vType = NumberType.CODE_LOCAL_LOOP;
 			}
-			this.setFoundLabel(branchAddress, [opcodeAddress], vType, attr);
+			const ref: Reference = {address: opcodeAddress, parent: undefined};
+			this.setFoundLabel(branchAddress, new Set([ref]), vType, attr);
 
 			// Check if code from the branching address has already been disassembled
 			if(attr & MemAttribute.CODE) {
@@ -539,7 +549,8 @@ export class Disassembler extends EventEmitter {
 			const attr = this.memory.getAttributeAt(address);
 
 			// Create new label or prioritize if label already exists
-			this.setFoundLabel(address, [opcodeAddress], opcode.valueType, attr);
+			const ref: Reference = {address: opcodeAddress, parent: undefined};
+			this.setFoundLabel(address, new Set([ref]), opcode.valueType, attr);
 		}
 
 		// Everything fine
@@ -619,8 +630,10 @@ export class Disassembler extends EventEmitter {
 				const foundLabel = this.findNextFlowThroughLabel(address);
 				if(foundLabel) {
 					// add reference
-					if(foundLabel.references.indexOf(address) < 0)
-						foundLabel.references.push(address);
+					if(label != foundLabel) {
+						const ref: Reference = {address: address, parent: label};
+						foundLabel.references.add(ref);
+					}
 				}
 
 			}
@@ -795,8 +808,8 @@ export class Disassembler extends EventEmitter {
 						// It is a CODE_LBL. Check references.
 						const refs = addrLabel.references;
 						let outsideFound = false;
-						for(const refAddr of refs) {
-							if(addrsArray.indexOf(refAddr) < 0) {
+						for(const ref of refs) {
+							if(addrsArray.indexOf(ref.address) < 0) {
 								// Found an address outside of the subroutine,
 								// I.e. leave the label unchanged.
 								outsideFound = true;
@@ -809,8 +822,8 @@ export class Disassembler extends EventEmitter {
 							addrLabel.type = NumberType.CODE_LOCAL_LBL;
 							// If any reference addr is bigger than use CODE_LOCAL_LOOP,
 							// otherwise CODE_LOCAL_LBL
-							for(const refAddr of refs) {
-								if(refAddr >= addr) {
+							for(const ref of refs) {
+								if(ref.address >= addr) {
 									// Use loop
 									addrLabel.type = NumberType.CODE_LOCAL_LOOP;
 									break;
@@ -856,8 +869,31 @@ export class Disassembler extends EventEmitter {
 		this.getSubroutineAddresses(nextAddress, addrsArray);
 		// And maybe branch address
 		if(opcode.flags & OpcodeFlag.BRANCH_ADDRESS) {
-			const branchAddress = opcode.value;
-			this.getSubroutineAddresses(branchAddress, addrsArray);
+			if(!(opcode.flags & OpcodeFlag.CALL)) {
+				const branchAddress = opcode.value;
+				this.getSubroutineAddresses(branchAddress, addrsArray);
+			}
+		}
+	}
+
+
+	/**
+	 * Iterates through all Label.references and sets its parent label.
+	 * References to itself are removed.
+	 */
+	protected addParentReferences() {
+		for( let [, label] of this.labels) {
+			// Remove self references, e.g. a subroutine that includes a loop that
+			// jumps to itself and add all parent labels.
+			const refs = label.references;
+			for(let ref of refs) {
+				if(!ref.parent)
+					ref.parent = this.getParentLabel(ref.address);
+				if(ref.parent == label) {
+					// delete it, it references itself
+					refs.delete(ref);
+				}
+			}
 		}
 	}
 
@@ -1043,7 +1079,7 @@ export class Disassembler extends EventEmitter {
 	 */
 	protected getReferencesString(addrLabel: DisLabel) {
 		const lineArray = new Array<string>();
-		const refCount = addrLabel.references.length;
+		const refCount = addrLabel.references.size;
 		let line1;
 
 		// 1rst line
@@ -1063,9 +1099,10 @@ export class Disassembler extends EventEmitter {
 		// 2nd line
 		if(refCount > 0) {
 			// Second line: The references
-			const refArray = addrLabel.references.map(addr => {
+			const refArray = [...addrLabel.references].map(elem => {
+				const addr = elem.address;
 				let s = Format.getHexString(addr, 4) + 'h';
-				const parentLabel = this.getParentLabel(addr);
+				const parentLabel = elem.parent;
 				if(parentLabel) {
 					// Add e.g. start of subroutine
 					s += '(in ' + parentLabel.name + ')';
@@ -1316,18 +1353,22 @@ export class Disassembler extends EventEmitter {
 		text = 'digraph ' + name + '\n{\n';
 
 		// Iterate through all subroutine labels
-		for(let [address, label] of this.labels) {
+		for(let [, label] of this.labels) {
 			// Skip other labels
 			if(label.type != NumberType.CODE_SUB && label.type != NumberType.CODE_LBL && label.type != NumberType.CODE_RST)
 				continue;
-			console.log(label.name + '(' + Format.getHexString(address) + '):')
+			//console.log(label.name + '(' + Format.getHexString(address) + '):')
+			// List each parent only once
+			const parents = new Set<DisLabel>();
+			for(const ref of label.references) {
+				const par = ref.parent;
+				if(par)
+					parents.add(par);
+			}
 			// Print all references as callers:
-			for(let addr of label.references) {
-				// get parent of reference address
-				const refLabel = this.getParentLabel(addr);
-				if(refLabel)
-					text += refLabel.name + ' -> ' + label.name + ';\n';
-				console.log('  ' + Format.getHexString(addr) + ': parent=' + ((refLabel) ? refLabel.name : 'undefined'));
+			for(let refLabel of parents) {
+				text += refLabel.name + ' -> ' + label.name + ';\n';
+				//console.log('  ' + Format.getHexString(ref.address) + ': parent=' + ((refLabel) ? refLabel.name : 'undefined'));
 			}
 		}
 
