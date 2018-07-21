@@ -1054,7 +1054,7 @@ suite('Disassembler', () => {
 			dasm.setFixedCodeLabel(org);
 			dasm.setFixedCodeLabel(0x8007, "START");
 			dasm.disassemble();
-			const linesUntrimmed = dasm.disassembledLines;
+			//const linesUntrimmed = dasm.disassembledLines;
 
 			// Check label references
 			const labels = dasm.labels;
@@ -1097,7 +1097,7 @@ suite('Disassembler', () => {
 			dasm.setFixedCodeLabel(0x8007, "START");
 			dasm.setFixedCodeLabel(org);
 			dasm.disassemble();
-			const linesUntrimmed = dasm.disassembledLines;
+			//const linesUntrimmed = dasm.disassembledLines;
 
 			// Check label references
 			const labels = dasm.labels;
@@ -1141,7 +1141,7 @@ suite('Disassembler', () => {
 			dasm.memory.setMemory(org, new Uint8Array(memory));
 			dasm.setFixedCodeLabel(0x7FF9, "START");
 			dasm.disassemble();
-			const linesUntrimmed = dasm.disassembledLines;
+			//const linesUntrimmed = dasm.disassembledLines;
 
 			// Check label references
 			const labels = dasm.labels;
@@ -1185,7 +1185,7 @@ suite('Disassembler', () => {
 			dasm.memory.setMemory(org, new Uint8Array(memory));
 			dasm.setFixedCodeLabel(org, "START");
 			dasm.disassemble();
-			const linesUntrimmed = dasm.disassembledLines;
+			//const linesUntrimmed = dasm.disassembledLines;
 
 			// Check label type
 			const labels = dasm.labels;
@@ -1213,7 +1213,7 @@ suite('Disassembler', () => {
 			dasm.memory.setMemory(org, new Uint8Array(memory));
 			dasm.setFixedCodeLabel(org);
 			dasm.disassemble();
-			const linesUntrimmed = dasm.disassembledLines;
+			//const linesUntrimmed = dasm.disassembledLines;
 
 			// Check label types
 			const labels = dasm.labels;
@@ -1241,7 +1241,7 @@ suite('Disassembler', () => {
 			dasm.memory.setMemory(org, new Uint8Array(memory));
 			dasm.setFixedCodeLabel(org);
 			dasm.disassemble();
-			const linesUntrimmed = dasm.disassembledLines;
+			//const linesUntrimmed = dasm.disassembledLines;
 
 			// Check label types
 			const labels = dasm.labels;
@@ -1273,7 +1273,7 @@ suite('Disassembler', () => {
 			dasm.memory.setMemory(org, new Uint8Array(memory));
 			dasm.setFixedCodeLabel(org);
 			dasm.disassemble();
-			const linesUntrimmed = dasm.disassembledLines;
+			//const linesUntrimmed = dasm.disassembledLines;
 
 			// Check label types
 			const labels = dasm.labels;

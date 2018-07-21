@@ -892,6 +892,7 @@ export class Disassembler extends EventEmitter {
 		addrsArray.push(address);
 		// check opcode
 		const opcode = Opcode.getOpcodeAt(this.memory, address);
+		const opcodeClone = {...opcode};	// Required otherwise opcode is overwritten on next call to 'getOpcodeAt' if it's the same opcode.
 
 		/*
 		// Subroutine ends here. Also at a JP. A JP is interpreted as "CALL nn; RET"
@@ -909,15 +910,15 @@ export class Disassembler extends EventEmitter {
 		*/
 
 		// Now check next address
-		if(!(opcode.flags & OpcodeFlag.STOP)) {
-			const nextAddress = address + opcode.length;
+		if(!(opcodeClone.flags & OpcodeFlag.STOP)) {
+			const nextAddress = address + opcodeClone.length;
 			this.getSubroutineAddresses(nextAddress, addrsArray);
 		}
 
 		// And maybe branch address
-		if(opcode.flags & OpcodeFlag.BRANCH_ADDRESS) {
-			if(!(opcode.flags & OpcodeFlag.CALL)) {
-				const branchAddress = opcode.value;
+		if(opcodeClone.flags & OpcodeFlag.BRANCH_ADDRESS) {
+			if(!(opcodeClone.flags & OpcodeFlag.CALL)) {
+				const branchAddress = opcodeClone.value;
 				this.getSubroutineAddresses(branchAddress, addrsArray);
 			}
 		}
