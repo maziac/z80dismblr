@@ -30,6 +30,7 @@
 				"--out", "out/tests/out2.asm",
 				"--dot", "out/tests/out2.dot",
 				"--addbytes",
+				"--tr", "src/tests/data/sw.tr",
 				//"--clrlabels",
 				//"--noaddr0",
 				//"--codelabel", "CF67h"
