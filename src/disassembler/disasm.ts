@@ -115,7 +115,7 @@ export class Disassembler extends EventEmitter {
 			// Check if label exists
 			let label0 = this.labels.get(0);
 			if(!label0) {
-				this.setLabel(0, this.labelLblPrefix + '_ADDR0000h', NumberType.CODE_LBL);
+				this.setFixedCodeLabel(0, this.labelLblPrefix + '_ADDR0000h');
 			}
 			else {
 				// Make sure it is a code label
@@ -251,7 +251,7 @@ export class Disassembler extends EventEmitter {
 	 * @param name An optional name for the label.
 	 * @param type of the label. Default is CODE_LBL.
 	 */
-	public setLabel(address: number, name?: string, type = NumberType.CODE_LBL) {
+	protected setLabel(address: number, name?: string, type = NumberType.CODE_LBL) {
 		const label = new DisLabel(type);
 		this.labels.set(address, label);
 		(label.name as any) = name;	// allow undefined
@@ -274,6 +274,29 @@ export class Disassembler extends EventEmitter {
 
 
 	/**
+	 * Used to set a label as the user.
+	 * I.e. those labels should be fixed, i.e. not changable by the algorithm.
+	 * Note: this affects only the change of the type. The name is anyhow not changed if it
+	 * has been set by the user.
+	 * @param address
+	 * @param name
+	 */
+	public setFixedCodeLabel(address: number, name?: string) {
+		const label = new DisLabel(NumberType.CODE_LBL);
+		this.labels.set(address, label);
+		(label.name as any) = name;	// allow undefined
+		// Check if out of range
+		const attr = this.memory.getAttributeAt(address);
+		if(attr & MemAttribute.ASSIGNED)
+			this.addressQueue.push(address);
+		else
+			label.isEqu = true;	 // out of range -> EQU
+		// Set as fixed
+		label.isFixed = true;
+	}
+
+
+	/**
 	 * Adds the addresses from a call table (in memory) to the labels.
 	 * @param address Address of the start of the call table.
 	 * @param count The number of jmp addresses.
@@ -284,7 +307,7 @@ export class Disassembler extends EventEmitter {
 			// Get address
 			let jmpAddress = this.memory.getWordValueAt(address);
 			// Set label
-			this.setLabel(jmpAddress);
+			this.setFixedCodeLabel(jmpAddress);
 			// Next
 			address += 2;
 		}
@@ -627,11 +650,12 @@ export class Disassembler extends EventEmitter {
 				case NumberType.CODE_RST:
 
 				// Find the next label that is reached not by a JP, JR or CALL
-				const foundLabel = this.findNextFlowThroughLabel(address);
-				if(foundLabel) {
+				const found = this.findNextFlowThroughLabel(address);
+				if(found) {
 					// add reference
+					const foundLabel = found.label;
 					if(label != foundLabel) {
-						const ref: Reference = {address: address, parent: undefined};	// label could be assigned to parent, but this leads to bad side effects.
+						const ref: Reference = {address: found.address, parent: undefined};	// label could be assigned to parent, but this leads to bad side effects.
 						foundLabel.references.add(ref);
 					}
 				}
@@ -652,7 +676,7 @@ export class Disassembler extends EventEmitter {
 	 * @param address The start address of the path.
 	 * @returns The found label or undefined if nothing found.
 	 */
-	protected findNextFlowThroughLabel(address: number,): DisLabel|undefined {
+	protected findNextFlowThroughLabel(address: number,): {label: DisLabel, address: number}|undefined {
 		// Check if memory exists
 		let memAttr = this.memory.getAttributeAt(address);
 		if(!(memAttr & MemAttribute.ASSIGNED)) {
@@ -665,6 +689,7 @@ export class Disassembler extends EventEmitter {
 		// Loop over addresses
 		while(!(opcode.flags & OpcodeFlag.STOP)) {
 			// Next address
+			const prevAddress = address;
 			address += opcode.length;
 
 			// Check if label exists
@@ -675,7 +700,7 @@ export class Disassembler extends EventEmitter {
 				switch(type) {
 					case NumberType.CODE_LBL:
 					case NumberType.CODE_SUB:
-						return foundLabel;
+						return {label: foundLabel, address: prevAddress};
 				}
 			}
 
@@ -711,15 +736,9 @@ export class Disassembler extends EventEmitter {
 			if(label.type == NumberType.CODE_LBL) {
 				// Find a "RET" on the path
 				const addrsArray = new Array<number>();
-				const opcode = this.findRET(address, addrsArray);
-				if(opcode) {
+				const retFound = this.findRET(address, addrsArray);
+				if(retFound) {
 					// It is a subroutine, so turn the LBL into a SUB.
-					// Check if RETI
-					if(opcode.name.toUpperCase().startsWith("RETI")) {
-						// RETI
-						label.belongsToInterrupt = true;
-					}
-					// Change to SUB
 					label.type = NumberType.CODE_SUB;
 				}
 			}
@@ -732,18 +751,28 @@ export class Disassembler extends EventEmitter {
 	 * @param address The start address of the path.
 	 * @param addrsArray An empty array in the beginning that is filled with
 	 * all addresses of the path.
-	 * @returns The opcode if an "RET(I)" was found otherwise undefined.
+	 * @returns true if an "RET(I)" was found otherwise false.
 	 */
-	protected findRET(address: number, addrsArray: Array<number>): Opcode|undefined {
+	protected findRET(address: number, addrsArray: Array<number>): boolean {
 		// Check if memory exists
 		const memAttr = this.memory.getAttributeAt(address);
 		if(!(memAttr & MemAttribute.ASSIGNED)) {
 			//console.log('  stop, not assigned');
-			return undefined;
+			return false;
 		}
 		// Unfortunately it needs to be checked if address has been checked already
 		if(addrsArray.indexOf(address) >= 0)
-			return undefined;	// already checked
+			return false;	// already checked
+		// Check if a label for address exists that already is a subroutine.
+		const addrLabel = this.labels.get(address);
+		if(addrLabel) {
+			const type = addrLabel.type;
+			if(type == NumberType.CODE_SUB
+			|| type == NumberType.CODE_RST) {
+				return true;
+			}
+		}
+
 		// Add to array
 		addrsArray.push(address);
 
@@ -752,27 +781,27 @@ export class Disassembler extends EventEmitter {
 
 		// Check if RET(I)
 		if(opcode.name.toUpperCase().startsWith("RET"))
-			return opcode;
+			return true;
 
 		// Now check next address
 		if(!(opcode.flags & OpcodeFlag.STOP)) {
 			const nextAddress = address + opcode.length;
-			const opcode2 = this.findRET(nextAddress, addrsArray);
-			if(opcode2)
-				return opcode2;
+			const res = this.findRET(nextAddress, addrsArray);
+			if(res)
+				return true;
 		}
 
 		// And maybe branch address (but not a CALL)
 		if(opcode.flags & OpcodeFlag.BRANCH_ADDRESS) {
 			if(!(opcode.flags & OpcodeFlag.CALL)) {
 				const branchAddress = opcode.value;
-				const opcode3 = this.findRET(branchAddress, addrsArray);
-				return opcode3;
+				const res = this.findRET(branchAddress, addrsArray);
+				return res;
 			}
 		}
 
 		// no RET
-		return undefined;
+		return false;
 	}
 
 
@@ -805,6 +834,8 @@ export class Disassembler extends EventEmitter {
 							continue;
 						if(addrLabel.type != NumberType.CODE_LBL
 						&& addrLabel.type != NumberType.CODE_SUB)
+							continue;
+						if(addrLabel.isFixed)
 							continue;
 						// It is a CODE_LBL. Check references.
 						const refs = addrLabel.references;

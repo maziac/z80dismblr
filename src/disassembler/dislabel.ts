@@ -35,6 +35,10 @@ export class DisLabel {
 	/// Set to true if label belongs to an interrupt.
 	public belongsToInterrupt = false;
 
+	/// Determines if the type etc. might be changed.
+	/// E.g. used if the user sets a label, so that it is not changed afterwards.
+	public isFixed = false;
+
 	/**
 	 * Constructor: Initializes memory.
 	 */

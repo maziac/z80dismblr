@@ -1029,4 +1029,180 @@ suite('Disassembler', () => {
     });
 
 
+	suite('disassemble join labels', () => {
+
+		test('addFlowThroughReferences', () => {
+			const memory = [
+				//8000 SUB1:
+				/*8000*/ 0x3E, 0x22,	//   LD   A,34
+				/*8002*/ 0x3E, 0x01,	//   LD   A,01
+
+
+				//8004 SUB2: <- This should become referenced by SUB1
+				/*8004*/ 0x3E, 0x21,	//   LD   A,33
+				/*8006*/ 0xC9,     		//	 RET
+
+				// This is here to make sure that SUB1/2 labels are created.
+				//8007 START:
+				/*8007*/ 0xCD, 0x00, 0x80,//	 CALL SUB1
+				/*800A*/ 0xCD, 0x04, 0x80,//	 CALL SUB2
+				/*800D*/ 0xC9,     		//	 RET
+			];
+
+			const org = 0x8000;
+			dasm.memory.setMemory(org, new Uint8Array(memory));
+			dasm.setFixedCodeLabel(org);
+			dasm.setFixedCodeLabel(0x8007, "START");
+			dasm.disassemble();
+			const linesUntrimmed = dasm.disassembledLines;
+
+			// Check label references
+			const labels = dasm.labels;
+			const labelSUB1 = labels.get(0x8000);
+			assert(labelSUB1.references.size == 1);
+			// Turn set into array
+			const refs = [...labelSUB1.references].map(ref => ref.address);
+			assert(refs.indexOf(0x8007) >= 0);
+
+			const labelSUB2 = labels.get(0x8004);
+			assert(labelSUB2.references.size == 2);
+			// Turn set into array
+			const refs2 = [...labelSUB2.references].map(ref => ref.address);
+			assert(refs2.indexOf(0x8002) >= 0);
+			assert(refs2.indexOf(0x800A) >= 0);
+		});
+
+
+		// Same as before but changes order of 'setFixedCodeLabel'
+		test('addFlowThroughReferences changed order', () => {
+			const memory = [
+				//8000 SUB1:
+				/*8000*/ 0x3E, 0x22,	//   LD   A,34
+				/*8002*/ 0x3E, 0x01,	//   LD   A,01
+
+
+				//8004 SUB2: <- This should become referenced by SUB1
+				/*8004*/ 0x3E, 0x21,	//   LD   A,33
+				/*8006*/ 0xC9,     		//	 RET
+
+				// This is here to make sure that SUB1/2 labels are created.
+				//8007 START:
+				/*8007*/ 0xCD, 0x00, 0x80,//	 CALL SUB1
+				/*800A*/ 0xCD, 0x04, 0x80,//	 CALL SUB2
+				/*800D*/ 0xC9,     		//	 RET
+			];
+
+			const org = 0x8000;
+			dasm.memory.setMemory(org, new Uint8Array(memory));
+			dasm.setFixedCodeLabel(0x8007, "START");
+			dasm.setFixedCodeLabel(org);
+			dasm.disassemble();
+			const linesUntrimmed = dasm.disassembledLines;
+
+			// Check label references
+			const labels = dasm.labels;
+			const labelSUB1 = labels.get(0x8000);
+			assert(labelSUB1.references.size == 1);
+			// Turn set into array
+			const refs = [...labelSUB1.references].map(ref => ref.address);
+			assert(refs.indexOf(0x8007) >= 0);
+
+			const labelSUB2 = labels.get(0x8004);
+			assert(labelSUB2.references.size == 2);
+			// Turn set into array
+			const refs2 = [...labelSUB2.references].map(ref => ref.address);
+			assert(refs2.indexOf(0x8002) >= 0);
+			assert(refs2.indexOf(0x800A) >= 0);
+		});
+
+
+
+		// Same as before but changes order o CALLs'
+		test('addFlowThroughReferences changed order 2', () => {
+			const memory = [
+				// This is here to make sure that SUB1/2 labels are created.
+				//7FF9 START:
+				/*7FF9*/ 0xCD, 0x00, 0x80,//	 CALL SUB1
+				/*7FFC*/ 0xCD, 0x04, 0x80,//	 CALL SUB2
+				/*7FFF*/ 0xC9,     			//	 RET
+
+				//8000 SUB1:
+				/*8000*/ 0x3E, 0x22,	//   LD   A,34
+				/*8002*/ 0x3E, 0x01,	//   LD   A,01
+
+
+				//8004 SUB2: <- This should become referenced by SUB1
+				/*8004*/ 0x3E, 0x21,	//   LD   A,33
+				/*8006*/ 0xC9,     		//	 RET
+
+			];
+
+			const org = 0x7FF9;
+			dasm.memory.setMemory(org, new Uint8Array(memory));
+			dasm.setFixedCodeLabel(0x7FF9, "START");
+			dasm.disassemble();
+			const linesUntrimmed = dasm.disassembledLines;
+
+			// Check label references
+			const labels = dasm.labels;
+			const labelSUB1 = labels.get(0x8000);
+			assert(labelSUB1.references.size == 1);
+			// Turn set into array
+			const refs = [...labelSUB1.references].map(ref => ref.address);
+			assert(refs.indexOf(0x7FF9) >= 0);
+
+			const labelSUB2 = labels.get(0x8004);
+			assert(labelSUB2.references.size == 2);
+			// Turn set into array
+			const refs2 = [...labelSUB2.references].map(ref => ref.address);
+			assert(refs2.indexOf(0x8002) >= 0);
+			assert(refs2.indexOf(0x7FFC) >= 0);
+		});
+
+
+		test('turnLBLintoSUB', () => {
+			const memory = [
+				// This is here to make sure that SUB1/2 labels are created.
+				//8000 START:
+				/*8000*/ 0xC2, 0x09, 0x80,	//	 JP NZ,LBL1
+				/*8003*/ 0xCD, 0x0E, 0x80,	//   CALL SUB2
+				/*8006*/ 0xC3, 0x00, 0x80,	//	 JP START
+
+				//8009 LBL1/SUB1:	This is initially a LBL that is turned into a SUB
+				/*8009*/ 0x3E, 0x22,	//   LD   A,34
+				/*800B*/ 0x3E, 0x01,	//   LD   A,01
+				/*800D*/ 0xC9,     		//	 RET
+
+				//800E SUB2:
+				/*800E*/ 0xC2, 0x09, 0x80,	// JP NZ,LBL1
+				/*800F*/ 0xC9,     		//	 RET
+
+			];
+			// Note: 8009 is turned from a LBL into a SUB although no CALL reaches
+			// it. It is changed because it ends with a RET.
+
+			const org = 0x8000;
+			dasm.memory.setMemory(org, new Uint8Array(memory));
+			dasm.setFixedCodeLabel(org, "START");
+			dasm.disassemble();
+			const linesUntrimmed = dasm.disassembledLines;
+
+			// Check label references
+			const labels = dasm.labels;
+			const labelSUB1 = labels.get(0x8000);
+			assert(labelSUB1.references.size == 1);
+			// Turn set into array
+			const refs = [...labelSUB1.references].map(ref => ref.address);
+			assert(refs.indexOf(0x7FF9) >= 0);
+
+			const labelSUB2 = labels.get(0x8004);
+			assert(labelSUB2.references.size == 2);
+			// Turn set into array
+			const refs2 = [...labelSUB2.references].map(ref => ref.address);
+			assert(refs2.indexOf(0x8002) >= 0);
+			assert(refs2.indexOf(0x7FFC) >= 0);
+		});
+
+	});
+
 });
