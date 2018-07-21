@@ -6,7 +6,7 @@ import { NumberType } from './numbertype'
 import { DisLabel } from './dislabel'
 import { EventEmitter } from 'events';
 import { Format } from './format';
-import { readFileSync, stat } from 'fs';
+import { readFileSync } from 'fs';
 import { Reference } from './dislabel';
 
 
@@ -1129,6 +1129,15 @@ export class Disassembler extends EventEmitter {
 
 			// Next
 			address += opcodeClone.length;
+
+			// Stop at flow-through
+			const nextLabel = this.labels.get(address);
+			if(nextLabel) {
+				const type = nextLabel.type;
+				if(type == NumberType.CODE_SUB
+				|| type == NumberType.CODE_RST)
+					break;	// Stop when entering another subroutine.
+			}
 
 		} while(!(opcodeClone.flags & OpcodeFlag.STOP));
 
