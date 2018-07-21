@@ -7,9 +7,13 @@ import { DisLabel } from './dislabel'
 import { EventEmitter } from 'events';
 import { Format } from './format';
 import { readFileSync } from 'fs';
-import { Reference } from './dislabel';
+import { Reference, SubroutineStatistics } from './dislabel';
 
 
+
+/**
+ * The main Disassembler class.
+ */
 export class Disassembler extends EventEmitter {
 
 	/// The memory area to disassemble.
@@ -23,6 +27,9 @@ export class Disassembler extends EventEmitter {
 
 	/// Queue for start addresses only addresses of opcodes
 	protected addressQueue = new Array<number>();
+
+	/// Map for statistics (size of subroutines, cyclomatic complexity)
+	protected subroutineStatistics = new Map<DisLabel, SubroutineStatistics>();
 
 	/// Choose opcodes in lower or upper case.
 	public opcodesLowerCase = true;
@@ -164,8 +171,14 @@ export class Disassembler extends EventEmitter {
 		// 6. Remove self referenced labels
 		this.addParentReferences();
 
-		// 7. Count number of types of labels
+		// 7. Add 'calls' list to subroutine labels
+		this.addCallsListToLabels();
+
+		// 8. Count number of types of labels
 		this.countTypesOfLabels();
+
+		// 9. Count statistics (size of subroutines, cyclomatic complexity)
+		this.countStatistics();
 
 		// 8. Assign label names
 		this.assignLabelNames();
@@ -946,6 +959,34 @@ export class Disassembler extends EventEmitter {
 
 
 	/**
+	 * Adds the 'calls'-list to the subroutine labels.
+	 * The reference list already includes the references (subroutines) who
+	 * call the label.
+	 * Now a list should be added to the label which contains all called
+	 * subroutines.
+	 * This is for call-graphs and for the comments in the listing.
+	 */
+	protected addCallsListToLabels() {
+		for( let [, label] of this.labels) {
+			switch(label.type) {
+				case NumberType.CODE_SUB:
+				case NumberType.CODE_RST:
+					// go through references
+					const refs = label.references;
+					for(const ref of refs) {
+						// Get parent
+						const parent = ref.parent;
+						if(parent) {
+							// add label to call list of parent
+							parent.calls.push(label);
+						}
+					}
+			}
+		}
+	}
+
+
+	/**
 	 * Count the types of labels.
 	 * E.g. count all "SUB" labels to obtain the maximum number.
 	 * The maximum number sets the number of digits used for the
@@ -985,6 +1026,96 @@ export class Disassembler extends EventEmitter {
 		this.labelLblCountDigits = this.labelLblCount.toString().length;
 		this.labelDataLblCountDigits = this.labelDataLblCount.toString().length;
 		this.labelSelfModifyingCountDigits = this.labelSelfModifyingCount.toString().length;
+	}
+
+
+
+	/**
+	 * Calculates the statistics like size or cyclomatic complexity of all
+	 * subroutines.
+	 * Fills the 'subroutineStatistics' map.
+	 */
+	protected countStatistics() {
+		// Loop through all labels
+		for( let [address, label] of this.labels) {
+			switch(label.type) {
+				case NumberType.CODE_SUB:
+				case NumberType.CODE_RST:
+					// Get all addresses belonging to the subroutine
+					const addresses = new Array<number>();
+					const statistics = this.countAddressStatistic(address, addresses);
+					this.subroutineStatistics.set(label, statistics);
+			}
+		}
+	}
+
+
+	/**
+	 * Calculates statistics like size or cyclomatic complexity.
+	 * Works recursively.
+	 * @param address The start address of the subroutine.
+	 * @param addresses An empty array in the beginning that is filled with
+	 * all addresses of the subroutine. Used to escape from loops.
+	 * @returns statistics: size so far, cyclomatic complexity.
+	 */
+	protected countAddressStatistic(address: number, addresses: Array<number>) : SubroutineStatistics {
+		let statistics = {sizeInBytes:0, countOfInstructions:0, CyclomaticComplexity:0};
+
+		let opcodeClone;
+		do {
+			// Check if memory exists
+			const memAttr = this.memory.getAttributeAt(address);
+			if(!(memAttr & MemAttribute.ASSIGNED)) {
+				return statistics;
+			}
+			// Unfortunately it needs to be checked if address has been checked already
+			if(addresses.indexOf(address) >= 0)
+				return statistics;	// already checked
+			// Add to array
+			addresses.push(address);
+			// check opcode
+			const opcode = Opcode.getOpcodeAt(this.memory, address);
+			opcodeClone = {...opcode};	// Required otherwise opcode is overwritten on next call to 'getOpcodeAt' if it's the same opcode.
+
+			// Add statistics
+			statistics.sizeInBytes += opcodeClone.length;
+			statistics.countOfInstructions ++;
+			// Cyclomatic complexity: add 1 for each conditional branch
+			if(opcodeClone.flags & OpcodeFlag.BRANCH_ADDRESS) {
+				// Now exclude unconditional CALLs, JPs and JRs
+				if(opcode.name.indexOf(',') >= 0 )
+					statistics.CyclomaticComplexity ++;
+			}
+
+			// And maybe branch address
+			if(opcodeClone.flags & OpcodeFlag.BRANCH_ADDRESS) {
+				if(!(opcodeClone.flags & OpcodeFlag.CALL)) {
+					// Only branch if no CALL, but for conditional and conditional JP or JR.
+					// At last check if the JP/JR might jump to a subroutine. This wouldn't be followed.
+					const branchAddress = opcodeClone.value;
+					const branchLabel = this.labels.get(branchAddress);
+					let isSUB = false;
+					if(branchLabel)
+						if(branchLabel.type == NumberType.CODE_SUB
+						|| branchLabel.type == NumberType.CODE_RST)
+							isSUB = true;
+					// Only if no subroutine
+					if(!isSUB) {
+						const addStat = this.countAddressStatistic(branchAddress, addresses);
+						statistics.sizeInBytes += addStat.sizeInBytes;
+						statistics.countOfInstructions += addStat.countOfInstructions;
+						statistics.CyclomaticComplexity += addStat.CyclomaticComplexity;
+					}
+				}
+			}
+
+			// Next
+			address += opcodeClone.length;
+
+		} while(!(opcodeClone.flags & OpcodeFlag.STOP));
+
+		// return
+		return statistics;
 	}
 
 
@@ -1119,47 +1250,98 @@ export class Disassembler extends EventEmitter {
 
 
 	/**
-	 * Creates a human readable string telling which locations reference this address.
+	 * Creates a human readable string telling which locations reference this address
+	 * and which locations are called (if it is a subroutine).
 	 * @param addrLabel The label for which the references are requested.
-	 * @return An array of string: 1rst line tells how many references exist.
-	 * 2nd line tells the exact locations of these references.
+	 * @return An array of string with statistics about the label. E.g. for
+	 * subroutines is tells the soze , cyclomatic complexity, all callers and all callees.
 	 */
 	protected getReferencesString(addrLabel: DisLabel) {
 		const lineArray = new Array<string>();
 		const refCount = addrLabel.references.size;
 		let line1;
 
-		// 1rst line
+		// Name
 		const type = addrLabel.type;
+		let name;
 		switch(type) {
-			case NumberType.CODE_SUB: line1 = 'Subroutine'; break;
-			case NumberType.CODE_RST: line1 = 'Restart'; break;
-			case NumberType.DATA_LBL: line1 = 'Data'; break;
-			default: line1 = 'Label'; break;
+			case NumberType.CODE_SUB: name = 'Subroutine'; break;
+			case NumberType.CODE_RST: name = 'Restart'; break;
+			case NumberType.DATA_LBL: name = 'Data'; break;
+			default: name = 'Label'; break;
 		}
-		line1 = line1 + ' is referenced by ' + refCount + ' location';
-		if(refCount != 1)
-			line1 += 's';
-		line1 += (refCount > 0) ? ':' : '.';
-		lineArray.push(line1);
 
-		// 2nd line
-		if(refCount > 0) {
-			// Second line: The references
-			const refArray = [...addrLabel.references].map(elem => {
-				const addr = elem.address;
-				let s = Format.getHexString(addr, 4) + 'h';
-				const parentLabel = elem.parent;
-				if(parentLabel) {
-					// Add e.g. start of subroutine
-					s += '(in ' + parentLabel.name + ')';
+		// Aggregate output string
+		switch(type) {
+			case NumberType.CODE_SUB:
+			case NumberType.CODE_RST:
+			{
+				// Line 1
+				line1 = name;
+				const stat = this.subroutineStatistics.get(addrLabel);
+				if(stat)
+					line1 += ': Size=' + stat.sizeInBytes + ', CC=' + stat.CyclomaticComplexity + '.';
+				else
+					line1 += '.';
+				lineArray.push(line1);
+				// Line 2
+				let line2 = 'Called by: ';
+				let first = true;
+				for(const ref of addrLabel.references) {
+					if(!first)
+						line2 += ', ';
+					const s = Format.getHexString(ref.address, 4) + 'h';
+					if(ref.parent)
+						line2 += ref.parent.name + '[' + s +']';
+					else
+						line2 += s;
+					first = false;
 				}
-				return s;
-			});
-			const line2 = refArray.join(', ');
-			lineArray.push(line2);
-		}
+				// Check if anything has been output
+				line2 += (addrLabel.references.size > 0) ? '.' : '-';
+				lineArray.push(line2);
+				// Line 3
+				let line3 = 'Calls: ';
+				first = true;
+				for(const callee of addrLabel.calls) {
+					if(!first)
+						line3 += ', ';
+					line3 += callee.name
+					first = false;
+				}
+				// Check if anything has been output
+				line3 += (addrLabel.calls.length > 0) ? '.' : '-';
+				lineArray.push(line3);
+				break;
+			}
 
+			default:
+			{
+				line1 = name + ' is referenced by ' + refCount + ' location';
+				if(refCount != 1)
+					line1 += 's';
+				line1 += (refCount > 0) ? ':' : '.';
+				lineArray.push(line1);
+
+				// 2nd line
+				if(refCount > 0) {
+					// Second line: The references
+					const refArray = [...addrLabel.references].map(elem => {
+						const addr = elem.address;
+						let s = Format.getHexString(addr, 4) + 'h';
+						const parentLabel = elem.parent;
+						if(parentLabel) {
+							// Add e.g. start of subroutine
+							s += '(in ' + parentLabel.name + ')';
+						}
+						return s;
+					});
+					const line2 = refArray.join(', ');
+					lineArray.push(line2);
+				}
+				break;
+			}
+		}
 		// return
 		return lineArray;
 	}
@@ -1405,7 +1587,8 @@ export class Disassembler extends EventEmitter {
 			if(label.type != NumberType.CODE_SUB && label.type != NumberType.CODE_LBL && label.type != NumberType.CODE_RST)
 				continue;
 			//console.log(label.name + '(' + Format.getHexString(address) + '):')
-			// List each parent only once
+
+/*			// List each parent only once
 			const parents = new Set<DisLabel>();
 			for(const ref of label.references) {
 				const par = ref.parent;
@@ -1416,6 +1599,17 @@ export class Disassembler extends EventEmitter {
 			for(let refLabel of parents) {
 				text += refLabel.name + ' -> ' + label.name + ';\n';
 				//console.log('  ' + Format.getHexString(ref.address) + ': parent=' + ((refLabel) ? refLabel.name : 'undefined'));
+			}
+*/
+
+			// List each callee only once
+			const callees = new Set<DisLabel>();
+			for(const callee of label.calls) {
+				callees.add(callee);
+			}
+			// Print all called labels:
+			for(const refLabel of callees) {
+				text += label.name + ' -> ' + refLabel.name + ';\n';
 			}
 		}
 

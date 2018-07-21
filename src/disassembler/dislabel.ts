@@ -3,11 +3,25 @@ import * as assert from 'assert';
 import { NumberType } from './numbertype';
 
 
+/// Used for a reference to a label.
 export interface Reference {
 	/// The address of the reference.
 	address: number;
 	/// The parent to the address.
 	parent: DisLabel|undefined;
+}
+
+
+/// Used for subroutine statistics like size or cyclomatic complexity.
+export interface SubroutineStatistics {
+	/// In case of a SUB routine (or RST): The size of the subroutine in bytes.
+	sizeInBytes: number;
+
+	/// In case of a SUB routine (or RST): The size of the subroutine in number of instructions.
+	countOfInstructions: number;
+
+	/// In case of a SUB routine (or RST): The Cyclomatic Complexity.
+	CyclomaticComplexity: number;
 }
 
 /**
@@ -25,8 +39,11 @@ export class DisLabel {
 	/// Used for local label naming.
 	public parent: DisLabel;
 
-	/// The code locations that reference the label.
+	/// The code locations that reference the label. (prents are the 'callers'.)
 	public references = new Set<Reference>();
+
+	/// A list with all called subroutine labels. (for statistics)
+	public calls = new Array<DisLabel>();
 
 	/// True if it is an EQU label. A label whose memory was not given as binary value.
 	/// I.e. outside the range of the given memory.
@@ -38,6 +55,10 @@ export class DisLabel {
 	/// Determines if the type etc. might be changed.
 	/// E.g. used if the user sets a label, so that it is not changed afterwards.
 	public isFixed = false;
+
+	// A few statistics.
+	public statistics: SubroutineStatistics|undefined = undefined;
+
 
 	/**
 	 * Constructor: Initializes memory.
