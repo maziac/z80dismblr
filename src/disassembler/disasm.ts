@@ -631,7 +631,7 @@ export class Disassembler extends EventEmitter {
 				if(foundLabel) {
 					// add reference
 					if(label != foundLabel) {
-						const ref: Reference = {address: address, parent: label};
+						const ref: Reference = {address: address, parent: undefined};	// label could be assigned to parent, but this leads to bad side effects.
 						foundLabel.references.add(ref);
 					}
 				}
@@ -821,10 +821,11 @@ export class Disassembler extends EventEmitter {
 							// No reference outside the subroutine found
 							// -> turn CODE_LBL into local label
 							addrLabel.type = NumberType.CODE_LOCAL_LBL;
-							// If any reference addr is bigger than use CODE_LOCAL_LOOP,
+							// If any reference addr is bigger than address use CODE_LOCAL_LOOP,
 							// otherwise CODE_LOCAL_LBL
 							for(const ref of refs) {
-								if(ref.address >= addr) {
+								const diff = ref.address - addr;
+								if(diff >= 0 && diff <= 128) {
 									// Use loop
 									addrLabel.type = NumberType.CODE_LOCAL_LOOP;
 									break;
@@ -869,14 +870,19 @@ export class Disassembler extends EventEmitter {
 		}
 		*/
 
+		/*
 		// Subroutine ends at RET (unconditional)
 		const ocName = opcode.name.toUpperCase();
 		if(ocName == "RET" || ocName == "RETI")
 			return;
+		*/
 
 		// Now check next address
-		const nextAddress = address + opcode.length;
-		this.getSubroutineAddresses(nextAddress, addrsArray);
+		if(!(opcode.flags & OpcodeFlag.STOP)) {
+			const nextAddress = address + opcode.length;
+			this.getSubroutineAddresses(nextAddress, addrsArray);
+		}
+
 		// And maybe branch address
 		if(opcode.flags & OpcodeFlag.BRANCH_ADDRESS) {
 			if(!(opcode.flags & OpcodeFlag.CALL)) {
@@ -897,8 +903,7 @@ export class Disassembler extends EventEmitter {
 			// jumps to itself and add all parent labels.
 			const refs = label.references;
 			for(let ref of refs) {
-				if(!ref.parent)
-					ref.parent = this.getParentLabel(ref.address);
+				ref.parent = this.getParentLabel(ref.address);
 				if(ref.parent == label) {
 					// delete it, it references itself
 					refs.delete(ref);
@@ -1057,7 +1062,7 @@ export class Disassembler extends EventEmitter {
 
 
 	/**
-	 * Adds the indexes and the parentLAbel to the relative labels.
+	 * Adds the indexes and the parentLabel to the relative labels.
 	 * @param relLabels The relative (relative or loop) labels within a parent.
 	 * @param parentLabel The parentLabel (SUB or LBL)
 	 */

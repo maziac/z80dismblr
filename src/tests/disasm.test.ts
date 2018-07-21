@@ -387,13 +387,13 @@ suite('Disassembler', () => {
 			let label;
 
 			label = dasm.labels.get(0x8000);
-			assert(label.references.length == 0);
+			assert(label.references.size == 0);
 
 			label = dasm.labels.get(0x8001);
-			assert(label.references.length == 2);
+			assert(label.references.size == 2);
 
 			label = dasm.labels.get(0x800e);
-			assert(label.references.length == 3);
+			assert(label.references.size == 3);
 
 		});
 	});
@@ -546,23 +546,6 @@ suite('Disassembler', () => {
 
 	suite('disassemble', () => {
 
-	/// Called for each test.
-	setup(() => {
-		dasm = new Disassembler() as any; 	// 'as any' allows access to protected methods
-
-		dasm.labelSubPrefix = "SUB";
-		dasm.labelLblPrefix = "LBL";
-		dasm.labelDataLblPrefix = "DATA";
-		dasm.labelLocalLablePrefix = "_lbl";
-		dasm.labelLoopPrefix = "_loop";
-		dasm.labelSelfModifyingPrefix = "SELF_MOD";
-
-		dasm.clmnsAddress = 0;
-		dasm.addOpcodeBytes = false;
-		dasm.opcodesLowerCase = false;
-	});
-
-
 		test('combined opcodes', () => {
 			const memory = [
 				0xdd, 0x71, 0xf7,  // ld   (ix-9),c
@@ -586,7 +569,8 @@ suite('Disassembler', () => {
 			const org = 0x0000;
 			dasm.memory.setMemory(org, new Uint8Array(memory));
 			dasm.setLabel(org);
-			const linesUntrimmed = dasm.disassemble();
+			dasm.disassemble();
+			const linesUntrimmed = dasm.disassembledLines;
 
 			const lines = trimAllLines(linesUntrimmed);
 			//console.log(lines.join('\n'));
@@ -623,7 +607,8 @@ suite('Disassembler', () => {
 			const org = 0x0000;
 			dasm.memory.setMemory(org, new Uint8Array(memory));
 			dasm.setLabel(org);
-			const linesUntrimmed = dasm.disassemble();
+			dasm.disassemble();
+			const linesUntrimmed = dasm.disassembledLines;
 
 			const lines = trimAllLines(linesUntrimmed);
 			//console.log(lines.join('\n'));
@@ -649,7 +634,8 @@ suite('Disassembler', () => {
 			dasm.setLabel(org);
 			dasm.clmnsAddress = 0;
 			dasm.opcodesLowerCase = false;
-			const linesUntrimmed = dasm.disassemble();
+			dasm.disassemble();
+			const linesUntrimmed = dasm.disassembledLines;
 
 			const lines = trimAllLines(linesUntrimmed);
 			//console.log(lines.join('\n'));
@@ -686,7 +672,8 @@ suite('Disassembler', () => {
 			const org = 0x1000;
 			dasm.setMemory(org, new Uint8Array(memory));
 			dasm.setLabel(org);
-			const linesUntrimmed = dasm.disassemble();
+			dasm.disassemble();
+			const linesUntrimmed = dasm.disassembledLines;
 
 			const lines = trimAllLines(linesUntrimmed);
 			//console.log(lines.join('\n'));
@@ -743,7 +730,8 @@ suite('Disassembler', () => {
 			const org = 0x0000;
 			dasm.memory.setMemory(org, new Uint8Array(memory));
 			dasm.setLabel(org);
-			const linesUntrimmed = dasm.disassemble();
+			dasm.disassemble();
+			const linesUntrimmed = dasm.disassembledLines;
 
 			const lines = trimAllLines(linesUntrimmed);
 			//console.log(lines.join('\n'));
@@ -786,7 +774,8 @@ suite('Disassembler', () => {
 			const org = 0x0000;
 			dasm.memory.setMemory(org, new Uint8Array(memory));
 			dasm.setLabel(org);
-			const linesUntrimmed = dasm.disassemble();
+			dasm.disassemble();
+			const linesUntrimmed = dasm.disassembledLines;
 
 			const lines = trimAllLines(linesUntrimmed);
 			//console.log('\n');
@@ -834,7 +823,8 @@ suite('Disassembler', () => {
 			const org = 0x7000;
 			dasm.memory.setMemory(org, new Uint8Array(memory));
 			dasm.setLabel(org);
-			const lines = dasm.disassemble();
+			dasm.disassemble();
+			const lines = dasm.disassembledLines;
 
 			//dasm.printLabels();
 			//console.log('\n');
@@ -862,7 +852,8 @@ suite('Disassembler', () => {
 			const org = 0x5000;
 			dasm.memory.setMemory(org, new Uint8Array(memory));
 			dasm.setLabel(org);
-			const linesUntrimmed = dasm.disassemble();
+			dasm.disassemble();
+			const linesUntrimmed = dasm.disassembledLines;
 
 			const lines = trimAllLines(linesUntrimmed);
 
@@ -896,7 +887,8 @@ suite('Disassembler', () => {
 			dasm.setMemory(org2, new Uint8Array(memory2));
 			dasm.setLabel(org2);
 
-			const linesUntrimmed = dasm.disassemble();
+			dasm.disassemble();
+			const linesUntrimmed = dasm.disassembledLines;
 
 			const lines = trimAllLines(linesUntrimmed);
 			//console.log(lines.join('\n'));
@@ -932,7 +924,8 @@ suite('Disassembler', () => {
 			dasm.setJmpTable(0x8115, 10);
 
 			// Disassemble
-			const lines = dasm.disassemble();
+			dasm.disassemble();
+			const lines = dasm.disassembledLines;
 
 			//dasm.printLabels();
 			//console.log(lines.join('\n'));
@@ -957,7 +950,8 @@ suite('Disassembler', () => {
 			dasm.setLabel(0xA5F7, "LBL_MAIN_INTERRUPT");
 
 			// Disassemble
-			const lines = dasm.disassemble();
+			dasm.disassemble();
+			const lines = dasm.disassembledLines;
 
 			//dasm.printLabels();
 			//console.log(lines.join('\n'));
@@ -987,7 +981,8 @@ suite('Disassembler', () => {
 			dasm.setLabel(0xA5F7, "LBL_MAIN_INTERRUPT");
 
 			// Disassemble
-			const lines = dasm.disassemble();
+			dasm.disassemble();
+			const lines = dasm.disassembledLines;
 
 			//dasm.printLabels();
 			//console.log(lines.join('\n'));
@@ -1020,7 +1015,8 @@ suite('Disassembler', () => {
 			dasm.useMameTraceFile('./src/tests/data/sw.tr');
 
 			// Disassemble
-			const lines = dasm.disassemble();
+			dasm.disassemble();
+			const lines = dasm.disassembledLines;
 
 			//dasm.printLabels();
 			//console.log(lines.join('\n'));
