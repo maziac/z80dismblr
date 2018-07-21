@@ -1301,21 +1301,52 @@ suite('Disassembler', () => {
 				/*7225*/ 0xCD, 0x28, 0x7C,	//     call SUB081 ; 7C28h
 				/*7228*/ 0x3E, 0x8F,		//     ld   a,143  ; 8Fh, -113
 				/*722A*/ 0xC9,
-				//722A C3 44 74     jp   SUB026 ; 7444h
 			];
 
 			const org = 0x7216;
 			dasm.memory.setMemory(org, new Uint8Array(memory));
 			dasm.setFixedCodeLabel(org);
-			dasm.setFixedCodeLabel(0x8007, "START");
 			dasm.disassemble();
 			//const linesUntrimmed = dasm.disassembledLines;
 
 			// Check size
 			const labels = dasm.labels;
+			const statistics = dasm.subroutineStatistics;
 			const labelSub = labels.get(org);
-			const stats = labelSub.statistics;
+			const stats = statistics.get(labelSub);
 			assert(stats.sizeInBytes == 21);
+			assert(stats.countOfInstructions == 11);
+		});
+
+
+		test('cyclomatic complexity', () => {
+			const memory = [
+				//7216 SUB006: (29206)		// CC: 1
+				/*7216*/ 0x01, 0x11, 0x02,	//     ld   bc,529 ; 0211h
+				/*7219*/ 0x3A, 0x13, 0x70,	//     ld   a,(DATA131) ; 7013h
+				/*721C*/ 0xFE, 0x12,      	// +1	   cp   18     ; 12h
+				/*721E*/ 0x38, 0x03,        //		jr   c,.sub006_l ; 7223h
+				/*7220*/ 0xC4, 0x28, 0x7C,  // +1	call nz,SUB081 ; 7C28h
+				/*7223 .sub006_l:
+				/*7223*/ 0x80,           	//		add  a,b
+				/*7224*/ 0xC0,           	// +1		ret nz
+				/*7225*/ 0xCD, 0x28, 0x7C,	//     call SUB081 ; 7C28h
+				/*7228*/ 0x3E, 0x8F,		//     ld   a,143  ; 8Fh, -113
+				/*722A*/ 0xC9,		// CC-> 4
+			];
+
+			const org = 0x7216;
+			dasm.memory.setMemory(org, new Uint8Array(memory));
+			dasm.setFixedCodeLabel(org);
+			dasm.disassemble();
+			//const linesUntrimmed = dasm.disassembledLines;
+
+			// Check size
+			const labels = dasm.labels;
+			const statistics = dasm.subroutineStatistics;
+			const labelSub = labels.get(org);
+			const stats = statistics.get(labelSub);
+			assert(stats.CyclomaticComplexity == 4);
 		});
 
 	});

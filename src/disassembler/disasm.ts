@@ -6,9 +6,22 @@ import { NumberType } from './numbertype'
 import { DisLabel } from './dislabel'
 import { EventEmitter } from 'events';
 import { Format } from './format';
-import { readFileSync } from 'fs';
-import { Reference, SubroutineStatistics } from './dislabel';
+import { readFileSync, stat } from 'fs';
+import { Reference } from './dislabel';
 
+
+
+/// Used for subroutine statistics like size or cyclomatic complexity.
+interface SubroutineStatistics {
+	/// In case of a SUB routine (or RST): The size of the subroutine in bytes.
+	sizeInBytes: number;
+
+	/// In case of a SUB routine (or RST): The size of the subroutine in number of instructions.
+	countOfInstructions: number;
+
+	/// In case of a SUB routine (or RST): The Cyclomatic Complexity.
+	CyclomaticComplexity: number;
+}
 
 
 /**
@@ -180,13 +193,13 @@ export class Disassembler extends EventEmitter {
 		// 9. Count statistics (size of subroutines, cyclomatic complexity)
 		this.countStatistics();
 
-		// 8. Assign label names
+		// 10. Assign label names
 		this.assignLabelNames();
 
-		// 9. Pass: Disassemble opcode with label names
+		// 11. Pass: Disassemble opcode with label names
 		const disLines = this.disassembleMemory();
 
-		// 10. Add all EQU labels to the beginning of the disassembly
+		// 12. Add all EQU labels to the beginning of the disassembly
 		this.disassembledLines = this.getEquLabelsDisassembly();
 
 		// Add the real disassembly
@@ -1044,6 +1057,7 @@ export class Disassembler extends EventEmitter {
 					// Get all addresses belonging to the subroutine
 					const addresses = new Array<number>();
 					const statistics = this.countAddressStatistic(address, addresses);
+					statistics.CyclomaticComplexity ++;	// Add 1 as default
 					this.subroutineStatistics.set(label, statistics);
 			}
 		}
@@ -1085,6 +1099,10 @@ export class Disassembler extends EventEmitter {
 				// Now exclude unconditional CALLs, JPs and JRs
 				if(opcode.name.indexOf(',') >= 0 )
 					statistics.CyclomaticComplexity ++;
+			}
+			else if(opcodeClone.name.toUpperCase().startsWith("RET ")) {
+				// It is a conditional return (note the ' ' at the end of RET)
+				statistics.CyclomaticComplexity ++;
 			}
 
 			// And maybe branch address

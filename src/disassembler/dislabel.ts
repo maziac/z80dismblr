@@ -12,18 +12,6 @@ export interface Reference {
 }
 
 
-/// Used for subroutine statistics like size or cyclomatic complexity.
-export interface SubroutineStatistics {
-	/// In case of a SUB routine (or RST): The size of the subroutine in bytes.
-	sizeInBytes: number;
-
-	/// In case of a SUB routine (or RST): The size of the subroutine in number of instructions.
-	countOfInstructions: number;
-
-	/// In case of a SUB routine (or RST): The Cyclomatic Complexity.
-	CyclomaticComplexity: number;
-}
-
 /**
  * Class for the labels used for disassembly.
  */
@@ -55,9 +43,6 @@ export class DisLabel {
 	/// Determines if the type etc. might be changed.
 	/// E.g. used if the user sets a label, so that it is not changed afterwards.
 	public isFixed = false;
-
-	// A few statistics.
-	public statistics: SubroutineStatistics|undefined = undefined;
 
 
 	/**
