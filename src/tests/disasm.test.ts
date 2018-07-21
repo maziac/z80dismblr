@@ -1212,7 +1212,6 @@ suite('Disassembler', () => {
 			const org = 0x8000;
 			dasm.memory.setMemory(org, new Uint8Array(memory));
 			dasm.setFixedCodeLabel(org);
-//			dasm.setFixedCodeLabel(0x8009, "START");
 			dasm.disassemble();
 			const linesUntrimmed = dasm.disassembledLines;
 
@@ -1223,6 +1222,63 @@ suite('Disassembler', () => {
 
 			const labelLBL2 = labels.get(0x8008);
 			assert(labelLBL2.type == NumberType.CODE_LOCAL_LOOP);
+		});
+
+
+		test('addParentReferences', () => {
+			const memory = [
+				//8000 SUB1:
+				/*8000*/ 0x3E, 0x22,		//   LD   A,34
+				/*8002*/ 0xCD, 0x09, 0x80,	//   CALL SUB2
+				/*8005*/ 0xCD, 0x09, 0x80,	//   CALL SUB2
+				/*8008*/ 0xC9,     			//	 RET
+				//8009 SUB2:	<- should be turned in a local label
+				/*8009*/ 0x3E, 0x23,		//   LD   A,35
+				/*800B*/ 0xC9,     			//	 RET
+			];
+
+			const org = 0x8000;
+			dasm.memory.setMemory(org, new Uint8Array(memory));
+			dasm.setFixedCodeLabel(org);
+			dasm.disassemble();
+			const linesUntrimmed = dasm.disassembledLines;
+
+			// Check label types
+			const labels = dasm.labels;
+			const labelSUB1 = labels.get(0x8000);
+			const labelSUB2 = labels.get(0x8009);
+			assert(labelSUB2.references.size == 2);
+
+			// Turn set into array
+			const refs = [...labelSUB2.references].map(ref => ref.address);
+			const refsParent = [...labelSUB2.references].map(ref => ref.parent);
+			let k = refs.indexOf(0x8002);
+			assert(k >= 0);	// Reference exists
+			assert(refsParent[k] == labelSUB1);	// and has right parent
+			k = refs.indexOf(0x8005);
+			assert(k >= 0);	// Reference exists
+			assert(refsParent[k] == labelSUB1);	// and has right parent
+		});
+
+
+		test('addParentReferences - remove self references', () => {
+			const memory = [
+				//8000 SUB1:
+				/*8000*/ 0x3E, 0x22,		//   LD   A,34
+				/*8002*/ 0xCD, 0x00, 0x80,	//   CALL SUB1
+				/*8005*/ 0xC9,     			//	 RET
+			];
+
+			const org = 0x8000;
+			dasm.memory.setMemory(org, new Uint8Array(memory));
+			dasm.setFixedCodeLabel(org);
+			dasm.disassemble();
+			const linesUntrimmed = dasm.disassembledLines;
+
+			// Check label types
+			const labels = dasm.labels;
+			const labelSUB1 = labels.get(0x8000);
+			assert(labelSUB1.references.size == 0);
 		});
 
 	});

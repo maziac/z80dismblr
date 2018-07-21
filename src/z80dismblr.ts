@@ -280,7 +280,7 @@ z80dismblr [options]
                             labelName = undefined;
                         }
                     // Set label
-                    this.dasm.setLabel(addr, labelName);
+                    this.dasm.setFixedCodeLabel(addr, labelName);
                     break;
 
                 // set a code label
