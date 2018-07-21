@@ -812,8 +812,8 @@ export class Disassembler extends EventEmitter {
 	 * subroutine in an (temporary) array. The subroutine ends if each branch
 	 * ends with a stop code (RET or JP).
 	 * Then iterate the array.
-	 * Each address with a Label of type CODE_LBL is checked. If it contains
-	 * reference addresses outside the range of the array then it stays a CODE_LBL
+	 * Each address with a Label of type CODE_LBL/SUB is checked. If it contains
+	 * reference addresses outside the range of the array then it stays a CODE_LBL/SUB
 	 * otherwise it is turned into a local label CODE_LOCAL_LBL or CODE_LOCAL_LOOP.
 	 */
 	protected findLocalLabelsInSubroutines() {
