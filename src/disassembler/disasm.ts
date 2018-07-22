@@ -74,7 +74,7 @@ export class Disassembler extends EventEmitter {
 	public labelLocalLablePrefix = "_l";
 	public labelLoopPrefix = "_loop";
 
-	public labelIntrptPrefix = "INTRPT_";
+	public labelIntrptPrefix = "INTRPT";
 
 
 	/// The calculated number of occurences of a label type.
@@ -578,14 +578,17 @@ export class Disassembler extends EventEmitter {
 	 * - It is checked if a label exists at a change from data or unassigned to opcode area
 	 * - For a transition from stop code to opcode and there is no associated label
 	 *
-	 *
+	 * Note: Another strategy to find interrupts would be to examine the trace from the
+	 * tr file. If an address change happens that is bigger than +/-128 it must be
+	 * at least a JP/CALL label or an interrupt call. The label can be added here.
+	 * Later teh JP/CALL labels would be found anyway (most probably).
 	 */
 	protected findInterruptLabels() {
 		const foundInterrupts = new Array<number>();
 		// Check the whole memory
 		let prevAttr = 0;
 		let prevCodeAddr = -1;
-		for(let address=0xA5F6; address<0x10000; address++) {
+		for(let address=0x0000; address<0x10000; address++) {
 			// check memory attribute
 			const memAttr = this.memory.getAttributeAt(address);
 			if(memAttr & MemAttribute.CODE_FIRST
@@ -1481,7 +1484,7 @@ export class Disassembler extends EventEmitter {
 
 
 	/**
-	 * Disassemble opcodes together with label names
+	 * Disassemble opcodes together with label names.
 	 * Returns an array of strings whichcontains the disassembly.
 	 * @returns The disassembly.
 	 */
@@ -1537,7 +1540,7 @@ export class Disassembler extends EventEmitter {
 				const addrLabel = this.labels.get(address);
 
 				if(addrLabel) {
-					// Add empty lines in case this is a SUB or LBL label
+					// Add empty lines in case this is a SUB, LBL or DATA label
 					const type = addrLabel.type;
 					if(type == NumberType.CODE_SUB || type == NumberType.CODE_LBL || type == NumberType.DATA_LBL || type == NumberType.CODE_RST) {
 						this.addEmptyLines(lines);
@@ -1588,8 +1591,8 @@ export class Disassembler extends EventEmitter {
 
 				else {
 					// DATA
-					if(!(prevMemoryAttribute & MemAttribute.DATA))
-						this.addEmptyLines(lines);
+//					if(!(prevMemoryAttribute & MemAttribute.DATA))
+//						this.addEmptyLines(lines);
 
 					// Turn memory to data memory
 					attr |= MemAttribute.DATA;

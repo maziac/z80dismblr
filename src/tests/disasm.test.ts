@@ -1029,7 +1029,92 @@ suite('Disassembler', () => {
     });
 
 
-	suite('disassemble join labels', () => {
+	suite('disassemble - labels', () => {
+
+		test('findInterruptLabels 1', () => {
+			const memory = [
+				//8000 SUB:
+				/*8000*/ 0x3A, 0x04, 0x80,	//     	ld   a,(nn)
+				/*8003*/ 0xC9,           	//		ret
+				/*8004*/ 0x06,				//		defb 6
+				//8005 Interrupt:
+				/*8005*/ 0x80,           	//		add  a,b
+				/*8006*/ 0x47,           	//		ld   b,a
+				/*8007*/ 0xC9,           	//		ret
+			];
+
+			const org = 0x8000;
+			dasm.memory.setMemory(org, new Uint8Array(memory));
+			dasm.setFixedCodeLabel(org);
+			dasm.addressQueue.push(0x8005)
+			dasm.labelIntrptPrefix = "INTRPT";
+			dasm.disassemble();
+			//const linesUntrimmed = dasm.disassembledLines;
+
+			// Check size
+			const labels = dasm.labels;
+			const labelInt = labels.get(0x8005);
+			assert(labelInt);
+			assert(labelInt.name.startsWith('INTRPT'));
+		});
+
+
+		test('findInterruptLabels 2', () => {
+			const memory1 = [
+				//8000 SUB2:
+				/*8000*/ 0x3E, 0x040,	//     	ld   a,4
+				/*8002*/ 0xC9,           	//		ret
+			];
+			const memory2 = [
+				//9000 SUB2:
+				/*9000*/ 0x80,           	//		add  a,b
+				/*9001*/ 0xC9,           	//		ret
+			];
+
+			const org = 0x8000;
+			dasm.memory.setMemory(org, new Uint8Array(memory1));
+			dasm.memory.setMemory(0x9000, new Uint8Array(memory2));
+			dasm.setFixedCodeLabel(org);
+			dasm.addressQueue.push(0x9000)
+			dasm.labelIntrptPrefix = "INTRPT";
+			dasm.disassemble();
+			const linesUntrimmed = dasm.disassembledLines;
+
+			// Check size
+			const labels = dasm.labels;
+			const labelInt = labels.get(0x9000);
+			assert(labelInt);
+			assert(labelInt.name.startsWith('INTRPT'));
+		});
+
+
+		test('findInterruptLabels 3', () => {
+			const memory = [
+				//8000 SUB:
+				/*8000*/ 0x3E, 0x04,		//     	ld   a,4
+				/*8002*/ 0xC9,           	//		ret
+				//8003 Interrupt:
+				/*8003*/ 0x80,           	//		add  a,b
+				/*8004*/ 0x47,           	//		ld   b,a
+				/*8005*/ 0xC9,           	//		ret
+			];
+
+			const org = 0x8000;
+			dasm.memory.setMemory(org, new Uint8Array(memory));
+			dasm.setFixedCodeLabel(org);
+			dasm.addressQueue.push(0x8003)
+			dasm.labelIntrptPrefix = "INTRPT";
+			dasm.disassemble();
+			const linesUntrimmed = dasm.disassembledLines;
+
+			// Check size
+			const labels = dasm.labels;
+			const labelInt = labels.get(0x8003);
+			assert(labelInt);
+			assert(labelInt.name.startsWith('INTRPT'));
+		});
+
+
 
 		test('addFlowThroughReferences', () => {
 			const memory = [
