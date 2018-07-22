@@ -178,6 +178,9 @@ If you still don't know nothing about the binary then you should get a trace fil
 It's format is a simple disassembly with the first number being the hex address (in ASCII) followed by the disassembly of the executed code.
 z80dismblr does only look for the hex address and assumes all of these addresses to be CODE area that need to be disassembled.
 
+Please note that using a trace file can result in surprising issues in case of self modifying code.
+As z80dismblr doesn't know about dynamic changes you might find code areas with senseless opcodes (or NOPs). This is because the code is written during runtime. For code based on ROMs this shouldn't happen, but for code that resides in RAM (e.g. ZX Spectrum programs) this can be an issue.
+
 
 
 ## How it works

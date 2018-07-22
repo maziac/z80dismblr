@@ -96,6 +96,9 @@ export class Disassembler extends EventEmitter {
 	/// The disassembled lines.
 	protected disassembledLines: Array<string>;
 
+	// The SNA start address.
+	protected snaStartAddress = -1;
+
 	/// For debugging:
 	protected DBG_COLLECT_LABELS = 0;
 
@@ -169,37 +172,50 @@ export class Disassembler extends EventEmitter {
 		// 1. Pass: Collect labels
 		this.collectLabels();
 
-		// 2. Find self-modifying code
+		// Do special SNA handling. I.e. check if the SNA start address is meaningful
+		if(this.snaStartAddress >= 0) {
+			const label = this.labels.get(this.snaStartAddress);
+			if(!label)	// if not found by other means.
+				this.setLabel(this.snaStartAddress, 'SNA_LBL_MAIN_START_'+this.snaStartAddress.toString(16).toUpperCase(), NumberType.CODE_LBL);
+		}
+
+		// 2. Find interrupts
+		this.findInterruptLabels();
+
+		// 3. Sort all labels by address
+		this.sortLabels();
+
+		// 4. Find self-modifying code
 		this.adjustSelfModifyingLabels();
 
-		// 3. Add more references if e.g. a SUB flows through to another SUB.
+		// 5. Add more references if e.g. a SUB flows through to another SUB.
 		this.addFlowThroughReferences();
 
-		// 4. Check if labels "LBL" are subroutines
+		// 6. Check if labels "LBL" are subroutines
 		this.turnLBLintoSUB();
 
-		// 5. Determine local labels inside subroutines
+		// 7. Determine local labels inside subroutines
 		this.findLocalLabelsInSubroutines();
 
-		// 6. Remove self referenced labels
+		// 8. Remove self referenced labels
 		this.addParentReferences();
 
-		// 7. Add 'calls' list to subroutine labels
+		// 9. Add 'calls' list to subroutine labels
 		this.addCallsListToLabels();
 
-		// 8. Count number of types of labels
+		// 10. Count number of types of labels
 		this.countTypesOfLabels();
 
-		// 9. Count statistics (size of subroutines, cyclomatic complexity)
+		// 11. Count statistics (size of subroutines, cyclomatic complexity)
 		this.countStatistics();
 
-		// 10. Assign label names
+		// 12. Assign label names
 		this.assignLabelNames();
 
-		// 11. Pass: Disassemble opcode with label names
+		// 13. Pass: Disassemble opcode with label names
 		const disLines = this.disassembleMemory();
 
-		// 12. Add all EQU labels to the beginning of the disassembly
+		// 14. Add all EQU labels to the beginning of the disassembly
 		this.disassembledLines = this.getEquLabelsDisassembly();
 
 		// Add the real disassembly
@@ -250,8 +266,13 @@ export class Disassembler extends EventEmitter {
 		const sp = header[23] + 256*header[24];	// Stackpointer
 		const start = bin[sp-0x4000] + 256*bin[sp-1-0x4000];	// Get start address from stack
 		this.setMemory(0x4000, bin);
+
+		/* In most cases (snapshot) this is a random address, so it does not make sense to use it as a label:
 		// Set start label
 		this.setLabel(start, 'SNA_LBL_MAIN_START_'+start.toString(16).toUpperCase(), NumberType.CODE_LBL);
+		*/
+		this.addressQueue.push(start);
+		this.snaStartAddress = start;
 	}
 
 
@@ -351,21 +372,31 @@ export class Disassembler extends EventEmitter {
 	 */
 	public useMameTraceFile(path: string) {
 		const trace = readFileSync(path).toString();
-		if(trace.length < 4)
+		if(trace.length < 5)
 			return;
+	/* Doesn't make sense:
 		// Use first address as start address
-		const startAddress = trace.substr(0,4);
+		const startAddress = trace.substr(0,5);
 		this.setLabel(parseInt(startAddress, 16), 'TR_LBL_MAIN_START_'+ startAddress);
+	*/
 		// Loop over the complete trace file
 		const buffer = new Array<boolean>(0x10000);	// initialized to undefined
 		let k = 0;
+		//let lineNr = 1;
 		do {
-			const addressString = trace.substr(k,4);
-			const addr = parseInt(addressString, 16);
-			buffer[addr] = true;
+			//const text = trace.substr(k,100);
+			//console.log('log: "' + text + '"');
+			const addressString = trace.substr(k,5);
+			if(addressString.length == 5 && addressString[4] == ':') {
+				// Use address
+				const addr = parseInt(addressString, 16);
+				buffer[addr] = true;
+				k += 5;
+			}
 			// next
-			k = trace.indexOf('\n', k+4);
-		} while(k != -1);
+			k = trace.indexOf('\n', k) + 1;
+			//lineNr ++;
+		} while(k != 0);
 		// Now add the addresses to the queue
 		for(let addr=0; addr<0x10000; addr++) {
 			if(buffer[addr])
@@ -499,9 +530,6 @@ export class Disassembler extends EventEmitter {
 			if(this.DBG_COLLECT_LABELS)
 				console.log('\n');
 		}
-
-		// Sort all labels by address
-		this.labels = new Map([...this.labels.entries()].sort(([a], [b]) => a-b ));
 	}
 
 
@@ -535,6 +563,84 @@ export class Disassembler extends EventEmitter {
 			if(ref.address != address)
 				label.references.add(ref);
 		}
+	}
+
+
+	/**
+	 * Finds interrupt labels. I.e. start of progrma code
+	 * that doesn't have any lable yet.
+	 * As z80dismblr uses CFG analysis this can normally not happen.
+	 * But if you e.g. provide a trace (tr) file this also includes interrupt traces.
+	 * So z80dismblr will also follow these paths, but since there
+	 * is no label associated this code would be presented without 'Start' label.
+	 * 'findInterruptLabels' finds these code parts and assigns a label.
+	 * Several rules are used:
+	 * - It is checked if a label exists at a change from data or unassigned to opcode area
+	 * - For a transition from stop code to opcode and there is no associated label
+	 *
+	 *
+	 */
+	protected findInterruptLabels() {
+		const foundInterrupts = new Array<number>();
+		// Check the whole memory
+		let prevAttr = 0;
+		let prevCodeAddr = -1;
+		for(let address=0xA5F6; address<0x10000; address++) {
+			// check memory attribute
+			const memAttr = this.memory.getAttributeAt(address);
+			if(memAttr & MemAttribute.CODE_FIRST
+			&& memAttr & MemAttribute.ASSIGNED) {
+				// Check if label exists
+				const label = this.labels.get(address);
+				if(!label) {
+					// Only if label not yet exists
+
+					// Check for transition unassigned or data (= not CODE) to code
+					if(!(prevAttr & MemAttribute.ASSIGNED)
+					|| !(prevAttr & MemAttribute.CODE)) {
+						// Assign label
+						this.setFixedCodeLabel(address, this.labelIntrptPrefix);
+						foundInterrupts.push(address);
+					}
+					// Check for transition from stop code
+					else if(prevCodeAddr >= 0) {
+						const opcode = Opcode.getOpcodeAt(this.memory, prevCodeAddr);
+						if(opcode.flags & OpcodeFlag.STOP) {
+							// Assign label
+							this.setFixedCodeLabel(address, this.labelIntrptPrefix);
+							foundInterrupts.push(address);
+						}
+					}
+				}
+			}
+
+			// Backup values
+			prevAttr = memAttr;
+			if(!(memAttr & MemAttribute.CODE))
+				prevCodeAddr = -1;
+			if(memAttr & MemAttribute.CODE_FIRST)
+				prevCodeAddr = address;
+		}
+
+		// Add numbers
+		const count = foundInterrupts.length;
+		if(count > 1) {
+			for(let index=0; index<count; index++) {
+				const addr = foundInterrupts[index];
+				const label = this.labels.get(addr);
+				assert(label);
+				if(label)
+					label.name += index+1;
+			}
+		}
+	}
+
+
+	/**
+	 * Sorts all labels by address.
+	 */
+	protected sortLabels() {
+		this.labels = new Map([...this.labels.entries()].sort(([a], [b]) => a-b ));
 	}
 
 
