@@ -1078,7 +1078,7 @@ suite('Disassembler', () => {
 			dasm.addressQueue.push(0x9000)
 			dasm.labelIntrptPrefix = "INTRPT";
 			dasm.disassemble();
-			const linesUntrimmed = dasm.disassembledLines;
+			//const linesUntrimmed = dasm.disassembledLines;
 
 			// Check size
 			const labels = dasm.labels;
@@ -1105,7 +1105,7 @@ suite('Disassembler', () => {
 			dasm.addressQueue.push(0x8003)
 			dasm.labelIntrptPrefix = "INTRPT";
 			dasm.disassemble();
-			const linesUntrimmed = dasm.disassembledLines;
+			//const linesUntrimmed = dasm.disassembledLines;
 
 			// Check size
 			const labels = dasm.labels;

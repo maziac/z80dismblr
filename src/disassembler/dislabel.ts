@@ -1,6 +1,6 @@
-import * as assert from 'assert';
+//import * as assert from 'assert';
 //import { CodeLocation } from './codelocation';
-import { NumberType } from './numbertype';
+import { NumberType, getNumberTypeAsString } from './numbertype';
 
 
 /// Used for a reference to a label.
@@ -58,23 +58,7 @@ export class DisLabel {
 	 * For debugging.
 	 */
 	public getTypeAsString(): string {
-		switch(this.type) {
-			case NumberType.NONE:	return "NONE";
-			case NumberType.CODE_LOCAL_LBL:	return "CODE_RELATIVE_LBL";
-			case NumberType.CODE_LOCAL_LOOP:	return "CODE_RELATIVE_LOOP";
-			case NumberType.CODE_LBL:	return "CODE_LBL";
-			case NumberType.CODE_SUB:	return "CODE_SUB";
-			case NumberType.CODE_RST:	return "CODE_RST";
-			case NumberType.RELATIVE_INDEX:	return "RELATIVE_INDEX";
-			case NumberType.NUMBER_BYTE:	return "NUMBER_BYTE";
-			case NumberType.NUMBER_WORD:	return "NUMBER_WORD";
-			case NumberType.NUMBER_WORD_BIG_ENDIAN:	return "NUMBER_WORD_BIG_ENDIAN";
-			case NumberType.DATA_LBL:	return "DATA_LBL";
-			//case NumberType.SELF_MODIFYING_CODE:	return "SELF_MODIFYING_CODE";
-			case NumberType.PORT_LBL:	return "PORT_LBL";
-		}
-		// Unknown
-		assert(false);
+		return getNumberTypeAsString(this.type);
 	}
 
 
