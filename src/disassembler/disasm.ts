@@ -82,16 +82,6 @@ export class Disassembler extends EventEmitter {
 	public labelIntrptPrefix = "INTRPT";
 
 
-	/// The calculated number of occurences of a label type.
-	protected labelSubCountDigits;
-	protected labelLblCountDigits;
-	protected labelDataLblCountDigits;
-	protected labelSelfModifyingCountDigits;
-	protected labelSubCount;
-	protected labelLblCount;
-	protected labelDataLblCount;
-	protected labelSelfModifyingCount;
-
 	/// Column areas. e.g. area for the bytes shown before each command
 	public clmnsAddress = 5;		///< size for the address at the beginning of each line. If 0 no address is shown.
 	public clmnsBytes = 4*3 + 1;	///< 4* length of hex-byte
@@ -210,9 +200,6 @@ export class Disassembler extends EventEmitter {
 
 		// 9. Add 'calls' list to subroutine labels
 		this.addCallsListToLabels();
-
-		// 10. Count number of types of labels
-		this.countTypesOfLabels();
 
 		// 11. Count statistics (size of subroutines, cyclomatic complexity)
 		this.countStatistics();
@@ -1122,9 +1109,10 @@ export class Disassembler extends EventEmitter {
 
 
 	/**
-	 * Returns an array with all addresses used by the subroutine
+	 * Collects an array with all addresses used by the subroutine
 	 * given at 'address'.
 	 * Does stop if it reaches a lable of another subroutine.
+	 * The array also contains the start address.
 	 * Fills the 'this.addressParents' array.
 	 * Works recursively.
 	 * @param address The start address of the subroutine.
@@ -1210,50 +1198,6 @@ export class Disassembler extends EventEmitter {
 			}
 		}
 	}
-
-
-	/**
-	 * Count the types of labels.
-	 * E.g. count all "SUB" labels to obtain the maximum number.
-	 * The maximum number sets the number of digits used for the
-	 * label numbering. E.g. with a max number of 78 there would be 2
-	 * digits for the label numbering, i.e. "SUBnn".
-	 */
-	protected countTypesOfLabels() {
-		// Count number of SUBs
-		this.labelSubCount = 0;
-		this.labelLblCount = 0;
-		this.labelDataLblCount = 0;
-		this.labelSelfModifyingCount = 0;
-
-		// Loop through all labels
-		for( let [address,label] of this.labels) {
-			switch(label.type) {
-				case NumberType.CODE_SUB:
-					this.labelSubCount++;
-				break;
-				case NumberType.CODE_LBL:
-					this.labelLblCount++;
-				break;
-				case NumberType.DATA_LBL:
-					const memAttr = this.memory.getAttributeAt(address);
-					if(memAttr & MemAttribute.CODE) {
-						this.labelSelfModifyingCount++;
-					}
-					else {
-						this.labelDataLblCount++;
-					}
-				break;
-			}
-		}
-
-		// Calculate digit counts
-		this.labelSubCountDigits = this.labelSubCount.toString().length;
-		this.labelLblCountDigits = this.labelLblCount.toString().length;
-		this.labelDataLblCountDigits = this.labelDataLblCount.toString().length;
-		this.labelSelfModifyingCountDigits = this.labelSelfModifyingCount.toString().length;
-	}
-
 
 
 	/**
@@ -1365,18 +1309,65 @@ export class Disassembler extends EventEmitter {
 	/// 2. Now the local label name numbers are assigned.
 	/// Reason is that the count of digits for the local label numbers is not known upfront.
 	protected assignLabelNames() {
+		// Count labels ----------------
+
+		// Count all local labels.
+		const localLabels = new Map<DisLabel, Array<DisLabel>>();
+		const localLoops = new Map<DisLabel, Array<DisLabel>>();
+
+
+		// Count labels
+		let labelSubCount = 0;
+		let labelLblCount = 0;
+		let labelDataLblCount = 0;
+		let labelSelfModifyingCount = 0;
+
+		// Loop through all labels
+		for( let [address,label] of this.labels) {
+			const type = label.type;
+			switch(type) {
+				// Count main labels
+				case NumberType.CODE_SUB:
+					labelSubCount++;
+				break;
+				case NumberType.CODE_LBL:
+					labelLblCount++;
+				break;
+				case NumberType.DATA_LBL:
+					const memAttr = this.memory.getAttributeAt(address);
+					if(memAttr & MemAttribute.CODE) {
+						labelSelfModifyingCount++;
+					}
+					else {
+						labelDataLblCount++;
+					}
+				break;
+
+				// Collect local labels
+				case NumberType.CODE_LOCAL_LBL:
+				case NumberType.CODE_LOCAL_LOOP:
+					const parentLabel = this.addressParents[address];
+					assert(parentLabel);
+					const arr = (type == NumberType.CODE_LOCAL_LBL) ? localLabels : localLoops;
+					const labelsArray = arr.get(parentLabel) || new Array<DisLabel>();
+					labelsArray.push(label);
+				break;
+			}
+		}
+
+		// Calculate digit counts
+		const labelSubCountDigits = labelSubCount.toString().length;
+		const labelLblCountDigits = labelLblCount.toString().length;
+		const labelDataLblCountDigits = labelDataLblCount.toString().length;
+		const labelSelfModifyingCountDigits = labelSelfModifyingCount.toString().length;
+
+
+		// Assign names. First the main labels.
 		// Start indexes
 		let subIndex = 1;	// CODE_SUB
 		let lblIndex = 1;	// CODE_LBL
 		let dataLblIndex = 1;	// DATA_LBL
 		let dataSelfModifyingIndex = 1;	// SELF_MOD
-
-		// prefixes for the local labels are dependent on the surrounding code (e.g. sub routine)
-		let localPrefix = "lbl0";	// Just in case
-
-		let parentLabel;
-		const relLabels = new Array<DisLabel>();
-		const relLoopLabels = new Array<DisLabel>();
 
 		// Loop through all labels (labels is sorted by address)
 		for( let [address,label] of this.labels) {
@@ -1384,43 +1375,24 @@ export class Disassembler extends EventEmitter {
 			if(label.name)
 				continue;
 
-			// Check for parent label
-			const type = label.type;
-			if(type == NumberType.CODE_SUB || type == NumberType.CODE_LBL || type == NumberType.CODE_RST) {
-				// process previous local labels
-				this.assignRelLabelNames(relLabels, parentLabel);
-				this.assignRelLabelNames(relLoopLabels, parentLabel);
-				relLabels.length = 0;
-				relLoopLabels.length = 0;
-				// Store new
-				parentLabel = label;
-			}
-
 			// Process label
+			const type = label.type;
 			switch(type) {
 				case NumberType.CODE_SUB:
 					// Set name
-					label.name = (label.belongsToInterrupt) ? this.labelIntrptPrefix : '' + this.labelSubPrefix + this.getIndex(subIndex, this.labelSubCountDigits);
-					// Use for local prefix
-					localPrefix = '.' + label.name.toLowerCase();
+					label.name = (label.belongsToInterrupt) ? this.labelIntrptPrefix : '' + this.labelSubPrefix + this.getIndex(subIndex, labelSubCountDigits);
 					// Next
 					subIndex++;
 				break;
 				case NumberType.CODE_LBL:
 					// Set name
-					label.name = (label.belongsToInterrupt) ? this.labelIntrptPrefix : '' + this.labelLblPrefix + this.getIndex(lblIndex, this.labelLblCountDigits);
-					// Use for local prefix
-					localPrefix = '.' + label.name.toLowerCase();
+					label.name = (label.belongsToInterrupt) ? this.labelIntrptPrefix : '' + this.labelLblPrefix + this.getIndex(lblIndex, labelLblCountDigits);
 					// Next
 					lblIndex++;
 				break;
 				case NumberType.CODE_RST:
 					// Set name
 					label.name = this.labelRstPrefix + Format.fillDigits(address.toString(), '0', 2);
-					// Use for local prefix
-					localPrefix = '.' + label.name.toLowerCase();
-					// Next
-					lblIndex++;
 				break;
 				case NumberType.DATA_LBL:
 					// Check for self.modifying code
@@ -1429,62 +1401,47 @@ export class Disassembler extends EventEmitter {
 						assert(memAttr & MemAttribute.CODE_FIRST);
 						// Yes, is self-modifying code.
 						// Set name
-						label.name = this.labelSelfModifyingPrefix + this.getIndex(dataSelfModifyingIndex, this.labelSelfModifyingCountDigits);
+						label.name = this.labelSelfModifyingPrefix + this.getIndex(dataSelfModifyingIndex, labelSelfModifyingCountDigits);
 						// Next
 						dataSelfModifyingIndex++;
 					}
 					else {
 						// Normal data area.
 						// Set name
-						label.name = this.labelDataLblPrefix + this.getIndex(dataLblIndex, this.labelDataLblCountDigits);
+						label.name = this.labelDataLblPrefix + this.getIndex(dataLblIndex, labelDataLblCountDigits);
 						// Next
 						dataLblIndex++;
 					}
-					// Use for local prefix
-					// localPrefix = '.' + label.name.toLowerCase();
-				break;
-				case NumberType.CODE_LOCAL_LOOP:
-					// Set name
-					label.name = localPrefix + this.labelLoopPrefix;
-					// Remember label
-					relLoopLabels.push(label);
-				break;
-				case NumberType.CODE_LOCAL_LBL:
-					// Set name
-					label.name = localPrefix + this.labelLocalLablePrefix;
-					// Remember label
-					relLabels.push(label);
 				break;
 			}
 		}
 
-		// Process the last relative labels
-		this.assignRelLabelNames(relLabels, parentLabel);
-		this.assignRelLabelNames(relLoopLabels, parentLabel);
-	}
+		// At the end the local labels ---
 
-
-	/**
-	 * Adds the indexes and the parentLabel to the relative labels.
-	 * @param relLabels The relative (relative or loop) labels within a parent.
-	 * @param parentLabel The parentLabel (SUB or LBL)
-	 */
-	protected assignRelLabelNames(relLabels: Array<DisLabel>, parentLabel: DisLabel) {
-		const count = relLabels.length;
-		if(count == 1) {
-			// No index in case there is only one index
-			relLabels[0].parent = parentLabel;
-			return;
+		// Loop through all labels (labels is sorted by address)
+		// Local LAbels:
+		for( let [parentLabel, childLabels] of localLabels) {
+			const localPrefix = parentLabel.name.toLowerCase();
+			const count = childLabels.length;
+			const digitCount = count.toString().length;
+			// Set names
+			let index = 1;
+			for(let child of childLabels) {
+				const indexString = this.getIndex(index, digitCount);
+				child.name = '.' + localPrefix + this.labelLocalLablePrefix + indexString;
+			}
 		}
-		// Normal loop (>=2 entries)
-		const digitCount = count.toString().length;
-		let index = 1;
-		for(let relLabel of relLabels) {
-			const indexString = this.getIndex(index, digitCount);
-			relLabel.name += indexString;
-			relLabel.parent = parentLabel;
-			// next
-			index ++;
+		// Local Loops:
+		for( let [parentLabel, childLabels] of localLoops) {
+			const localPrefix = parentLabel.name.toLowerCase();
+			const count = childLabels.length;
+			const digitCount = count.toString().length;
+			// Set names
+			let index = 1;
+			for(let child of childLabels) {
+				const indexString = this.getIndex(index, digitCount);
+				child.name = '.' + localPrefix + this.labelLoopPrefix + indexString;
+			}
 		}
 	}
 

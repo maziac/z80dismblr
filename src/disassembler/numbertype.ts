@@ -13,7 +13,7 @@ export const enum NumberType {
 	CODE_LBL,
 	// "SUB"-type
 	CODE_SUB,
-	// "TST"-type
+	// "RST"-type
 	CODE_RST,
 	// A relative index like (IX+5) or (IY-3)
 	RELATIVE_INDEX,

@@ -176,7 +176,8 @@ export class Opcode {
 		else if(name.startsWith("RST")) {	// "RST"
 			// Use like a CALL
 			this.valueType = NumberType.CODE_RST;
-			this.flags |= OpcodeFlag.CALL | OpcodeFlag.BRANCH_ADDRESS;
+			this.flags |= OpcodeFlag.BRANCH_ADDRESS|OpcodeFlag.CALL;
+
 			// Get jump value
 			const jumpAddress = this.code & 0b00111000;
 			this.value = jumpAddress;
