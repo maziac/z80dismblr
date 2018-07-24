@@ -38,7 +38,7 @@ suite('Memory', () => {
 		}
 
 		// Remaining
-		for(;addr<0x10000; addr++) {
+		for(;addr<MAX_MEM_SIZE; addr++) {
 			assert.equal(mem.getValueAt(addr), 0);
 		}
 	});
@@ -78,7 +78,7 @@ suite('Memory', () => {
 		}
 
 		// Remaining
-		for(;addr<0x10000; addr++) {
+		for(;addr<MAX_MEM_SIZE; addr++) {
 			assert.equal(mem.getValueAt(addr), 0);
 		}
 	});

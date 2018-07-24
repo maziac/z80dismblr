@@ -3,14 +3,6 @@
 import { NumberType, getNumberTypeAsString } from './numbertype';
 
 
-/// Used for a reference to a label.
-export interface Reference {
-	/// The address of the reference.
-	address: number;
-	/// The parent to the address.
-	parent: DisLabel|undefined;
-}
-
 
 /**
  * Class for the labels used for disassembly.
@@ -27,8 +19,8 @@ export class DisLabel {
 	/// Used for local label naming.
 	public parent: DisLabel;
 
-	/// The code locations that reference the label. (prents are the 'callers'.)
-	public references = new Set<Reference>();
+	/// The code locations that reference the label. (parents are the 'callers'.)
+	public references = new Set<number>();
 
 	/// A list with all called subroutine labels. (for statistics)
 	public calls = new Array<DisLabel>();

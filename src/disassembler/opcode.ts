@@ -9,7 +9,7 @@ import { Format } from './format';
 export enum OpcodeFlag {
 	NONE = 0,
 	BRANCH_ADDRESS = 0x01,	///< contains a branch address, e.g. jp, jp cc, jr, jr cc, call, call cc.
-	CALL = 0x02,	///< is a subroutine call, e.g. call or call cc
+	CALL = 0x02,	///< is a subroutine call, e.g. call, call cc or rst
 	STOP = 0x04,	///< is a stop-code. E.g. ret, reti, jp or jr. Disassembly procedure stops here.
 }
 
@@ -105,7 +105,6 @@ export class Opcode {
 		this.length = 1;	// default
 		// Retrieve valueType and opcode flags from name
 		let k;
-	// TODO: multiple #n implementieren
 		if((k = name.indexOf('#n')) > 0) {
 			if(name.substr(k+2,1) == 'n') { // i.e. '#nn'
 				// Word
@@ -177,7 +176,7 @@ export class Opcode {
 		else if(name.startsWith("RST")) {	// "RST"
 			// Use like a CALL
 			this.valueType = NumberType.CODE_RST;
-			this.flags |= OpcodeFlag.BRANCH_ADDRESS;
+			this.flags |= OpcodeFlag.CALL | OpcodeFlag.BRANCH_ADDRESS;
 			// Get jump value
 			const jumpAddress = this.code & 0b00111000;
 			this.value = jumpAddress;
