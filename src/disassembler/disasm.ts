@@ -167,46 +167,46 @@ export class Disassembler extends EventEmitter {
 	 * @returns An array of strings with the disassembly.
 	 */
 	public disassemble() {
-		// 1. Pass: Collect labels
+		// Pass: Collect labels
 		this.collectLabels();
 
-		// 2. Find interrupts
+		// Find interrupts
 		this.findInterruptLabels();
 
-		// 2. Add special labels, e.g. the start of a ROM
+		// Add special labels, e.g. the start of a ROM
 		this.setSpecialLabels();
 
-		// 3. Sort all labels by address
+		// Sort all labels by address
 		this.sortLabels();
 
-		// 4. Find self-modifying code
+		// Find self-modifying code
 		this.adjustSelfModifyingLabels();
 
-		// 5. Add more references if e.g. a SUB flows through to another SUB.
+		// Add more references if e.g. a SUB flows through to another SUB.
 		this.addFlowThroughReferences();
 
-		// 6. Check if labels "LBL" are subroutines
+		// Check if labels "LBL" are subroutines
 		this.turnLBLintoSUB();
 
-		// 7. Determine local labels inside subroutines
+		// Determine local labels inside subroutines
 		this.findLocalLabelsInSubroutines();
 
-		// 8. Add parent references to each address and remove self referenced labels
+		// Add parent references to each address and remove self referenced labels
 		this.addParentReferences();
 
-		// 9. Add 'calls' list to subroutine labels
+		// Add 'calls' list to subroutine labels
 		this.addCallsListToLabels();
 
-		// 11. Count statistics (size of subroutines, cyclomatic complexity)
+		// Count statistics (size of subroutines, cyclomatic complexity)
 		this.countStatistics();
 
-		// 12. Assign label names
+		// Assign label names
 		this.assignLabelNames();
 
-		// 13. Pass: Disassemble opcode with label names
+		// Pass: Disassemble opcode with label names
 		const disLines = this.disassembleMemory();
 
-		// 14. Add all EQU labels to the beginning of the disassembly
+		// Add all EQU labels to the beginning of the disassembly
 		this.disassembledLines = this.getEquLabelsDisassembly();
 
 		// Add the real disassembly

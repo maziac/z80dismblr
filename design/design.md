@@ -33,67 +33,82 @@
 ## Flow diagram
 
 ~~~
-                                     Start from the given code
-           ┌───────────────────┐   labels, check all opcodes for
-           │  Collect labels   │    branches and add branches to         Mark the code areas.
-           └───────────────────┘          the labels list.
+
+┌──────────────────────────────────────┐
+│Label collection                      │
+│          ┌───────────────────┐       │    Start from the given code
+│          │  Collect labels   │       │  labels, check all opcodes for
+│          └─────────┬─────────┘       │   branches and add branches to         Mark the code areas.
+│                    │                 │         the labels list.
+│       ┌────────────┴────────────┐    │
+│       │  Find Interrupt Labels  │    │    Find those labels that alter
+│       └────────────┬────────────┘    │               code.
+│                    │                 │
+│       ┌────────────┴────────────┐    │
+│       │   Set Special Labels    │    │  Find opcode areas that do not
+│       └────────────┬────────────┘    │       start with a label.
+│                    │                 │
+│       ┌────────────┴────────────┐    │
+│       │       Sort Labels       │    │  Such as start of a new memory
+│       └────────────┬────────────┘    │           area (ROM).
+│                    │                 │
+│    ┌───────────────┴──────────────┐  │
+│    │ Adjust self-modifying labels │  │   Add offset (e.g. "+1") if
+│    └───────────────┬──────────────┘  │          appropriate.
+└────────────────────┼─────────────────┘
                      │
                      ▼
-        ┌─────────────────────────┐
-        │Find self-modifying code │   Find those labels that alter
-        └─────────────────────────┘              code.
+    ┌────────────────────────────────┐      Treat flow-through from one
+    │  Add flow-through references   │     subroutine to another same as
+    └────────────────────────────────┘            "CALL nn; RET".
+                     │
                      │
 ┌────────────────────┼─────────────────┐
-│Mofdify Labels      ▼                 │
-│   ┌────────────────────────────────┐ │  Treat flow-through from one
-│   │  Add flow-through references   │ │ subroutine to another same as
-│   └────────────────────────────────┘ │         CALL nn; RET.
-│                    │                 │
-│                    ▼                 │
+│Label modification  ▼                 │
 │         ┌────────────────────┐       │  Check if LBLs are actually
 │         │ Turn LBL into SUB  │       │     SUBs (subroutines).
 │         └────────────────────┘       │
-│                    │                 │
-│                    ▼                 │
-│   ┌────────────────────────────────┐ │   Determine local labels
-│   │Find local labels in subroutines│ │    inside subroutines.
-│   └────────────────────────────────┘ │ Turn these labels to local
-│                    │                 │
-│                    ▼                 │
-│       ┌────────────────────────┐     │   Each label gets a parent.
-│       │ Add parent references  │     │  Self references are removed.
-│       └────────────────────────┘     │
-│                    │                 │
-│                    ▼                 │
-│       ┌────────────────────────┐     │ All called subroutines are added
-│       │Add call list to labels │     │       to subroutine labels.
-│       └────────────────────────┘     │
-│                    │                 │
-└────────────────────┼─────────────────┘
+│                                      │
+│   ┌────────────────────────────────┐ │
+│   │Find local labels in subroutines│ │   Determine local labels
+│   └────────────────┬───────────────┘ │    inside subroutines.
+└────────────────────┼─────────────────┘ Turn these labels to local
+                     │
                      │
 ┌────────────────────┼─────────────────┐
-│Label naming        ▼                 │
-│   ┌────────────────────────────────┐ │   Count the maximum number of labels per
-│   │Count number of types of labels │ │   type. Used to determine the number of
-│   └────────────────────────────────┘ │    digits for the names of the labels.
+│References          ▼                 │   Each label gets a parent.
+│       ┌────────────────────────┐     │  Self references are removed.
+│       │ Add parent references  │     │
+│       └────────────┬───────────┘     │
 │                    │                 │
-│                    ▼                 │
-│         ┌────────────────────┐       │  Loop through the labels list and
-│         │ Assign label names │       │    assign names depending on the
-│         └────────────────────┘       │             label type.
-│                    │                 │
+│       ┌────────────┴───────────┐     │ All called subroutines are added
+│       │Add call list to labels │     │       to subroutine labels.
+│       └────────────┬───────────┘     │
 └────────────────────┼─────────────────┘
+                     │
+                     ▼
+        ┌─────────────────────────┐        Such as size and cyclomatic
+        │    Count Statistics     │                complexity.
+        └────────────┬────────────┘
+                     │
+                     ▼
+          ┌────────────────────┐          Loop through the labels list and
+          │ Assign label names │            assign names depending on the
+          └────────────────────┘                     label type.
+                     │
                      │
 ┌────────────────────┼───────────────────┐
 │Output              ▼                   │
-│  ┌───────────────────────────────────┐ │
-│  │Disassemble opcode with label names│ │
-│  └───────────────────────────────────┘ │    Disassemble the opcode and
-│                    │                   │    exchange the addresses with
-│                    ▼                   │           label names.
-│     ┌────────────────────────────┐     │
-│     │ Add all EQU labels to the  │     │
-│     │beginning of the disassembly│     │
-│     └────────────────────────────┘     │   Labels marked as EQU are
-└────────────────────────────────────────┘        output first.
+│  ┌───────────────────────────────────┐ │    Disassemble the opcode and
+│  │Disassemble opcode with label names│ │    exchange the addresses with
+│  └───────────────────────────────────┘ │           label names.
+│                    │                   │
+│                    │                   │
+│     ┌──────────────┴─────────────┐     │
+│     │ Add all EQU labels to the  │     │   Labels marked as EQU are
+│     │beginning of the disassembly│     │        output first.
+│     └──────────────┬─────────────┘     │
+└────────────────────┼───────────────────┘
+                     │
+                     ▼
 ~~~
