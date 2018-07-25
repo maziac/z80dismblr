@@ -616,27 +616,34 @@ export class Disassembler extends EventEmitter {
 		for(let address=0x0000; address<MAX_MEM_SIZE; address++) {
 			// check memory attribute
 			const memAttr = this.memory.getAttributeAt(address);
-			if(memAttr & MemAttribute.CODE_FIRST
-			&& memAttr & MemAttribute.ASSIGNED) {
-				// Check if label exists
-				const label = this.labels.get(address);
-				if(!label) {
-					// Only if label not yet exists
 
-					// Check for transition unassigned or data (= not CODE) to code
-					if(!(prevAttr & MemAttribute.ASSIGNED)
-					|| !(prevAttr & MemAttribute.CODE)) {
-						// Assign label
-						this.setFixedCodeLabel(address, this.labelIntrptPrefix);
-						foundInterrupts.push(address);
-					}
-					// Check for transition from stop code
-					else if(prevCodeAddr >= 0) {
-						const opcode = Opcode.getOpcodeAt(this.memory, prevCodeAddr);
-						if(opcode.flags & OpcodeFlag.STOP) {
-							// Assign label
-							this.setFixedCodeLabel(address, this.labelIntrptPrefix);
-							foundInterrupts.push(address);
+			// Only if not the SNA address
+			if(address != this.snaStartAddress) {
+				if(memAttr & MemAttribute.CODE_FIRST
+				&& memAttr & MemAttribute.ASSIGNED) {
+					// Check if label exists
+					const label = this.labels.get(address);
+					if(!label) {
+						// Only if label not yet exists
+
+						// Check for transition unassigned or data (= not CODE) to code
+						if(!(prevAttr & MemAttribute.ASSIGNED)
+						|| !(prevAttr & MemAttribute.CODE)) {
+							// Only if not the SNA address
+							if(address != this.snaStartAddress) {
+								// Assign label
+								this.setFixedCodeLabel(address, this.labelIntrptPrefix);
+								foundInterrupts.push(address);
+							}
+						}
+						// Check for transition from stop code
+						else if(prevCodeAddr >= 0) {
+							const opcode = Opcode.getOpcodeAt(this.memory, prevCodeAddr);
+							if(opcode.flags & OpcodeFlag.STOP) {
+								// Assign label
+								this.setFixedCodeLabel(address, this.labelIntrptPrefix);
+								foundInterrupts.push(address);
+							}
 						}
 					}
 				}
