@@ -95,7 +95,7 @@ export class Disassembler extends EventEmitter {
 	protected snaStartAddress = -1;
 
 	/// For debugging:
-	protected DBG_COLLECT_LABELS = true;
+	protected DBG_COLLECT_LABELS = false;	//true;
 
 	/// Add decimal conversion to addresses (at beginning of line)
 	protected DBG_ADD_DEC_ADDRESS = true;
@@ -195,7 +195,7 @@ export class Disassembler extends EventEmitter {
 		// 7. Determine local labels inside subroutines
 		this.findLocalLabelsInSubroutines();
 
-		// 8. Remove self referenced labels
+		// 8. Add parent references to each address and remove self referenced labels
 		this.addParentReferences();
 
 		// 9. Add 'calls' list to subroutine labels
@@ -850,7 +850,6 @@ export class Disassembler extends EventEmitter {
 	 * Checks if LBLs are SUBs and if so turns them into SUBs.
 	 * Therefore it iterates through all LBL labels.
 	 * Then it walks through the LBL and stops if it finds a RET, RET cc or RETI.
-	 * (If it finds a RETI it marks the labels as interrupt.)
 	 * Note 1: It does not check necessarily all branches. Once it finds a
 	 * RET it assumes that also the other branches will end with a RET.
 	 * Note 2: When this function is done there should be only 2 LBL left:
@@ -975,6 +974,9 @@ export class Disassembler extends EventEmitter {
 					this.getSubroutineAddresses(address, addrsArray);
 					// Iterate array
 					for(let addr of addrsArray) {
+						// Don't check start address
+						if(addr == address)
+							continue;
 						// get corresponding label
 						const addrLabel = this.labels.get(addr);
 						// Check label
@@ -1088,7 +1090,7 @@ export class Disassembler extends EventEmitter {
 				|| type == NumberType.CODE_RST
 				|| type == NumberType.CODE_LBL) {
 				// Collect all addresses belonging to a subroutine
-				this.getSubroutineOnly(address, label);
+				this.setSubroutineParent(address, label);
 			}
 		}
 
@@ -1118,7 +1120,7 @@ export class Disassembler extends EventEmitter {
 	 * @param address The start address of the subroutine.
 	 * @param parentLabel The label to associate the found addresses with.
 	 */
-	protected getSubroutineOnly(address: number, parentLabel: DisLabel) {
+	protected setSubroutineParent(address: number, parentLabel: DisLabel) {
 		let opcodeClone;
 
 		do {
@@ -1160,7 +1162,7 @@ export class Disassembler extends EventEmitter {
 				if(!(opcodeClone.flags & OpcodeFlag.CALL)) {
 					const branchAddress = opcodeClone.value;
 					DelayedLog.log('getSubroutineOnly: address=' + DelayedLog.getNumber(address) + ': branching to ' + DelayedLog.getNumber(branchAddress) + '.');	DelayedLog.pushTab();
-					this.getSubroutineOnly(branchAddress, parentLabel);
+					this.setSubroutineParent(branchAddress, parentLabel);
 					DelayedLog.popTab();
 				}
 			}
@@ -1347,9 +1349,13 @@ export class Disassembler extends EventEmitter {
 				case NumberType.CODE_LOCAL_LBL:
 				case NumberType.CODE_LOCAL_LOOP:
 					const parentLabel = this.addressParents[address];
-					assert(parentLabel);
+					assert(parentLabel); // TODO: <- warum ist das nicht assigned.
 					const arr = (type == NumberType.CODE_LOCAL_LBL) ? localLabels : localLoops;
-					const labelsArray = arr.get(parentLabel) || new Array<DisLabel>();
+					let labelsArray = arr.get(parentLabel);
+					if(!labelsArray) {
+						labelsArray = new Array<DisLabel>();
+						arr.set(parentLabel, labelsArray);
+					}
 					labelsArray.push(label);
 				break;
 			}
@@ -1419,7 +1425,7 @@ export class Disassembler extends EventEmitter {
 		// At the end the local labels ---
 
 		// Loop through all labels (labels is sorted by address)
-		// Local LAbels:
+		// Local Labels:
 		for( let [parentLabel, childLabels] of localLabels) {
 			const localPrefix = parentLabel.name.toLowerCase();
 			const count = childLabels.length;
@@ -1428,7 +1434,10 @@ export class Disassembler extends EventEmitter {
 			let index = 1;
 			for(let child of childLabels) {
 				const indexString = this.getIndex(index, digitCount);
-				child.name = '.' + localPrefix + this.labelLocalLablePrefix + indexString;
+				child.name = '.' + localPrefix + this.labelLocalLablePrefix;
+				if(count > 1)
+					child.name += indexString;
+				index ++;
 			}
 		}
 		// Local Loops:
@@ -1440,7 +1449,10 @@ export class Disassembler extends EventEmitter {
 			let index = 1;
 			for(let child of childLabels) {
 				const indexString = this.getIndex(index, digitCount);
-				child.name = '.' + localPrefix + this.labelLoopPrefix + indexString;
+				child.name = '.' + localPrefix + this.labelLoopPrefix;
+				if(count > 1)
+					child.name += indexString;
+				index ++;
 			}
 		}
 	}

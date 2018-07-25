@@ -38,6 +38,7 @@ suite('Disassembler', () => {
 		dasm.labelLocalLablePrefix = "_lbl";
 		dasm.labelLoopPrefix = "_loop";
 		dasm.labelSelfModifyingPrefix = "SELF_MOD";
+		dasm.DBG_ADD_DEC_ADDRESS = false;
 
 		dasm.clmnsAddress = 0;
 		dasm.addOpcodeBytes = false;
@@ -316,49 +317,6 @@ suite('Disassembler', () => {
     });
 
 
-	suite('countTypesOfLabels', () => {
-
-		test('label types', () => {
-			const memory = [
-/*6000*/ 					// BCODE_START:
-/*6000*/ 0xca, 0x03, 0x60,	// 	    jp z,BCODE2
-/*6003*/ 					// BCODE2:
-/*6003*/ 0xca, 0x06, 0x60,	// 	    jp z,BCODE3
-/*6006*/ 					// BCODE3:
-/*6006*/ 0xca, 0x09, 0x60,	// 	    jp z,BCODE4
-/*6009*/ 					// BCODE4:
-/*6009*/ 0x3a, 0x19, 0x60,	// 	    ld a,(BDATA1)
-/*600c*/ 0x2a, 0x1a, 0x60,	// 	    ld hl,(BDATA2)
-/*600f*/ 0x22, 0x1b, 0x60,	// 	    ld (BDATA3),hl
-/*6012*/ 0xcd, 0x15, 0x60,	// 	    call BSUB1
-/*6015*/ 					// BSUB1:
-/*6015*/ 0xcd, 0x18, 0x60,	// 	    call BSUB2
-/*6018*/ 					// BSUB2:
-/*6018*/ 0xc9,				// 		ret
-/*6019*/ 0x01,				// BDATA1: defb 1
-/*601a*/ 0x02,				// BDATA2: defb 2
-/*601b*/ 0x03,				// BDATA3: defb 3
-];
-
-			const org = 0x6000;
-			dasm.memory.setMemory(org, new Uint8Array(memory));
-			dasm.setLabel(org);
-			dasm.collectLabels();
-
-			//dasm.printLabels();
-			dasm.countTypesOfLabels();
-
-			assert(dasm.labelSubCount == 2);
-			assert(dasm.labelLblCount == 4);
-			assert(dasm.labelDataLblCount == 3);
-
-			assert(dasm.labelSubCountDigits == 1);
-			assert(dasm.labelLblCountDigits == 1);
-			assert(dasm.labelDataLblCountDigits == 1);
-		});
-    });
-
-
 	suite('references', () => {
 
 		test('count references', () => {
@@ -401,7 +359,102 @@ suite('Disassembler', () => {
 
 	suite('assignLabelNames', () => {
 
-		test('only absolute', () => {
+		test('addParentReferences', () => {
+			const memory = [
+/*6000*/ 					// BCODE_START:
+/*6000*/ 0x3E, 16,	// LD A,16
+/*6002*/ 0xC9,		// ret
+			];
+
+			dasm.labelSubPrefix = "BSUB";
+			//dasm.labelLblPrefix = "BCODE";
+			//dasm.labelDataLblPrefix = "BDATA";
+
+			const org = 0x6000;
+			dasm.memory.setMemory(org, new Uint8Array(memory));
+			dasm.setLabel(org);
+
+			// Test:
+			dasm.disassemble();
+			//const linesUntrimmed = dasm.disassembledLines;
+
+			//dasm.printLabels();
+
+			assert(dasm.labels.size == 1);
+
+			let label;
+
+			label = dasm.labels.get(0x6000);
+			assert(label.name == 'BSUB1');
+			assert(label.isEqu == false);
+
+			const addrParents = dasm.addressParents;
+			assert(addrParents[org-1] == undefined);
+			assert(addrParents[org] == label);
+			assert(addrParents[org+1] == undefined);
+			assert(addrParents[org+2] == label);
+			assert(addrParents[org+3] == undefined);
+		});
+
+
+		test('addParentReferences 2', () => {
+			const memory = [
+/*+0*/ 					// BSUB1:
+/*+0*/ 0xca, 0x09, 0x00,	// 	    jp z,BSUB2
+/*+3*/ 0x3E, 16,			// 		LD A,16
+/*+5*/ 0xC9,				// 		ret
+
+/*+6*/ 0x01, 0x02,		// 	    defb 1, 2
+/*+8*/ 					// BSUB2:
+/*+8*/ 0x3E, 16,			// 		LD A,16
+/*+A*/ 0xC9,				// 		ret
+
+			];
+
+			dasm.labelSubPrefix = "BSUB";
+			//dasm.labelLblPrefix = "BCODE";
+			//dasm.labelDataLblPrefix = "BDATA";
+
+			const org = 0x0001;
+			dasm.memory.setMemory(org, new Uint8Array(memory));
+			dasm.setLabel(org);
+
+			// Test:
+			dasm.disassemble();
+			//const linesUntrimmed = dasm.disassembledLines;
+
+			//dasm.printLabels();
+
+			assert(dasm.labels.size == 2);
+
+			const label1 = dasm.labels.get(org);
+			assert(label1.name == 'BSUB1');
+			assert(label1.isEqu == false);
+
+			const label2 = dasm.labels.get(org+8);
+			assert(label2.name == '.bsub1_lbl');
+			assert(label2.isEqu == false);
+			assert(label2.type == NumberType.CODE_LOCAL_LBL);
+
+			const addrParents = dasm.addressParents;
+			assert(addrParents[org] == label1);
+			assert(addrParents[org+1] == undefined);
+			assert(addrParents[org+2] == undefined);
+			assert(addrParents[org+3] == label1);
+			assert(addrParents[org+4] == undefined);
+			assert(addrParents[org+5] == label1);
+
+			assert(addrParents[org+6] == undefined);
+			assert(addrParents[org+7] == undefined);
+
+			assert(addrParents[org+8] == label1);
+			assert(addrParents[org+9] == undefined);
+			assert(addrParents[org+0xA] == label1);
+			assert(addrParents[org+0xB] == undefined);
+		});
+
+
+		test('findLocalLabels 1', () => {
 			const memory = [
 /*6000*/ 					// BCODE_START:
 /*6000*/ 0xca, 0x03, 0x60,	// 	    jp z,BCODE2
@@ -433,8 +486,8 @@ suite('Disassembler', () => {
 			dasm.collectLabels();
 
 			// Test:
-			dasm.countTypesOfLabels();
-			dasm.assignLabelNames();
+			dasm.disassemble();
+			//const linesUntrimmed = dasm.disassembledLines;
 
 			//dasm.printLabels();
 
@@ -443,24 +496,24 @@ suite('Disassembler', () => {
 			let label;
 
 			label = dasm.labels.get(0x6000);
-			assert(label.name == 'BCODE1');
+			assert(label.name == 'BSUB1');
 			assert(label.isEqu == false);
 
 			label = dasm.labels.get(0x6003);
-			assert(label.name == 'BCODE2');
+			assert(label.name == '.bsub1_lbl1');
 			assert(label.isEqu == false);
 
 			label = dasm.labels.get(0x6006);
-			assert(label.name == 'BCODE3');
+			assert(label.name == '.bsub1_lbl2');
 
 			label = dasm.labels.get(0x6009);
-			assert(label.name == 'BCODE4');
+			assert(label.name == '.bsub1_lbl3');
 
 			label = dasm.labels.get(0x6015);
-			assert(label.name == 'BSUB1');
+			assert(label.name == '.bsub1_lbl4');
 
 			label = dasm.labels.get(0x6018);
-			assert(label.name == 'BSUB2');
+			assert(label.name == '.bsub1_lbl5');
 
 			label = dasm.labels.get(0x6019);
 			assert(label.name == 'BDATA1');
@@ -473,7 +526,7 @@ suite('Disassembler', () => {
 		});
 
 
-		test('also relative', () => {
+		test('assignLabelNames relative', () => {
 			const memory = [
 /*7000*/ 					// CCODE_START:
 /*7000*/ 0x28, 0x00,		// 		jr z,l1_rel1
@@ -484,7 +537,7 @@ suite('Disassembler', () => {
 /*7005*/					// l1_loop1:
 /*7005*/ 0x10, 0xfe,		// 		djnz l1_loop1
 /*7007*/ 0xcd, 0x0b, 0x70,	// 	    call CSUB1
-/*700a*/ 0xc9,				// ret
+/*700a*/ 0xc9,				// 		ret
 /*700b*/ 					// CSUB1:
 /*700b*/ 0x28, 0x00,		// 		jr z,s1_rel1
 /*700d*/ 					// s1_rel1:
@@ -496,6 +549,8 @@ suite('Disassembler', () => {
 /*7012*/ 					// s1_loop2:
 /*7012*/ 0x10, 0xfe,		// 		djnz s1_loop2
 /*7014*/ 0xc9,				// 		ret
+/*7015*/ 0xcd, 0x0B, 0x70	// 		JP CSUB2
+
 			];
 
 			dasm.labelSubPrefix = "CSUB";
@@ -506,40 +561,50 @@ suite('Disassembler', () => {
 			const org = 0x7000;
 			dasm.memory.setMemory(org, new Uint8Array(memory));
 			dasm.setLabel(org);
-			dasm.collectLabels();
+			dasm.setLabel(0x7015);
 
 			// Test:
-			dasm.countTypesOfLabels();
-			dasm.assignLabelNames();
+			dasm.disassemble();
+			//const linesUntrimmed = dasm.disassembledLines;
 
 			//dasm.printLabels();
 
-			assert(dasm.labels.size == 9);
+			assert(dasm.labels.size == 10);
 
 			let label;
 
+			label = dasm.labels.get(0x7000);
+			assert(label.name == 'CSUB1');
+			assert(label.isEqu == false);
+
 			label = dasm.labels.get(0x7002);
-			assert(label.name == '.ccode1_l1');
+			assert(label.name == '.csub1_l1');
 			assert(label.isEqu == false);
 
 			label = dasm.labels.get(0x7004);
-			assert(label.name == '.ccode1_l2');
+			assert(label.name == '.csub1_l2');
 			assert(label.isEqu == false);
 
 			label = dasm.labels.get(0x7005);
-			assert(label.name == '.ccode1_loop');
+			assert(label.name == '.csub1_loop');
+
+			label = dasm.labels.get(0x700B);
+			assert(label.name == 'CSUB2');
 
 			label = dasm.labels.get(0x700d);
-			assert(label.name == '.csub1_l1');
+			assert(label.name == '.csub2_l1');
 
 			label = dasm.labels.get(0x700f);
-			assert(label.name == '.csub1_l2');
+			assert(label.name == '.csub2_l2');
 
 			label = dasm.labels.get(0x7010);
-			assert(label.name == '.csub1_loop1');
+			assert(label.name == '.csub2_loop1');
 
 			label = dasm.labels.get(0x7012);
-			assert(label.name == '.csub1_loop2');
+			assert(label.name == '.csub2_loop2');
+
+			label = dasm.labels.get(0x7015);
+			assert(label.name == 'CCODE1');
 		});
     });
 
@@ -1122,7 +1187,6 @@ suite('Disassembler', () => {
 				/*8000*/ 0x3E, 0x22,	//   LD   A,34
 				/*8002*/ 0x3E, 0x01,	//   LD   A,01
 
-
 				//8004 SUB2: <- This should become referenced by SUB1
 				/*8004*/ 0x3E, 0x21,	//   LD   A,33
 				/*8006*/ 0xC9,     		//	 RET
@@ -1146,13 +1210,13 @@ suite('Disassembler', () => {
 			const labelSUB1 = labels.get(0x8000);
 			assert(labelSUB1.references.size == 1);
 			// Turn set into array
-			const refs = [...labelSUB1.references].map(ref => ref.address);
+			const refs = [...labelSUB1.references];
 			assert(refs.indexOf(0x8007) >= 0);
 
 			const labelSUB2 = labels.get(0x8004);
 			assert(labelSUB2.references.size == 2);
 			// Turn set into array
-			const refs2 = [...labelSUB2.references].map(ref => ref.address);
+			const refs2 = [...labelSUB2.references];
 			assert(refs2.indexOf(0x8002) >= 0);
 			assert(refs2.indexOf(0x800A) >= 0);
 		});
@@ -1189,13 +1253,13 @@ suite('Disassembler', () => {
 			const labelSUB1 = labels.get(0x8000);
 			assert(labelSUB1.references.size == 1);
 			// Turn set into array
-			const refs = [...labelSUB1.references].map(ref => ref.address);
+			const refs = [...labelSUB1.references];
 			assert(refs.indexOf(0x8007) >= 0);
 
 			const labelSUB2 = labels.get(0x8004);
 			assert(labelSUB2.references.size == 2);
 			// Turn set into array
-			const refs2 = [...labelSUB2.references].map(ref => ref.address);
+			const refs2 = [...labelSUB2.references];
 			assert(refs2.indexOf(0x8002) >= 0);
 			assert(refs2.indexOf(0x800A) >= 0);
 		});
@@ -1233,13 +1297,13 @@ suite('Disassembler', () => {
 			const labelSUB1 = labels.get(0x8000);
 			assert(labelSUB1.references.size == 1);
 			// Turn set into array
-			const refs = [...labelSUB1.references].map(ref => ref.address);
+			const refs = [...labelSUB1.references];
 			assert(refs.indexOf(0x7FF9) >= 0);
 
 			const labelSUB2 = labels.get(0x8004);
 			assert(labelSUB2.references.size == 2);
 			// Turn set into array
-			const refs2 = [...labelSUB2.references].map(ref => ref.address);
+			const refs2 = [...labelSUB2.references];
 			assert(refs2.indexOf(0x8002) >= 0);
 			assert(refs2.indexOf(0x7FFC) >= 0);
 		});
@@ -1335,14 +1399,22 @@ suite('Disassembler', () => {
 			assert(labelSUB2.references.size == 2);
 
 			// Turn set into array
-			const refs = [...labelSUB2.references].map(ref => ref.address);
-			const refsParent = [...labelSUB2.references].map(ref => ref.parent);
-			let k = refs.indexOf(0x8002);
+			const refs2 = [...labelSUB2.references];
+			let k = refs2.indexOf(0x8002);
 			assert(k >= 0);	// Reference exists
-			assert(refsParent[k] == labelSUB1);	// and has right parent
-			k = refs.indexOf(0x8005);
+			const addrParents = dasm.addressParents;
+			let addr = refs2[k];
+			let parent = addrParents[addr]
+			assert(parent == labelSUB1);	// and has right parent
+			k = refs2.indexOf(0x8005);
 			assert(k >= 0);	// Reference exists
-			assert(refsParent[k] == labelSUB1);	// and has right parent
+			addr = refs2[k];
+			parent = addrParents[addr]
+			assert(parent == labelSUB1);	// and has right parent
+
+			// SUB1 has no ref
+			const refs1 = [...labelSUB1.references];
+			assert(refs1.length == 0);
 		});
 
 
