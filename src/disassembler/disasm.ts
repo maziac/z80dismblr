@@ -98,7 +98,7 @@ export class Disassembler extends EventEmitter {
 	protected DBG_COLLECT_LABELS = false;	//true;
 
 	/// Add decimal conversion to addresses (at beginning of line)
-	protected DBG_ADD_DEC_ADDRESS = true;
+	protected DBG_ADD_DEC_ADDRESS = false; //true;
 
 
 	/**
@@ -932,12 +932,12 @@ export class Disassembler extends EventEmitter {
 			// Check if memory exists
 			const memAttr = this.memory.getAttributeAt(address);
 			if(!(memAttr & MemAttribute.ASSIGNED)) {
-				DelayedLog.log('findRET: address=' + DelayedLog.getNumber(address) + ': returns. memory not assigned.');
+				DelayedLog.log(() => 'findRET: address=' + DelayedLog.getNumber(address) + ': returns. memory not assigned.');
 				return false;
 			}
 			// Unfortunately it needs to be checked if address has been checked already
 			if(addrsArray.indexOf(address) >= 0) {
-				DelayedLog.log('findRET: address=' + DelayedLog.getNumber(address) + ': returns. memory already checked.');
+				DelayedLog.log(() => 'findRET: address=' + DelayedLog.getNumber(address) + ': returns. memory already checked.');
 				return false;	// already checked
 			}
 			// Check if a label for address exists that already is a subroutine.
@@ -946,7 +946,7 @@ export class Disassembler extends EventEmitter {
 				const type = addrLabel.type;
 				if(type == NumberType.CODE_SUB
 				|| type == NumberType.CODE_RST) {
-					DelayedLog.log('findRET: address=' + DelayedLog.getNumber(address) + ': SUB FOUND. address belongs already to a SUB.');
+					DelayedLog.log(() => 'findRET: address=' + DelayedLog.getNumber(address) + ': SUB FOUND. address belongs already to a SUB.');
 					return true;
 				}
 			}
@@ -957,7 +957,7 @@ export class Disassembler extends EventEmitter {
 
 			// Check if RET(I)
 			if(opcodeClone.name.toUpperCase().startsWith("RET")) {
-				DelayedLog.log('findRET: address=' + DelayedLog.getNumber(address) + ': SUB FOUND. RET code = ' + opcodeClone.name + '.');
+				DelayedLog.log(() => 'findRET: address=' + DelayedLog.getNumber(address) + ': SUB FOUND. RET code = ' + opcodeClone.name + '.');
 				return true;
 			}
 
@@ -968,7 +968,7 @@ export class Disassembler extends EventEmitter {
 			if(opcodeClone.flags & OpcodeFlag.BRANCH_ADDRESS) {
 				if(!(opcodeClone.flags & OpcodeFlag.CALL)) {
 					const branchAddress = opcodeClone.value;
-					DelayedLog.log('findRET: address=' + DelayedLog.getNumber(address) + ': branching to ' + DelayedLog.getNumber(branchAddress) + '.');	DelayedLog.pushTab();
+					DelayedLog.log(() => 'findRET: address=' + DelayedLog.getNumber(address) + ': branching to ' + DelayedLog.getNumber(branchAddress) + '.');	DelayedLog.pushTab();
 					const res = this.findRET(branchAddress, addrsArray);
 					DelayedLog.popTab();
 					if(res)
@@ -1080,12 +1080,12 @@ export class Disassembler extends EventEmitter {
 			// Check if memory exists
 			const memAttr = this.memory.getAttributeAt(address);
 			if(!(memAttr & MemAttribute.ASSIGNED)) {
-				DelayedLog.log('getSubroutineAddresses: address=' + DelayedLog.getNumber(address) + ': returns. memory not assigned.');
+				DelayedLog.log(() => 'getSubroutineAddresses: address=' + DelayedLog.getNumber(address) + ': returns. memory not assigned.');
 				break;
 			}
 			// Unfortunately it needs to be checked if address has been checked already
 			if(addrsArray.indexOf(address) >= 0) {
-				DelayedLog.log('getSubroutineAddresses: address=' + DelayedLog.getNumber(address) + ': returns. memory already checked.');
+				DelayedLog.log(() => 'getSubroutineAddresses: address=' + DelayedLog.getNumber(address) + ': returns. memory already checked.');
 				break;	// already checked
 			}
 
@@ -1100,7 +1100,7 @@ export class Disassembler extends EventEmitter {
 			if(opcodeClone.flags & OpcodeFlag.BRANCH_ADDRESS) {
 				if(!(opcodeClone.flags & OpcodeFlag.CALL)) {
 					const branchAddress = opcodeClone.value;
-					DelayedLog.log('getSubroutineAddresses: address=' + DelayedLog.getNumber(address) + ': branching to ' + DelayedLog.getNumber(branchAddress) + '.');	DelayedLog.pushTab();
+					DelayedLog.log(() => 'getSubroutineAddresses: address=' + DelayedLog.getNumber(address) + ': branching to ' + DelayedLog.getNumber(branchAddress) + '.');	DelayedLog.pushTab();
 					this.getSubroutineAddresses(branchAddress, addrsArray);
 					DelayedLog.popTab();
 				}
@@ -1165,14 +1165,14 @@ export class Disassembler extends EventEmitter {
 			// Check if memory exists
 			const memAttr = this.memory.getAttributeAt(address);
 			if(!(memAttr & MemAttribute.ASSIGNED)) {
-				DelayedLog.log('getSubroutineOnly: address=' + DelayedLog.getNumber(address) + ': returns. memory not assigned.');
+				DelayedLog.log(() => 'getSubroutineOnly: address=' + DelayedLog.getNumber(address) + ': returns. memory not assigned.');
 				break;
 			}
 
 			// Check if parent already assigned
 			const memLabel = this.addressParents[address];
 			if(memLabel) {
-				DelayedLog.log('getSubroutineOnly: address=' + DelayedLog.getNumber(address) + ': returns. memory already checked.');
+				DelayedLog.log(() => 'getSubroutineOnly: address=' + DelayedLog.getNumber(address) + ': returns. memory already checked.');
 				break;	// already checked
 			}
 
@@ -1198,7 +1198,7 @@ export class Disassembler extends EventEmitter {
 			if(opcodeClone.flags & OpcodeFlag.BRANCH_ADDRESS) {
 				if(!(opcodeClone.flags & OpcodeFlag.CALL)) {
 					const branchAddress = opcodeClone.value;
-					DelayedLog.log('getSubroutineOnly: address=' + DelayedLog.getNumber(address) + ': branching to ' + DelayedLog.getNumber(branchAddress) + '.');	DelayedLog.pushTab();
+					DelayedLog.log(() => 'getSubroutineOnly: address=' + DelayedLog.getNumber(address) + ': branching to ' + DelayedLog.getNumber(branchAddress) + '.');	DelayedLog.pushTab();
 					this.setSubroutineParent(branchAddress, parentLabel);
 					DelayedLog.popTab();
 				}

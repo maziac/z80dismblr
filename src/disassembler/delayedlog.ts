@@ -1,5 +1,5 @@
 
-import * as util from 'util';
+//import * as util from 'util';
 
 
 /**
@@ -15,8 +15,10 @@ export class DelayedLog {
 	/// Static array of DbgLog objects.
 	protected static queue = new Array<DelayedLog>();
 
-	/// The list of objects to log.
-	protected static keyList = new Set([ 0x0005, 0x02C4 ]);
+	/// The list of addresses to log.
+	protected static keyList = new Set();	//new Set([ 0x0005, 0x02C4 ]);
+
+	protected static logDisabled = true;
 
 	/// The saved logged output.
 	protected loggedLines = new Array<string>();
@@ -29,38 +31,30 @@ export class DelayedLog {
 
 	/**
 	 * Saves the logs to this logging object.
-	 * @param args The format string and arguments.
+	 * @param handler 'handler' should return the string to be logged.
 	 */
-	public static log(...args) {
+	public static log(handler:() => string) {
+		if(this.logDisabled)
+			return;
 		const lastIndex = this.queue.length-1;
 		if(lastIndex < 0)
 			return;
 		// Get current log lines
 		const logObj = this.queue[lastIndex];
 		// Store line
-		let line = '';
-		if(args) {
-			const format = args[0];
-			if(format) {
-				args.splice(0,1);
-				line = util.format(format, ...args);
-			}
-			else {
-				line = util.format(args);
-			}
-			const tabs = '.' + ' '.repeat(4-1);
-			line = tabs.repeat(logObj.tabLevel) + '[' + line + ']';
-		}
+		let line = handler();
 		logObj.loggedLines.push(line);
 	}
 
 
 	/**
 	 * Log if key is in list.
-	 * 'handler' should return the string to be logged but is only called if the key is correct.
-	 * @param handler
+	 * 'handler' is called if the key is found.
+	 * @param handler 'handler' should return the string to be logged but is only called if the key is correct.
 	 */
 	public static logIf(key: any, handler:() => string) {
+		if(this.logDisabled)
+			return;
 		if(!this.keyList.has(key))
 			return;
 		const lastIndex = this.queue.length-1;
@@ -69,8 +63,7 @@ export class DelayedLog {
 		// Get current log lines
 		const logObj = this.queue[lastIndex];
 		logObj.key = key;
-		const s = handler();
-		this.log(s);
+		this.log(handler);
 	}
 
 
@@ -80,6 +73,8 @@ export class DelayedLog {
 	 * Has to be ended with endLog.
 	 */
 	public static startLog() {
+		if(this.logDisabled)
+			return;
 		// Create new log object
 		const logObj = new DelayedLog();
 		// Store it
@@ -93,6 +88,8 @@ export class DelayedLog {
 	 *
 	 */
 	public static stopLog() {
+		if(this.logDisabled)
+			return;
 		const logObj = this.queue.pop();
 		if(!logObj)
 			return;
@@ -110,6 +107,8 @@ export class DelayedLog {
 	 * Increase tabulator.
 	 */
 	public static pushTab() {
+		if(this.logDisabled)
+			return;
 		const lastIndex = this.queue.length-1;
 		if(lastIndex < 0)
 			return;
@@ -122,6 +121,8 @@ export class DelayedLog {
 	 * Decrease tabulator.
 	 */
 	public static popTab() {
+		if(this.logDisabled)
+			return;
 		const lastIndex = this.queue.length-1;
 		if(lastIndex < 0)
 			return;
@@ -144,3 +145,6 @@ export class DelayedLog {
 		return s;
 	}
 }
+
+// Enable/disable logging.
+(DelayedLog as any).logDisabled = ((DelayedLog as any).keyList.size == 0);
