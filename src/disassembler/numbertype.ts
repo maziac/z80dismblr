@@ -5,6 +5,12 @@ import * as assert from 'assert';
 export const enum NumberType {
 	// No label
 	NONE = 0,
+
+	// "Data LBL"-type, low priority, might be changed to SUB if necessary.
+	DATA_LBL,
+	// Label for "out/in" command
+	PORT_LBL,	// TODO: Port needs other handling. Is another space, i.e. a memory label nd a port label could have same number.
+
 	// "relative-label"-type, i.e. JR
 	CODE_LOCAL_LBL,
 	// "loop"-type
@@ -23,10 +29,6 @@ export const enum NumberType {
 	NUMBER_WORD,
 	// "WORD"-type for ZX Next command "PUSH $nnnn"
 	NUMBER_WORD_BIG_ENDIAN,
-	// "Data LBL"-type
-	DATA_LBL,
-	// Label for "out/in" command
-	PORT_LBL	// TODO: Port needs other handling. Is another space, i.e. a memory label nd a port label could have same number.
 }
 
 
@@ -52,6 +54,6 @@ export function getNumberTypeAsString(type: NumberType): string {
 		case NumberType.PORT_LBL:	return "PORT_LBL";
 	}
 	// Unknown
-	assert(false);
+	assert(false, 'getNumberTypeAsString');
 	return "UNDEFINED";
 }

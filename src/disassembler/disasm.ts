@@ -233,7 +233,7 @@ export class Disassembler extends EventEmitter {
 	public setMemory(origin:number, memory: Uint8Array) {
 		this.memory.setMemory(origin, memory);
 		// Set start label
-		this.setLabel(origin, 'BIN_START_'+origin, NumberType.DATA_LBL);
+		//this.setLabel(origin, 'BIN_START_'+origin, NumberType.DATA_LBL);
 		//const size = memory.length;
 		//this.setLabel(origin+size, 'BIN_END_'+origin, NumberType.DATA_LBL);
 	}
@@ -626,7 +626,7 @@ export class Disassembler extends EventEmitter {
 			for(let index=0; index<count; index++) {
 				const addr = foundInterrupts[index];
 				const label = this.labels.get(addr);
-				assert(label);
+				assert(label, 'findInterruptLabels');
 				if(label)
 					label.name += index+1;
 			}
@@ -744,7 +744,7 @@ export class Disassembler extends EventEmitter {
 			let attr;
 			do {
 				addrStart--;
-				assert(address - addrStart <= 4);	// Opcode should be smaller than 5 bytes
+				assert(address - addrStart <= 4, 'adjustSelfModifyingLabels');	// Opcode should be smaller than 5 bytes
 				attr = this.memory.getAttributeAt(addrStart);
 			} while(!(attr & MemAttribute.CODE_FIRST));
 			// Use label and put it to the new address
@@ -1349,7 +1349,7 @@ export class Disassembler extends EventEmitter {
 				case NumberType.CODE_LOCAL_LBL:
 				case NumberType.CODE_LOCAL_LOOP:
 					const parentLabel = this.addressParents[address];
-					assert(parentLabel); // TODO: <- warum ist das nicht assigned.
+					assert(parentLabel, 'assignLabelNames 1');
 					const arr = (type == NumberType.CODE_LOCAL_LBL) ? localLabels : localLoops;
 					let labelsArray = arr.get(parentLabel);
 					if(!labelsArray) {
@@ -1404,7 +1404,7 @@ export class Disassembler extends EventEmitter {
 					// Check for self.modifying code
 					const memAttr = this.memory.getAttributeAt(address);
 					if(memAttr & MemAttribute.CODE) {
-						assert(memAttr & MemAttribute.CODE_FIRST);
+						assert(memAttr & MemAttribute.CODE_FIRST, 'assignLabelNames 2');
 						// Yes, is self-modifying code.
 						// Set name
 						label.name = this.labelSelfModifyingPrefix + this.getIndex(dataSelfModifyingIndex, labelSelfModifyingCountDigits);
@@ -1632,7 +1632,10 @@ export class Disassembler extends EventEmitter {
 					let labelLine = addrLabel.name + ':';
 					if(this.clmnsAddress > 0) {
 						labelLine = Format.addSpaces(Format.getHexString(address), this.clmnsAddress) + labelLine;
-					}
+						if(this.DBG_ADD_DEC_ADDRESS) {
+							labelLine = Format.addSpaces(address.toString(), 5) + ' ' + labelLine;
+						}
+							}
 					lines.push(labelLine);
 				}
 

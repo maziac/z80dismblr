@@ -145,7 +145,7 @@ export class Format {
 
 		// Add opcode (or defb)
 		const arr = mainString.split(' ');
-		assert(arr.length > 0);
+		assert(arr.length > 0, 'formatDisassembly');
 		arr[0] = Format.addSpaces(arr[0], clmnsOpcodeFirstPart-1);	// 1 is added anyway when joining
 		let resMainString = arr.join(' ');
 		resMainString = Format.addSpaces(resMainString+' ', clmsnOpcodeTotal);

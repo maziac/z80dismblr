@@ -260,7 +260,7 @@ export class Opcode {
 				this.value = memory.getValueAt(address+1);
 			break;
 			default:
-				assert(false);
+				assert(false, 'getOpcodeAt');
 			break;
 
 		}
