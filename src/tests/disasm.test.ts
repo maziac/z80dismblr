@@ -237,7 +237,8 @@ suite('Disassembler', () => {
 
 			label = dasm.labels.get(0x400a);
 			assert(label != undefined);
-			assert(label.type == NumberType.DATA_LBL);
+			//assert(label.type == NumberType.DATA_LBL); Depends on priority
+			assert(label.type == NumberType.CODE_LOCAL_LOOP);
 			assert(label.isEqu == false);
 
 			label = dasm.labels.get(0x4018);
@@ -285,8 +286,6 @@ suite('Disassembler', () => {
 			dasm.setLabel(org);
 			dasm.setLabel(org+3);
 			dasm.collectLabels();
-
-			//dasm.printLabels();
 
 			assert(dasm.labels.size == 4);
 
@@ -924,8 +923,10 @@ suite('Disassembler', () => {
 
 			//dasm.printLabels();
 
-			assert(linesUntrimmed[5] == 'SELF_MOD1:');
-			assert(lines[3] == 'LD (SELF_MOD1+1),HL');
+			//assert(linesUntrimmed[5] == 'SELF_MOD1:'); // Depends on priority
+			//assert(lines[3] == 'LD (SELF_MOD1+1),HL');
+			assert(linesUntrimmed[6] == 'SUB1:');
+			assert(lines[3] == 'LD (SUB1+1),HL');
 		});
 
     });

@@ -75,7 +75,7 @@ export class Disassembler extends EventEmitter {
 	public labelLblPrefix = "LBL";
 	public labelRstPrefix = "RST";
 	public labelDataLblPrefix = "DATA";
-	public labelSelfModifyingPrefix = "SELF_MOD";
+	public labelSelfModifyingPrefix = "SELF_MOD";	// I guess this is not used anymore if DATA_LBL priority is below CODE_LBLs
 	public labelLocalLablePrefix = "_l";
 	public labelLoopPrefix = "_loop";
 
@@ -170,11 +170,11 @@ export class Disassembler extends EventEmitter {
 		// 1. Pass: Collect labels
 		this.collectLabels();
 
-		// 2. Add special labels, e.g. the start of a ROM
-		this.setSpecialLabels();
-
 		// 2. Find interrupts
 		this.findInterruptLabels();
+
+		// 2. Add special labels, e.g. the start of a ROM
+		this.setSpecialLabels();
 
 		// 3. Sort all labels by address
 		this.sortLabels();
