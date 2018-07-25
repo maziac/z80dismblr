@@ -136,7 +136,7 @@ export class Disassembler extends EventEmitter {
 			// Check if label exists
 			let label0 = this.labels.get(0);
 			if(!label0) {
-				this.setFixedCodeLabel(0, this.labelLblPrefix + '_ADDR0000h');
+				this.setFixedCodeLabel(0, 'ORG_0000');
 			}
 			else {
 				// Make sure it is a code label
@@ -170,12 +170,8 @@ export class Disassembler extends EventEmitter {
 		// 1. Pass: Collect labels
 		this.collectLabels();
 
-		// Do special SNA handling. I.e. check if the SNA start address is meaningful
-		if(this.snaStartAddress >= 0) {
-			const label = this.labels.get(this.snaStartAddress);
-			if(!label)	// if not found by other means.
-				this.setLabel(this.snaStartAddress, 'SNA_LBL_MAIN_START_'+this.snaStartAddress.toString(16).toUpperCase(), NumberType.CODE_LBL);
-		}
+		// 2. Add special labels, e.g. the start of a ROM
+		this.setSpecialLabels();
 
 		// 2. Find interrupts
 		this.findInterruptLabels();
@@ -558,6 +554,40 @@ export class Disassembler extends EventEmitter {
 			if(ref != address)
 				label.references.add(ref);
 		}
+	}
+
+
+	/**
+	 * Sets the label for a possibly SNA start address and
+	 * labels that show where memory areas start if the memory area
+	 * is not continuous.
+	 */
+	protected setSpecialLabels() {
+		// Do special SNA handling. I.e. check if the SNA start address is meaningful
+		if(this.snaStartAddress >= 0) {
+			const label = this.labels.get(this.snaStartAddress);
+			if(!label)	// if not found by other means.
+				this.setLabel(this.snaStartAddress, 'SNA_LBL_MAIN_START_'+this.snaStartAddress.toString(16).toUpperCase(), NumberType.CODE_LBL);
+		}
+
+		// Check whole memory
+		let prevAttr = 0;
+		for(let addr=0; addr<MAX_MEM_SIZE; addr++) {
+			const memAttr = this.memory.getAttributeAt(addr);
+			if((prevAttr ^ memAttr) & MemAttribute.ASSIGNED) {
+				// Assignment status changed
+				if(memAttr & MemAttribute.ASSIGNED) {
+					// Is assigned now, set a label (maybe)
+					const label = this.labels.get(addr);
+					if(!label) {
+						this.setLabel(addr, 'BIN_START_'+Format.getHexString(addr).toUpperCase(), NumberType.DATA_LBL);
+					}
+				}
+			}
+			// Next
+			prevAttr = memAttr;
+		}
+
 	}
 
 
