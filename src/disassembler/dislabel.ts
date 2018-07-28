@@ -8,6 +8,11 @@ import { NumberType, getNumberTypeAsString } from './numbertype';
  * Class for the labels used for disassembly.
  */
 export class DisLabel {
+	// A static counter to assign an id tp the labels.
+	public static id = 0;
+
+	/// The id of the label. Starts at 1.
+	public id: number;
 
 	/// The type of the label, e.g. if it is data or program code.
 	public type: NumberType;
@@ -42,6 +47,8 @@ export class DisLabel {
 	 */
  	constructor (type: NumberType) {
 		this.type = type;
+		DisLabel.id ++;
+		this.id = DisLabel.id;
 	}
 
 

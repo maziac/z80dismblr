@@ -167,6 +167,56 @@ $ ./z80dismblr-macos --args argsfile --out roms.list
 ~~~
 
 
+## Caller Graphs
+
+With the '--dot' option it is possible to let z80dismblr create .dot files for use with [Graphviz](http://www.graphviz.org).
+
+An example for the program "Star Warrior" (48K ZX Spectrum program) is shown here:
+![](documentation/images/starwarrior_dot.jpg)
+
+Although this looks very confusing on first sight a few things can be learned from this view:
+
+- We get an overview of all sub routines and how there are interconnected. Each arrow means sub routine "SUBn" calls sub routine "SUBm".
+- We can see the leafs, i.e. the subroutines that do not call other sub routines. Often these are very generic functions like math calculations etc. When doingreverse engineering it is often helpful to start with those functions and work from bottom to top to understand the
+higher layer sub routines.
+- We can see one or more roots, e.g. the main routine. We can also try top-down to understand the called sub routines.
+
+
+The highlighted roots:
+![](documentation/images/starwarrior_dot_root.jpg)
+This example shows 4 roots. Why is this?
+1. SNA_LBL_MAIN_START_A660 is the address from the SNA file. Since no other code parts references (jumps to) it, it is a root. Here truly the program starts.
+2. INTRPT1 is the interrupt that is called 50 times per second on the Spectrum.
+Normally z80dismblr cannot find interrupts because it uses a CFG anaylsis and if no location refers to the interrupt z80dismblr cannot see it. So you would have to manually set the interrupt address via an argument to z80dimblr ("--codelabel address"). In this case however the "-tr" option was used and so z80dismblr could additionally analyse the traces and find the interrupt by itself.
+3. INTRPT2: This in fact is the real interrupt location. Here a simple "JP INTERPT1" could be found. The reason why z80dismblr did not draw any lines from here is: it is self-modifying code. The binary that z80dismblr anaylsed simply contains 3 "NOP" operations. Thus there is no label. The jump operation and the jump location is written by executing the code. But since z80dismblr doesn't do a dynamic analysis it cannot see the these values.
+4. SUB006: This looks strange. And indeed, this indicated an error in the program. It was hard to find but in the end the code boiled down to
+~~~
+LABEL:
+        ...
+        CALL NZ,LABEL
+        ...
+~~~
+I.e. a recursive call to itself which was wrong coding simply.
+However z80dismblr thinks LABEL is a subroutine because it is called via a CALL so it assigns the LABEL. However no other location refers to LABEL so that the LABEL has no caller, i.e. no arrow pointing to it.
+
+---
+
+An example of a leaf:
+![](documentation/images/starwarrior_dot_leaf.jpg)
+
+
+## Interactive Usage
+
+\<Not yet. Probably next version.\>
+
+
+## Statistics
+
+Apart from the disassembly output with the labels and the mnemonics z80dismblr also prints out a few statistics in the comments.
+For each sub routines it lists the callers and callees.
+Additional the size of the sub routine is shown in bytes and the cyclomatic complexity (CC).
+
+
 ## Recommendations
 
 If you know nothing about the binary that you disassemble the output of the z80dismblr might be disappointing.
@@ -213,7 +263,7 @@ It then uses the new address as another start point to opcodes.
 Depending on the branch instruction it continues to disassemble at the following address or stops (e.g. JP unconditional).
 
 For the code above this leads to the following CFG:
-~~~~
+~~~
  ┌──────────────┐
  │ 08h: ADD A,A │      Start
  └──────────────┘
@@ -261,7 +311,7 @@ For the code above this leads to the following CFG:
  ┌──────────────┐
  │   17h: RET   │      Stop
  └──────────────┘
- ~~~
+~~~
 
 We can see already a few important points:
 - The data at addresses 000Fh is not disassembled as this data is not reachable.
@@ -293,6 +343,75 @@ Here is the resulting disassembly:
 
 0018 LBL_DATA1:
 0018 FF           DEFB 255    ; FFh,   -1
+~~~
+
+
+### Flow-through
+
+Consider the following code:
+~~~
+SUB1:
+             LD   B,34
+             LD   D,1
+
+SUB2:
+             LD   A,33
+             RET
+
+START:
+             CALL SUB1
+             CALL SUB2
+             RET
+~~~
+There are 2 sub routines SUB1 and SUB2. SUB1 flows-through into SUB2.
+So for the disassembler it is not clear to which subroutine the bytes "LD A,33" belong.
+This is solved by the following idea:
+The code above is logically the same as this:
+~~~
+SUB1:
+             LD   B,34
+             LD   D,1
+             CALL SUB2    <- Instead of flow-through
+             RET          <- Instead of flow-through
+
+SUB2:
+             LD   A,33
+             RET
+
+START:
+             CALL SUB1
+             CALL SUB2
+             RET
+~~~
+I.e. z80dismblr wil only treat "LD B,34" and "LD D,1" as belonging to SUB1.
+"LD A,33" and the following "RET" belong to SUB2.
+Additionally it adds a reference from SUB1 to SUB2 because SUB1 flows-through/calls
+SUB2. The references can be found in the comments output of the disassembler.
+The result is shown here:
+~~~
+; Subroutine: Size=4, CC=1.
+; Called by: START[8007h].
+; Calls: SUB2.
+SUB1:
+             LD   A,34   ; 22h, '"'
+             LD   A,1    ; 01h
+
+
+; Subroutine: Size=3, CC=1.
+; Called by: START[800Ah], SUB1[8002h].
+; Calls: -
+SUB2:
+             LD   A,33   ; 21h, '!'
+             RET
+
+
+; Subroutine: Size=7, CC=1.
+; Called by: -
+; Calls: SUB1, SUB2.
+START:
+             CALL SUB1   ; 8000h
+             CALL SUB2   ; 8004h
+             RET
 ~~~
 
 

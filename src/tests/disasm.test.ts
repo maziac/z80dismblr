@@ -1205,6 +1205,7 @@ suite('Disassembler', () => {
 			dasm.setFixedCodeLabel(0x8007, "START");
 			dasm.disassemble();
 			//const linesUntrimmed = dasm.disassembledLines;
+			//const total = linesUntrimmed.join('\n');
 
 			// Check label references
 			const labels = dasm.labels;

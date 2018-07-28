@@ -504,7 +504,7 @@ export class Disassembler extends EventEmitter {
 				*/
 
 				// Check opcode for labels
-				if(!this.disassembleForLabel(opcode, address)) {
+				if(!this.disassembleForLabel(address, opcode)) {
 					return;
 				}
 
@@ -551,8 +551,9 @@ export class Disassembler extends EventEmitter {
 		// Add reference(s). Do a union of both sets.
 		//label.references = new Set([...label.references, ...referenceAddresses]);
 		for(let ref of referenceAddresses) {
-			if(ref != address)
+			if(ref != address) {
 				label.references.add(ref);
+			}
 		}
 	}
 
@@ -687,7 +688,7 @@ export class Disassembler extends EventEmitter {
 	 * @param opcodeAddress The current address.
 	 * @returns false if problem occurred.
 	 */
-	protected disassembleForLabel(opcode: Opcode, opcodeAddress: number): boolean {
+	protected disassembleForLabel(opcodeAddress: number, opcode: Opcode): boolean {
 
 		// Check for branching etc. (CALL, JP, JR)
 		if(opcode.flags & OpcodeFlag.BRANCH_ADDRESS) {
@@ -805,6 +806,7 @@ export class Disassembler extends EventEmitter {
 	 * SUB01 would otherwise not reference SUB02 although it flows through which
 	 * is equivalent to a JP or CALL;RET.
 	 * This "references" are added here.
+	 * Note: This could add an address a reference to 2 different labels.
 	 */
 	protected addFlowThroughReferences() {
 		// Loop through all labels
@@ -1112,6 +1114,21 @@ export class Disassembler extends EventEmitter {
 		} while(!(opcodeClone.flags & OpcodeFlag.STOP));
 	}
 
+	// Helper: REMOVE:
+	protected checkRefDoubleAssignment() {
+		// Check if references are assigned twice
+		const allRefs = new Array<number>();
+		for( let [, label] of this.labels) {
+			const refs = label.references;
+			for(let ref of refs) {
+				if(allRefs.indexOf(ref) >= 0) {
+					// Shouldn't be
+					console.error("error: double assignement");
+				}
+				allRefs.push(ref);
+			}
+		}
+	}
 
 	/**
 	 * Iterates through all Labels.
@@ -1127,7 +1144,12 @@ export class Disassembler extends EventEmitter {
 				|| type == NumberType.CODE_RST
 				|| type == NumberType.CODE_LBL) {
 				// Collect all addresses belonging to a subroutine
+				DelayedLog.startLog();
 				this.setSubroutineParent(address, label);
+				DelayedLog.logIf(address, () =>
+					''+Format.getHexString(address,4)+' processed.'
+				);
+				DelayedLog.stopLog();
 			}
 		}
 
@@ -1139,8 +1161,18 @@ export class Disassembler extends EventEmitter {
 				const addr = ref;
 				const parentLabel = this.addressParents[addr];
 				if(parentLabel == label) {
-					// self-reference -> remove
-					refs.delete(ref);
+					// self-reference:
+					// Check if reference is a call:
+					const memAttr = this.memory.getAttributeAt(ref);
+					assert(memAttr &  MemAttribute.ASSIGNED);
+					assert(memAttr &  MemAttribute.CODE);
+					assert(memAttr &  MemAttribute.CODE_FIRST);
+					// Check opcode
+					const opcode = Opcode.getOpcodeAt(this.memory, ref);
+					if(!(opcode.flags & OpcodeFlag.CALL)) {
+						// No, it was no call, so it must be a jump. Remove reference.
+						refs.delete(ref);
+					}
 				}
 			}
 		}
@@ -1150,7 +1182,7 @@ export class Disassembler extends EventEmitter {
 	/**
 	 * Collects an array with all addresses used by the subroutine
 	 * given at 'address'.
-	 * Does stop if it reaches a lable of another subroutine.
+	 * Does stop if it reaches a label of another subroutine.
 	 * The array also contains the start address.
 	 * Fills the 'this.addressParents' array.
 	 * Works recursively.
@@ -1165,14 +1197,14 @@ export class Disassembler extends EventEmitter {
 			// Check if memory exists
 			const memAttr = this.memory.getAttributeAt(address);
 			if(!(memAttr & MemAttribute.ASSIGNED)) {
-				DelayedLog.log(() => 'getSubroutineOnly: address=' + DelayedLog.getNumber(address) + ': returns. memory not assigned.');
+				DelayedLog.log(() => 'setSubroutineParent: address=' + DelayedLog.getNumber(address) + ': returns. memory not assigned.');
 				break;
 			}
 
 			// Check if parent already assigned
 			const memLabel = this.addressParents[address];
 			if(memLabel) {
-				DelayedLog.log(() => 'getSubroutineOnly: address=' + DelayedLog.getNumber(address) + ': returns. memory already checked.');
+				DelayedLog.log(() => 'setSubroutineParent: address=' + DelayedLog.getNumber(address) + ': returns. memory already checked.');
 				break;	// already checked
 			}
 
@@ -1194,11 +1226,13 @@ export class Disassembler extends EventEmitter {
 			// Add to array
 			this.addressParents[address] = parentLabel;
 
+			DelayedLog.log(() => 'setSubroutineParent: address=' + DelayedLog.getNumber(address) + ': added. ' + opcodeClone.name);
+
 			// And maybe branch address
 			if(opcodeClone.flags & OpcodeFlag.BRANCH_ADDRESS) {
 				if(!(opcodeClone.flags & OpcodeFlag.CALL)) {
 					const branchAddress = opcodeClone.value;
-					DelayedLog.log(() => 'getSubroutineOnly: address=' + DelayedLog.getNumber(address) + ': branching to ' + DelayedLog.getNumber(branchAddress) + '.');	DelayedLog.pushTab();
+					DelayedLog.log(() => 'setSubroutineParent: address=' + DelayedLog.getNumber(address) + ': branching to ' + DelayedLog.getNumber(branchAddress) + '.\n');	DelayedLog.pushTab();
 					this.setSubroutineParent(branchAddress, parentLabel);
 					DelayedLog.popTab();
 				}
@@ -1208,6 +1242,8 @@ export class Disassembler extends EventEmitter {
 			address += opcodeClone.length;
 
 		} while(!(opcodeClone.flags & OpcodeFlag.STOP));
+
+		DelayedLog.log(() => 'setSubroutineParent: address=' + DelayedLog.getNumber(address) + ': stop.\n');
 	}
 
 
@@ -1808,10 +1844,10 @@ export class Disassembler extends EventEmitter {
 	 * @param name The name of the graph.
 	 */
 	public getCallGraph(name: string): string {
-		let text;
+		const rankSame = new Array<string>();
 
 		// header
-		text = 'digraph ' + name + '\n{\n';
+		let text = 'digraph ' + name + '\n{\n';
 
 		// Iterate through all subroutine labels
 		for(let [, label] of this.labels) {
@@ -1840,11 +1876,23 @@ export class Disassembler extends EventEmitter {
 				callees.add(callee);
 			}
 			// Print all called labels:
+			if(label.references.size == 0) {
+				//const callers = this.getCallersOf(label);
+				text += label.name + ' [fillcolor=lightyellow, style=filled];\n';
+				rankSame.push(label.name);
+			}
+			if(callees.size > 0)
+				text += label.name + ' -> { ' + Array.from(callees).map(refLabel => refLabel.name).join(' ') + ' };\n';
+			/*
 			for(const refLabel of callees) {
 				text += label.name + ' -> ' + refLabel.name + ';\n';
 			}
+			*/
 		}
 
+		// Do some ranking.
+		// All labels without callers are ranked at the same level.
+		text += '\n{ rank=same; ' + rankSame.join(', ') + ' };\n\n';
 
 		// ending
 		text += '}\n';
@@ -1853,5 +1901,23 @@ export class Disassembler extends EventEmitter {
 		return text;
 	}
 
+
+	/**
+	 * Returns all callers of a label.
+	 * I.e. the parents of the references.
+	 * @param label The label for which you need the callers.
+	 * @return Array of caller labels.
+	 */
+	/*
+	protected getCallersOf(label: DisLabel): Array<DisLabel> {
+		const callers = new Array<DisLabel>();
+		for(const ref of label.references) {
+			const parent = this.addressParents[ref];
+			assert(parent);
+			callers.push(parent);
+		}
+		return callers;
+	}
+	*/
 }
 
