@@ -479,7 +479,7 @@ export class Disassembler extends EventEmitter {
 				if(attr & MemAttribute.CODE)
 					break;	// Yes, already disassembled
 				if(!(attr & MemAttribute.ASSIGNED)) {
-					// Error: tying to disassemble unassigned memory areas
+					// Error: trying to disassemble unassigned memory areas
 					this.emit('warning', 'Trying to disassemble unassigned memory area at 0x' + address.toString(16) + '.');
 					break;
 				}
