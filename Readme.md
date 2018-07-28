@@ -184,9 +184,11 @@ higher layer sub routines.
 
 
 The highlighted roots:
+
 ![](documentation/images/starwarrior_dot_root.jpg)
 ![](documentation/images/starwarrior_dot_root2.jpg)
 ![](documentation/images/starwarrior_wrong_sub.jpg)
+
 This example shows 4 roots. Why is this?
 1. SNA_LBL_MAIN_START_A660 is the address from the SNA file. Since no other code parts references (jumps to) it, it is a root. Here truly the program starts.
 2. INTRPT1 is the interrupt that is called 50 times per second on the Spectrum.
@@ -212,10 +214,12 @@ z80dismblr.ts:39
 ---
 
 A leaf:
+
 ![](documentation/images/starwarrior_dot_leaf.jpg)
 
 
-A call to unassigned memory (in case of SNA files for the ZX Spectrum this would be calls into the ROM area):
+A call to unassigned memory result in a gray bubble (in case of SNA files for the ZX Spectrum this would be calls into the ROM area):
+
 ![](documentation/images/starwarrior_dot_equ.jpg)
 
 
