@@ -189,15 +189,22 @@ This example shows 4 roots. Why is this?
 2. INTRPT1 is the interrupt that is called 50 times per second on the Spectrum.
 Normally z80dismblr cannot find interrupts because it uses a CFG anaylsis and if no location refers to the interrupt z80dismblr cannot see it. So you would have to manually set the interrupt address via an argument to z80dimblr ("--codelabel address"). In this case however the "-tr" option was used and so z80dismblr could additionally analyse the traces and find the interrupt by itself.
 3. INTRPT2: This in fact is the real interrupt location. Here a simple "JP INTERPT1" could be found. The reason why z80dismblr did not draw any lines from here is: it is self-modifying code. The binary that z80dismblr anaylsed simply contains 3 "NOP" operations. Thus there is no label. The jump operation and the jump location is written by executing the code. But since z80dismblr doesn't do a dynamic analysis it cannot see the these values.
-4. SUB006: This looks strange. And indeed, this indicated an error in the program. It was hard to find but in the end the code boiled down to
+4. SUB006: This looks strange. And indeed, this helped me to find an error in the assembler program. It was hard to find but in the end the code boiled down to
 ~~~
 LABEL:
         ...
         CALL NZ,LABEL
         ...
 ~~~
-I.e. a recursive call to itself which was wrong coding simply.
-However z80dismblr thinks LABEL is a subroutine because it is called via a CALL so it assigns the LABEL. However no other location refers to LABEL so that the LABEL has no caller, i.e. no arrow pointing to it.
+I.e. a recursive call to itself which was wrong coding simply. It was not intended to write a recursive function.
+However z80dismblr thinks LABEL is a subroutine because it is called via a CALL so it assigns the LABEL. But no other location refers to LABEL so that the LABEL has no caller, i.e. no arrow pointing to it.
+z80dismblr will spit out a warning now in cases like the one above:
+~~~
+$ Warning: Address: 711Dh. A subroutine was found that calls itself recursively but is not called from any other location.
+z80dismblr.ts:39
+~~~
+
+
 
 ---
 

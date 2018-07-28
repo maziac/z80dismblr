@@ -1155,8 +1155,9 @@ export class Disassembler extends EventEmitter {
 
 		// Remove self references, e.g. a subroutine that includes a loop that
 		// jumps to itself.
-		for( let [, label] of this.labels) {
+		for( let [address, label] of this.labels) {
 			const refs = label.references;
+			let anyRefOutside = false;
 			for(let ref of refs) {
 				const addr = ref;
 				const parentLabel = this.addressParents[addr];
@@ -1174,6 +1175,21 @@ export class Disassembler extends EventEmitter {
 						refs.delete(ref);
 					}
 				}
+				else {
+					// There was at least one reference from outside the sub routine
+					anyRefOutside = true;
+				}
+			}
+
+			// Check if sub routine cannot be called from outside.
+			if(!anyRefOutside &&
+				(label.type == NumberType.CODE_SUB || label.type == NumberType.CODE_RST)
+				&& refs.size > 0) {
+				// If there is no call/jp from outside the subroutine itself and if label
+				// is a subroutine then the CALL did only come from the subroutine
+				// itself -> do a warning. Maybe this was a programming error in the assembler code.
+				// Note: It is also checked if there is no ref at all to exclude the interrupts.
+				this.emit('warning', 'Address: ' + Format.getHexString(address,4) + 'h. A subroutine was found that calls itself recursively but is not called from any other location.');
 			}
 		}
 	}
@@ -1867,20 +1883,6 @@ export class Disassembler extends EventEmitter {
 			if(label.type != NumberType.CODE_SUB && label.type != NumberType.CODE_LBL && label.type != NumberType.CODE_RST)
 				continue;
 			//console.log(label.name + '(' + Format.getHexString(address) + '):')
-
-/*			// List each parent only once
-			const parents = new Set<DisLabel>();
-			for(const ref of label.references) {
-				const par = ref.parent;
-				if(par)
-					parents.add(par);
-			}
-			// Print all references as callers:
-			for(let refLabel of parents) {
-				text += refLabel.name + ' -> ' + label.name + ';\n';
-				//console.log('  ' + Format.getHexString(ref.address) + ': parent=' + ((refLabel) ? refLabel.name : 'undefined'));
-			}
-*/
 
 			// List each callee only once
 			const callees = new Set<DisLabel>();
