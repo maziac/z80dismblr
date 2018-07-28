@@ -1558,32 +1558,40 @@ export class Disassembler extends EventEmitter {
 			case NumberType.CODE_SUB:
 			case NumberType.CODE_RST:
 			{
-				// Line 1
-				line1 = name;
-				const stat = this.subroutineStatistics.get(addrLabel);
-				if(stat)
-					line1 += ': Size=' + stat.sizeInBytes + ', CC=' + stat.CyclomaticComplexity + '.';
-				else
-					line1 += '.';
-				lineArray.push(line1);
 				// Line 2
 				let line2 = 'Called by: ';
 				let first = true;
+				let recursiveFunction = false;
 				for(const ref of addrLabel.references) {
 					if(!first)
 						line2 += ', ';
 					const s = Format.getHexString(ref, 4) + 'h';
 					const parent = this.addressParents[ref];
+					let parName;
+					if(parent == addrLabel) {
+						parName = 'self';
+						recursiveFunction = true;
+					 }
+					 else
+					 	parName = parent.name;
 					if(parent)
-						line2 += parent.name + '[' + s +']';
+						line2 += parName + '[' + s +']';
 					else
 						line2 += s;
 					first = false;
 				}
 				// Check if anything has been output
 				line2 += (addrLabel.references.size > 0) ? '.' : '-';
-				lineArray.push(line2);
-				// Line 3
+
+				// Line 1
+				line1 = name;
+				const stat = this.subroutineStatistics.get(addrLabel);
+				if(stat)
+					line1 += ': ' + ((recursiveFunction) ? 'Recursive, ' : '') + 'Size=' + stat.sizeInBytes + ', CC=' + stat.CyclomaticComplexity + '.';
+				else
+					line1 += '.';
+
+					// Line 3
 				let line3 = 'Calls: ';
 				first = true;
 				for(const callee of addrLabel.calls) {
@@ -1594,6 +1602,10 @@ export class Disassembler extends EventEmitter {
 				}
 				// Check if anything has been output
 				line3 += (addrLabel.calls.length > 0) ? '.' : '-';
+
+				// Store lines
+				lineArray.push(line1);
+				lineArray.push(line2);
 				lineArray.push(line3);
 				break;
 			}
