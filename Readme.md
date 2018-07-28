@@ -2,8 +2,8 @@
 
 z80dismblr is a Z80 command line disassembler written in typescript.
 
-It is available now in version 1.0.0.
-I.e. it is complete and working in general but there might be some faults still.
+It is available now in version 1.1.0.
+I.e. it is complete and working in general but it is still very young so there might be some faults still.
 Please don't hesitate to report any problem that you find.
 
 ## Features

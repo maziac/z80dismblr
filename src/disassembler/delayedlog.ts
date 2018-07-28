@@ -16,7 +16,7 @@ export class DelayedLog {
 	protected static queue = new Array<DelayedLog>();
 
 	/// The list of addresses to log.
-	protected static keyList = new Set([0x711D]);	//new Set([ 0x0005, 0x02C4 ]);
+	protected static keyList = new Set();	//new Set([ 0x0005, 0x02C4 ]);
 
 	protected static logDisabled = true;
 
