@@ -1,5 +1,5 @@
 import { Disassembler } from './disassembler/disasm';
-import { readFileSync, writeFileSync, exists } from 'fs';
+import { readFileSync, writeFileSync } from 'fs';
 import { Opcode } from './disassembler/opcode';
 import * as Path from 'path';
 

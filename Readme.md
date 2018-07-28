@@ -24,6 +24,7 @@ Please don't hesitate to report any problem that you find.
 - Can read MAME trace (*.tr) files for better results.
 - Supports undocumented opcodes.
 - Supports Spectrum Next opcodes.
+- .dot output of caller graphs for visualization with Graphviz
 
 
 ## Installation
