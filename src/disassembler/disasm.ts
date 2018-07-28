@@ -49,6 +49,12 @@ export class Disassembler extends EventEmitter {
 	/// Map for statistics (size of subroutines, cyclomatic complexity)
 	protected subroutineStatistics = new Map<DisLabel, SubroutineStatistics>();
 
+	/// The statistics maximum
+	protected statisticsMax: SubroutineStatistics = { sizeInBytes:0, countOfInstructions: 0, CyclomaticComplexity: 0 };
+
+	/// The statistics minimum
+	protected statisticsMin: SubroutineStatistics = { sizeInBytes:Number.MAX_SAFE_INTEGER, countOfInstructions: Number.MAX_SAFE_INTEGER, CyclomaticComplexity: Number.MAX_SAFE_INTEGER };
+
 	/// Choose opcodes in lower or upper case.
 	public opcodesLowerCase = true;
 
@@ -1299,14 +1305,31 @@ export class Disassembler extends EventEmitter {
 	protected countStatistics() {
 		// Loop through all labels
 		for( let [address, label] of this.labels) {
+			if(label.isEqu)
+				continue;
 			switch(label.type) {
 				case NumberType.CODE_SUB:
 				case NumberType.CODE_RST:
+				case NumberType.CODE_LBL:
 					// Get all addresses belonging to the subroutine
 					const addresses = new Array<number>();
 					const statistics = this.countAddressStatistic(address, addresses);
 					statistics.CyclomaticComplexity ++;	// Add 1 as default
 					this.subroutineStatistics.set(label, statistics);
+					// Get max
+					if(statistics.sizeInBytes > this.statisticsMax.sizeInBytes)
+						this.statisticsMax.sizeInBytes = statistics.sizeInBytes;
+					if(statistics.countOfInstructions > this.statisticsMax.countOfInstructions)
+						this.statisticsMax.countOfInstructions = statistics.countOfInstructions;
+					if(statistics.CyclomaticComplexity > this.statisticsMax.CyclomaticComplexity)
+						this.statisticsMax.CyclomaticComplexity = statistics.CyclomaticComplexity;
+					// Get min
+					if(statistics.sizeInBytes < this.statisticsMin.sizeInBytes)
+						this.statisticsMin.sizeInBytes = statistics.sizeInBytes;
+					if(statistics.countOfInstructions < this.statisticsMin.countOfInstructions)
+						this.statisticsMin.countOfInstructions = statistics.countOfInstructions;
+					if(statistics.CyclomaticComplexity < this.statisticsMin.CyclomaticComplexity)
+						this.statisticsMin.CyclomaticComplexity = statistics.CyclomaticComplexity;
 			}
 		}
 	}
@@ -1877,31 +1900,58 @@ export class Disassembler extends EventEmitter {
 		// header
 		let text = 'digraph ' + name + '\n{\n';
 
-		// Iterate through all subroutine labels
+		// Calculate size (font size) max and min
+		const fontSizeMin = 13;
+		const fontSizeMax = 40;
+		//const min = this.statisticsMin.sizeInBytes;
+		//const fontSizeFactor = (fontSizeMax-fontSizeMin) / (this.statisticsMax.sizeInBytes-min);
+		const min = this.statisticsMin.CyclomaticComplexity;
+		const fontSizeFactor = (fontSizeMax-fontSizeMin) / (this.statisticsMax.CyclomaticComplexity-min);
+
+		// Iterate through all subroutine labels to assign the text and size
+		// (fontsize) to the nodes (bubbles), also the coloring.
+		// And connect the nodes with arrows.
 		for(let [, label] of this.labels) {
-			// Skip other labels
+
 			if(label.type != NumberType.CODE_SUB && label.type != NumberType.CODE_LBL && label.type != NumberType.CODE_RST)
 				continue;
 			//console.log(label.name + '(' + Format.getHexString(address) + '):')
 
-			// List each callee only once
-			const callees = new Set<DisLabel>();
-			for(const callee of label.calls) {
-				callees.add(callee);
+			// Skip other labels
+			if(label.isEqu) {
+				// output gray label to indicate an EQU label
+				text += label.name + ' [fillcolor=lightgray, style=filled];\n';
+				text += label.name + ' [fontsize="' + fontSizeMin + '"];\n';
 			}
-			// Print all called labels:
-			if(label.references.size == 0) {
-				//const callers = this.getCallersOf(label);
-				text += label.name + ' [fillcolor=lightyellow, style=filled];\n';
-				rankSame.push(label.name);
+			else {
+				// A normal label.
+				// Size
+				const stats = this.subroutineStatistics.get(label);
+				assert(stats);
+				if(!stats)
+					continue;	// calm transpiler
+				const fontSize = fontSizeMin + fontSizeFactor*(stats.CyclomaticComplexity-min);
+
+				// Output
+				text += label.name + ' [fontsize="' + fontSize + '"];\n';
+				text += label.name + ' [label="' + label.name + '\\nSize=' + stats.sizeInBytes + '\\nCC=' + stats.CyclomaticComplexity + '\\n"];\n';
+				//text += label.name + ' [label="' + label.name + '\\lSize=' + stats.sizeInBytes + '\\lCC=' + stats.CyclomaticComplexity + '\\l"];\n';
+				//text += label.name + ' [label="' + label.name + '"];\n';
+
+				// List each callee only once
+				const callees = new Set<DisLabel>();
+				for(const callee of label.calls) {
+					callees.add(callee);
+				}
+				// Output all called labels in different color:
+				if(label.references.size == 0) {
+					//const callers = this.getCallersOf(label);
+					text += label.name + ' [fillcolor=lightyellow, style=filled];\n';
+					rankSame.push(label.name);
+				}
+				if(callees.size > 0)
+					text += label.name + ' -> { ' + Array.from(callees).map(refLabel => refLabel.name).join(' ') + ' };\n';
 			}
-			if(callees.size > 0)
-				text += label.name + ' -> { ' + Array.from(callees).map(refLabel => refLabel.name).join(' ') + ' };\n';
-			/*
-			for(const refLabel of callees) {
-				text += label.name + ' -> ' + refLabel.name + ';\n';
-			}
-			*/
 		}
 
 		// Do some ranking.
