@@ -1,5 +1,5 @@
 import { Disassembler } from './disassembler/disasm';
-import { readFileSync, writeFileSync } from 'fs';
+import { readFileSync, writeFileSync, exists } from 'fs';
 import { Opcode } from './disassembler/opcode';
 import * as Path from 'path';
 
@@ -190,7 +190,8 @@ z80dismblr [options]
                 case '-help':
                 case '-h':
                     this.printHelp();
-                    return 0;
+                    process.exit(0);
+                    break;
 
                 // Version
                 case '--version':
@@ -198,7 +199,8 @@ z80dismblr [options]
                 case '-v':
                     const pckg = require('../package.json');
                     console.log('Version: ' + pckg.version);
-                    return 0;
+                    process.exit(0);
+                    break;
 
                 // Arguments file
                 case '--args':
