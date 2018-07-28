@@ -826,6 +826,7 @@ export class Disassembler extends EventEmitter {
 	 * is equivalent to a JP or CALL;RET.
 	 * This "references" are added here.
 	 * Note: This could add an address a reference to 2 different labels.
+	 * Note: Also works in labels.
 	 */
 	protected addFlowThroughReferences() {
 		// Loop through all labels
@@ -1222,6 +1223,7 @@ export class Disassembler extends EventEmitter {
 	 * The array also contains the start address.
 	 * Fills the 'this.addressParents' array.
 	 * Works recursively.
+	 * Note: does work also on CODE_LBL.
 	 * @param address The start address of the subroutine.
 	 * @param parentLabel The label to associate the found addresses with.
 	 */
@@ -1250,8 +1252,10 @@ export class Disassembler extends EventEmitter {
 				if(label != parentLabel) {	// Omit start address
 					const type = label.type;
 					if(type == NumberType.CODE_SUB
-					|| type == NumberType.CODE_RST)
-						break;	// Stop if label which is CALL or RST is reached
+						|| type == NumberType.CODE_RST
+						|| type == NumberType.CODE_LBL
+					)
+						break;	// Stop if label which is LBL, CALL or RST is reached
 				}
 			}
 
@@ -1266,8 +1270,16 @@ export class Disassembler extends EventEmitter {
 
 			// And maybe branch address
 			if(opcodeClone.flags & OpcodeFlag.BRANCH_ADDRESS) {
-				if(!(opcodeClone.flags & OpcodeFlag.CALL)) {
-					const branchAddress = opcodeClone.value;
+//				if(!(opcodeClone.flags & OpcodeFlag.CALL)) {
+				// Check if a label exists to either a subroutine or anothr absolute label.
+				const branchAddress = opcodeClone.value;
+				/*const branchLabel = this.labels.get(branchAddress);
+				if(!branchLabel
+					|| branchLabel.type == NumberType.CODE_LBL
+					|| branchLabel.type == NumberType.CODE_SUB
+					|| branchLabel.type == NumberType.CODE_RST)
+					*/
+					{
 					DelayedLog.log(() => 'setSubroutineParent: address=' + DelayedLog.getNumber(address) + ': branching to ' + DelayedLog.getNumber(branchAddress) + '.\n');	DelayedLog.pushTab();
 					this.setSubroutineParent(branchAddress, parentLabel);
 					DelayedLog.popTab();
@@ -1296,6 +1308,7 @@ export class Disassembler extends EventEmitter {
 			switch(label.type) {
 				case NumberType.CODE_SUB:
 				case NumberType.CODE_RST:
+				case NumberType.CODE_LBL:
 					// go through references
 					const refs = label.references;
 					for(const ref of refs) {
@@ -1909,7 +1922,8 @@ export class Disassembler extends EventEmitter {
 	 * @param name The name of the graph.
 	 */
 	public getCallGraph(name: string): string {
-		const rankSame = new Array<string>();
+		const rankSame1 = new Array<string>();
+		const rankSame2 = new Array<string>();
 
 		// header
 		let text = 'digraph ' + name + '\n{\n';
@@ -1925,9 +1939,11 @@ export class Disassembler extends EventEmitter {
 		// Iterate through all subroutine labels to assign the text and size
 		// (fontsize) to the nodes (bubbles), also the coloring.
 		// And connect the nodes with arrows.
-		for(let [address, label] of this.labels) {
+		for(let [, label] of this.labels) {
 
-			if(label.type != NumberType.CODE_SUB && label.type != NumberType.CODE_LBL && label.type != NumberType.CODE_RST)
+			if(label.type != NumberType.CODE_SUB
+				&& label.type != NumberType.CODE_LBL
+				&& label.type != NumberType.CODE_RST)
 				continue;
 			//console.log(label.name + '(' + Format.getHexString(address) + '):')
 
@@ -1947,10 +1963,9 @@ export class Disassembler extends EventEmitter {
 				const fontSize = fontSizeMin + fontSizeFactor*(stats.CyclomaticComplexity-min);
 
 				// Output
-				text += label.name + ' [fontsize="' + fontSize + '"];\n';
+				text += label.name + ' [fontsize="' + Math.round(fontSize) + '"];\n';
 				text += label.name + ' [label="' + label.name + '\\nSize=' + stats.sizeInBytes + '\\nCC=' + stats.CyclomaticComplexity + '\\n"];\n';
-				//text += label.name + ' [label="' + label.name + '\\lSize=' + stats.sizeInBytes + '\\lCC=' + stats.CyclomaticComplexity + '\\l"];\n';
-				//text += label.name + ' [label="' + label.name + '"];\n';
+				//text += label.name + ' [label="' + label.name + '\\nID=' + label.id + '\\nCC=' + stats.CyclomaticComplexity + '\\n"];\n';
 
 				// List each callee only once
 				const callees = new Set<DisLabel>();
@@ -1959,11 +1974,14 @@ export class Disassembler extends EventEmitter {
 				}
 				// Output all called labels in different color:
 				let colorText = this.dotMarkedLabels.get(label);
-				if(label.references.size == 0) {
+				if(label.references.size == 0 || label.type == NumberType.CODE_LBL) {
 					//const callers = this.getCallersOf(label);
 					if(!colorText)
 						colorText = 'lightyellow';
-					rankSame.push(label.name);
+					if(label.references.size == 0)
+						rankSame1.push(label.name);
+					else
+						rankSame2.push(label.name);
 				}
 				if(colorText)
 					text += label.name + ' [fillcolor=' + colorText + ', style=filled];\n';
@@ -1975,7 +1993,8 @@ export class Disassembler extends EventEmitter {
 
 		// Do some ranking.
 		// All labels without callers are ranked at the same level.
-		text += '\n{ rank=same; ' + rankSame.join(', ') + ' };\n\n';
+		text += '\n{ rank=same; ' + rankSame1.join(', ') + ' };\n\n';
+		text += '\n{ rank=same; ' + rankSame2.join(', ') + ' };\n\n';
 
 		// ending
 		text += '}\n';

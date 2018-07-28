@@ -167,19 +167,28 @@ $ ./z80dismblr-macos --args argsfile --out roms.list
 ~~~
 
 
+## Statistics
+
+Apart from the disassembly output with the labels and the mnemonics z80dismblr also prints out a few statistics in the comments.
+For each subroutines it lists the callers and callees.
+Additional the size of the subroutine is shown in bytes and the cyclomatic complexity (CC).
+
+
 ## Caller Graphs
 
 With the '--dot' option it is possible to let z80dismblr create .dot files for use with [Graphviz](http://www.graphviz.org).
 
-An example for the program "Star Warrior" (48K ZX Spectrum program) is shown here:
+An example for the program "Star Warrior" (48K ZX Spectrum) is shown here:
 ![](documentation/images/starwarrior_dot.jpg)
 
 Although this looks very confusing on first sight a few things can be learned from this view:
 
-- We get an overview of all sub routines and how there are interconnected. Each arrow means sub routine "SUBn" calls sub routine "SUBm".
-- We can see the leafs, i.e. the subroutines that do not call other sub routines. Often these are very generic functions like math calculations etc. When doingreverse engineering it is often helpful to start with those functions and work from bottom to top to understand the
-higher layer sub routines.
-- We can see one or more roots, e.g. the main routine. We can also try top-down to understand the called sub routines.
+- We get an overview of all subroutines and how there are interconnected. Each arrow means: subroutine "SUBn" calls subroutine "SUBm".
+- Each bubble represents a subroutine (or entry point). It contains the name, its size in bytes and its cyclomatic complexity.
+- The size of the bubble is related to its size in bytes. I.e. bigger subroutines lead to bigger bubbles.
+- We can see the leafs, i.e. the subroutines that do not call other subroutines. Often these are very generic functions like math calculations etc. When doing reverse engineering it is often helpful to start with those functions and work from bottom to top to understand the
+higher layer subroutines.
+- We can see one or more roots, e.g. the main routine. We can also try a top-down analysis to understand the called subroutines.
 - Calls into unassigned memory (i.e. addresses outside of the given binary) are shown in gray.
 
 
@@ -190,7 +199,7 @@ The highlighted roots:
 ![](documentation/images/starwarrior_wrong_sub.jpg)
 
 This example shows 4 roots. Why is this?
-1. SNA_LBL_MAIN_START_A660 is the address from the SNA file. Since no other code parts references (jumps to) it, it is a root. Here truly the program starts.
+1. SNA_LBL_MAIN_START_A660 is the address from the SNA file. Since no other code parts reference (jumps to) it, it is a root. Here truly the program starts.
 2. INTRPT1 is the interrupt that is called 50 times per second on the Spectrum.
 Normally z80dismblr cannot find interrupts because it uses a CFG anaylsis and if no location refers to the interrupt z80dismblr cannot see it. So you would have to manually set the interrupt address via an argument to z80dimblr ("--codelabel address"). In this case however the "-tr" option was used and so z80dismblr could additionally analyse the traces and find the interrupt by itself.
 3. INTRPT2: This in fact is the real interrupt location. Here a simple "JP INTERPT1" could be found. The reason why z80dismblr did not draw any lines from here is: it is self-modifying code. The binary that z80dismblr anaylsed simply contains 3 "NOP" operations. Thus there is no label. The jump operation and the jump location is written by executing the code. But since z80dismblr doesn't do a dynamic analysis it cannot see the these values.
@@ -208,12 +217,13 @@ z80dismblr will spit out a warning now in cases like the one above:
 $ Warning: Address: 711Dh. A subroutine was found that calls itself recursively but is not called from any other location.
 z80dismblr.ts:39
 ~~~
-
+In the dot graphic the subroutine is highlighted by a different color.
 
 
 ---
 
-A leaf:
+
+A leaf (i.e. a subroutine that does not call any other subroutine):
 
 ![](documentation/images/starwarrior_dot_leaf.jpg)
 
@@ -226,13 +236,6 @@ A call to unassigned memory result in a gray bubble (in case of SNA files for th
 ## Interactive Usage
 
 \<Not yet. Probably next version.\>
-
-
-## Statistics
-
-Apart from the disassembly output with the labels and the mnemonics z80dismblr also prints out a few statistics in the comments.
-For each sub routines it lists the callers and callees.
-Additional the size of the sub routine is shown in bytes and the cyclomatic complexity (CC).
 
 
 ## Recommendations
@@ -381,7 +384,7 @@ START:
              CALL SUB2
              RET
 ~~~
-There are 2 sub routines SUB1 and SUB2. SUB1 flows-through into SUB2.
+There are 2 subroutines SUB1 and SUB2. SUB1 flows-through into SUB2.
 So for the disassembler it is not clear to which subroutine the bytes "LD A,33" belong.
 This is solved by the following idea:
 The code above is logically the same as this:
