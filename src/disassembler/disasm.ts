@@ -55,6 +55,12 @@ export class Disassembler extends EventEmitter {
 	/// The statistics minimum
 	protected statisticsMin: SubroutineStatistics = { sizeInBytes:Number.MAX_SAFE_INTEGER, countOfInstructions: Number.MAX_SAFE_INTEGER, CyclomaticComplexity: Number.MAX_SAFE_INTEGER };
 
+	/// Labels that should be marked (with a color) are put here. String contains the color of the label for the dot graphic.
+	protected dotMarkedLabels = new Map<DisLabel, string>();
+
+	// dot-color for warning-marks for labels.
+	protected dotWarningMark = 'lightblue';
+
 	/// Choose opcodes in lower or upper case.
 	public opcodesLowerCase = true;
 
@@ -711,6 +717,13 @@ export class Disassembler extends EventEmitter {
 				if(branchAddress <= opcodeAddress)
 					vType = NumberType.CODE_LOCAL_LOOP;
 			}
+			else if(vType == NumberType.CODE_LBL) {
+				// Treat JP to unassigned memory area as a CALL.
+				if(!(attr & MemAttribute.ASSIGNED))
+					vType = NumberType.CODE_SUB;
+			}
+
+			// Set label with correct type
 			this.setFoundLabel(branchAddress, new Set([opcodeAddress]), vType, attr);
 
 			// Check if code from the branching address has already been disassembled
@@ -1196,6 +1209,7 @@ export class Disassembler extends EventEmitter {
 				// itself -> do a warning. Maybe this was a programming error in the assembler code.
 				// Note: It is also checked if there is no ref at all to exclude the interrupts.
 				this.emit('warning', 'Address: ' + Format.getHexString(address,4) + 'h. A subroutine was found that calls itself recursively but is not called from any other location.');
+				this.dotMarkedLabels.set(label,this.dotWarningMark);
 			}
 		}
 	}
@@ -1911,7 +1925,7 @@ export class Disassembler extends EventEmitter {
 		// Iterate through all subroutine labels to assign the text and size
 		// (fontsize) to the nodes (bubbles), also the coloring.
 		// And connect the nodes with arrows.
-		for(let [, label] of this.labels) {
+		for(let [address, label] of this.labels) {
 
 			if(label.type != NumberType.CODE_SUB && label.type != NumberType.CODE_LBL && label.type != NumberType.CODE_RST)
 				continue;
@@ -1944,11 +1958,16 @@ export class Disassembler extends EventEmitter {
 					callees.add(callee);
 				}
 				// Output all called labels in different color:
+				let colorText = this.dotMarkedLabels.get(label);
 				if(label.references.size == 0) {
 					//const callers = this.getCallersOf(label);
-					text += label.name + ' [fillcolor=lightyellow, style=filled];\n';
+					if(!colorText)
+						colorText = 'lightyellow';
 					rankSame.push(label.name);
 				}
+				if(colorText)
+					text += label.name + ' [fillcolor=' + colorText + ', style=filled];\n';
+
 				if(callees.size > 0)
 					text += label.name + ' -> { ' + Array.from(callees).map(refLabel => refLabel.name).join(' ') + ' };\n';
 			}

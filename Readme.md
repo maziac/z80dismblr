@@ -180,24 +180,27 @@ Although this looks very confusing on first sight a few things can be learned fr
 - We can see the leafs, i.e. the subroutines that do not call other sub routines. Often these are very generic functions like math calculations etc. When doingreverse engineering it is often helpful to start with those functions and work from bottom to top to understand the
 higher layer sub routines.
 - We can see one or more roots, e.g. the main routine. We can also try top-down to understand the called sub routines.
+- Calls into unassigned memory (i.e. addresses outside of the given binary) are shown in gray.
 
 
 The highlighted roots:
 ![](documentation/images/starwarrior_dot_root.jpg)
+![](documentation/images/starwarrior_dot_root2.jpg)
+![](documentation/images/starwarrior_wrong_sub.jpg)
 This example shows 4 roots. Why is this?
 1. SNA_LBL_MAIN_START_A660 is the address from the SNA file. Since no other code parts references (jumps to) it, it is a root. Here truly the program starts.
 2. INTRPT1 is the interrupt that is called 50 times per second on the Spectrum.
 Normally z80dismblr cannot find interrupts because it uses a CFG anaylsis and if no location refers to the interrupt z80dismblr cannot see it. So you would have to manually set the interrupt address via an argument to z80dimblr ("--codelabel address"). In this case however the "-tr" option was used and so z80dismblr could additionally analyse the traces and find the interrupt by itself.
 3. INTRPT2: This in fact is the real interrupt location. Here a simple "JP INTERPT1" could be found. The reason why z80dismblr did not draw any lines from here is: it is self-modifying code. The binary that z80dismblr anaylsed simply contains 3 "NOP" operations. Thus there is no label. The jump operation and the jump location is written by executing the code. But since z80dismblr doesn't do a dynamic analysis it cannot see the these values.
-4. SUB006: This looks strange. And indeed, this helped me to find an error in the assembler program. It was hard to find but in the end the code boiled down to
+4. SUB007: This looks strange. And indeed, this helped me to find an error in the assembler program. It was hard to find but in the end the code boiled down to the very simple:
 ~~~
-LABEL:
+711D:
         ...
-        CALL NZ,LABEL
+        CALL NZ,711D
         ...
 ~~~
 I.e. a recursive call to itself which was wrong coding simply. It was not intended to write a recursive function.
-However z80dismblr thinks LABEL is a subroutine because it is called via a CALL so it assigns the LABEL. But no other location refers to LABEL so that the LABEL has no caller, i.e. no arrow pointing to it.
+However z80dismblr thinks LABEL is a subroutine because it is called via a CALL so it assigns the 711D as a label ("SUB007"). But no other location refers to 711D so that the address has no caller, i.e. no arrow pointing to it.
 z80dismblr will spit out a warning now in cases like the one above:
 ~~~
 $ Warning: Address: 711Dh. A subroutine was found that calls itself recursively but is not called from any other location.
@@ -208,8 +211,12 @@ z80dismblr.ts:39
 
 ---
 
-An example of a leaf:
+A leaf:
 ![](documentation/images/starwarrior_dot_leaf.jpg)
+
+
+A call to unassigned memory (in case of SNA files for the ZX Spectrum this would be calls into the ROM area):
+![](documentation/images/starwarrior_dot_equ.jpg)
 
 
 ## Interactive Usage
