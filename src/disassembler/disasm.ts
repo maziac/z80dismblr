@@ -113,6 +113,12 @@ export class Disassembler extends EventEmitter {
 	protected DBG_ADD_DEC_ADDRESS = false; //true;
 
 
+	// Warnings
+
+	/// true = disable warning when trying to disassemble unassigned memory.
+	/// will be set to true automatically if SNA has been selected.
+	protected no_warning_disassemble_unassigned_memory = false;
+
 	/**
 	 * Initializes the Opcode formatting.
 	 */
@@ -276,6 +282,10 @@ export class Disassembler extends EventEmitter {
 		*/
 		this.addressQueue.push(start);
 		this.snaStartAddress = start;
+
+		// Disable warnings when trying to disassemble unassigned memory:
+		// SNA files don't contain the Spectrum ROM, it is clear that this will result in  warnings.
+		this.no_warning_disassemble_unassigned_memory = true;
 	}
 
 
@@ -480,7 +490,8 @@ export class Disassembler extends EventEmitter {
 					break;	// Yes, already disassembled
 				if(!(attr & MemAttribute.ASSIGNED)) {
 					// Error: trying to disassemble unassigned memory areas
-					this.emit('warning', 'Trying to disassemble unassigned memory area at 0x' + address.toString(16) + '.');
+					if(!this.no_warning_disassemble_unassigned_memory)
+						this.emit('warning', 'Trying to disassemble unassigned memory area at 0x' + address.toString(16) + '.');
 					break;
 				}
 
