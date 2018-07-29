@@ -1779,7 +1779,7 @@ export class Disassembler extends EventEmitter {
 
 			let prevStopCode = false;
 
-			// disassemble until stop-code
+			// disassemble until unassigned memory found
 			while(true) {
 				//console.log('disMem: address=0x' + address.toString(16))
 				// Check if memory has already been disassembled
@@ -1794,7 +1794,8 @@ export class Disassembler extends EventEmitter {
 				if(addrLabel) {
 					// Add empty lines in case this is a SUB, LBL or DATA label
 					const type = addrLabel.type;
-					if(type == NumberType.CODE_SUB || type == NumberType.CODE_LBL || type == NumberType.DATA_LBL || type == NumberType.CODE_RST) {
+					if( prevStopCode ||
+						type == NumberType.CODE_SUB || type == NumberType.CODE_LBL || type == NumberType.DATA_LBL || type == NumberType.CODE_RST) {
 						this.addEmptyLines(lines);
 					}
 					// Add comment with references
@@ -1821,7 +1822,6 @@ export class Disassembler extends EventEmitter {
 				// Check if code or data should be disassembled
 				let addAddress;
 				let line;
-				prevStopCode = false;
 				if(attr & MemAttribute.CODE) {
 					// CODE
 
@@ -1862,6 +1862,7 @@ export class Disassembler extends EventEmitter {
 
 					// Next address
 					addAddress = 1;
+					prevStopCode = false;
 				}
 
 				// Debug
