@@ -248,10 +248,10 @@ Thus the more you know about the code and the more '--codelabel' entries you can
 
 If you still don't know nothing about the binary then you should get a trace file e.g. from MAME. This trace file is obtained from the MAME debugger while executing the binary.
 It's format is a simple disassembly with the first number being the hex address (in ASCII) followed by the disassembly of the executed code.
-z80dismblr does only look for the hex address and assumes all of these addresses to be CODE area that need to be disassembled.
+z80dismblr does mainly look for the hex address and assumes all of these addresses to be CODE area that need to be disassembled. It only looks into the disassembly part of the trace file to find 'jp (hl)' instructions. It uses those to define the right references to the labels.
 
 Please note that using a trace file can result in surprising issues in case of self modifying code.
-As z80dismblr doesn't know about dynamic changes you might find code areas with senseless opcodes (or NOPs). This is because the code is written during runtime. For code based on ROMs this shouldn't happen, but for code that resides in RAM (e.g. ZX Spectrum programs) this can be an issue.
+As z80dismblr doesn't know about dynamic changes you might find code areas with senseless opcodes (or NOPs). This is because the code is re-written by the assembler program during runtime. For code based on ROMs this shouldn't happen, but for code that resides in RAM (e.g. ZX Spectrum programs) this can be an issue.
 
 
 

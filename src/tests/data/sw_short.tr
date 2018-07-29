@@ -37,6 +37,63 @@ CD09: ld   ($CCE5),a
 CD0C: ld   de,($6022)
 CD10: ld   a,(de)
 CD11: inc  de
+
+
+7CB9: call $8611
+8611: ld   a,($6012)
+8614: or   a
+8615: ret  nz
+7CBC: call $7CCA
+7CCA: ld   a,($628D)
+7CCD: or   a
+7CCE: jr   z,$7CE3
+7CD0: ld   hl,($628E)
+7CD3: dec  a
+7CD4: add  a,a
+7CD5: add  a,l
+7CD6: ld   l,a
+7CD7: jr   nc,$7CDA
+7CDA: ld   ($7EDB),hl
+7CDD: ld   a,(hl)
+7CDE: inc  hl
+7CDF: ld   h,(hl)
+7CE0: ld   l,a
+7CE1: jr   $7D0F
+7D0F: ld   a,(hl)
+7D10: inc  hl
+7D11: cp   $56
+7D13: jr   z,$7D5C
+7D15: cp   $57
+7D17: jp   z,$7D99
+7D1A: cp   $52
+7D1C: jp   z,$7DB5
+7D1F: cp   $5D
+7D21: jp   z,$7DCA
+7D24: cp   $5A
+7D26: jp   z,$7DF9
+7DF9: call $7EC4
+7EC4: ld   de,($628B)
+7EC8: ld   a,e
+7EC9: or   d
+7ECA: ret
+7DFC: jr   nz,$7E06
+7DFE: ld   e,(hl)
+7DFF: inc  hl
+7E00: ld   d,(hl)
+7E01: ld   ($628B),de
+7E05: dec  hl
+7E06: inc  hl
+7E07: inc  hl
+7E08: ld   e,(hl)
+7E09: inc  hl
+7E0A: ld   d,(hl)
+7E0B: push hl
+7E0C: ex   de,hl
+7E0D: call $7F73
+7F73: jp   (hl)
+77AE: ld   hl,($6481)
+
+
 CD12: cp   $E8
 CD14: jr   z,$CD83
 CD16: cp   $FD

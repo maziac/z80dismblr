@@ -395,16 +395,33 @@ export class Disassembler extends EventEmitter {
 		// Loop over the complete trace file
 		const buffer = new Array<boolean>(MAX_MEM_SIZE);	// initialized to undefined
 		let k = 0;
+		let jpHlRef;
 		//let lineNr = 1;
 		do {
-			//const text = trace.substr(k,100);
-			//console.log('log: "' + text + '"');
+			const text = trace.substr(k,100);
+			console.log('log: "' + text + '"');
 			const addressString = trace.substr(k,5);
 			if(addressString.length == 5 && addressString[4] == ':') {
 				// Use address
 				const addr = parseInt(addressString, 16);
 				buffer[addr] = true;
 				k += 5;
+				// Check if previous opcode was a 'jp (hl)'
+				const memAttr = this.memory.getAttributeAt(addr);
+				if(jpHlRef) {
+					// If so: add a label with a reference
+					this.setFoundLabel(addr, new Set([jpHlRef]), NumberType.CODE_LBL, memAttr);
+					jpHlRef = undefined;
+				}
+				// check if opcode is a "jp (hl)"
+				if(memAttr & MemAttribute.ASSIGNED) {
+					const opcodeString = trace.substr(k,10);
+					if(opcodeString == ' jp   (hl)') {
+						// remember address
+						jpHlRef = addr;
+						k += 10;
+					}
+				}
 			}
 			// next
 			k = trace.indexOf('\n', k) + 1;
