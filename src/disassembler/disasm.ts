@@ -398,8 +398,8 @@ export class Disassembler extends EventEmitter {
 		let jpHlRef;
 		//let lineNr = 1;
 		do {
-			const text = trace.substr(k,100);
-			console.log('log: "' + text + '"');
+			//const text = trace.substr(k,100);
+			//console.log('log: "' + text + '"');
 			const addressString = trace.substr(k,5);
 			if(addressString.length == 5 && addressString[4] == ':') {
 				// Use address
