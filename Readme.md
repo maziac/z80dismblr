@@ -8,23 +8,21 @@ Please don't hesitate to report any problem that you find.
 
 ## Features
 
-- Disassembles the given binary via Code-Flow-Grap analysis.
-- Divides into data and code area.
-- Creates labels from hex addresses.
-- Distinguishes labels for subroutines or jump addresses.
-- Separates subroutines visually.
-- Uses "local" label syntax inside subroutines.
-- Points out all callers of a subroutine.
-- Customization of the output
-	- Label prefixes
-	- list file with or without address and opcode bytes
-	- Opcodes in upper or lower case
-- Can read binary files.
-- Supports *.sna (snapshot) files.
+- Supports binary and *.sna (snapshot) files.
 - Can read MAME trace (*.tr) files for better results.
 - Supports undocumented opcodes.
 - Supports Spectrum Next opcodes.
 - .dot output of caller graphs for visualization with Graphviz
+- Disassembles the given binary via Code-Flow-Grap analysis.
+- Divides into data and code area.
+- Separates subroutines visually.
+- Creates labels from hex addresses.
+- Uses "local" label syntax inside subroutines.
+- Points out all callers/callees of a subroutine.
+- Customization of the output
+	- Label prefixes
+	- List file with or without address and opcode bytes
+	- Opcodes in upper or lower case
 
 
 ## Installation
