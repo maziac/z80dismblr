@@ -56,42 +56,45 @@ To create an assembler listing for the snapshot file 'myfile.sna' just use:
 $ ./z80dismblr-macos --sna myfile.sna --out myfile.list
 ~~~~
 
-It reads in the file (which is in SNA file format) and writes it to stdout which is redirected into the 'myfile.list' file.
+It reads in the file (which is in SNA file format) and writes it to the 'myfile.list' file.
 
-The disassembly looks like this:
+For example the disassembly looks like this:
 ~~~
-; Subroutine is referenced by 3 locations:
-; 0x8e67(in SUB156), 0x8e3e(in LBL088), 0x8e87(in LBL089)
-8E73 SUB157:
-8E73 79           LD   A,C
-8E74 0F           RRCA
-8E75 0F           RRCA
-8E76 0F           RRCA
-8E77 0F           RRCA
-8E78 0F           RRCA
-8E79 E6 07        AND  7      ; 07h
-8E7B 6F           LD   L,A
-8E7C 78           LD   A,B
-8E7D 0F           RRCA
-8E7E 0F           RRCA
-8E7F E6 38        AND  56     ; 38h, '8'
-8E81 B5           OR   L
-8E82 C9           RET
+; Data is referenced by 5 locations:
+; 9011h(in SUB164), 9048h(in SUB167), 901Ch(in SUB166), 9031h(in SUB166), 9018h(in SUB165)
+8FED DATA146:
+8FED 00           DEFB 0      ; 00h
 
+...
 
-; Label is referenced by 1 location:
-; 0x7537(in LBL013)
-8E83 LBL089:
-8E83 ED 4B C4 95  LD   BC,(DATA166) ; 95C4h
-8E87 CD 73 8E     CALL SUB157 ; 8E73h
-8E8A 26 8D        LD   H,141  ; 8Dh, -115
-8E8C 0E 08        LD   C,8    ; 08h
-8E8E 91           SUB  A,C
-8E8F 6F           LD   L,A
-8E90 2D           DEC  L
-8E91 CB 46        BIT  0,(HL)
-8E93 20 1A        JR   NZ,.lbl089_loop2 ; 8EAFh
-8E95 2C           INC  L
+; Subroutine: Size=38, CC=4.
+; Called by: INTRPT1[A612h].
+; Calls: SUB164.
+901C SUB166:
+901C 2A ED 8F     LD   HL,(DATA146) ; 8FEDh
+901F .sub166_loop:
+901F 7E           LD   A,(HL)
+9020 FE FF        CP   255    ; FFh,   -1
+9022 28 11        JR   Z,.sub166_l2 ; 9035h
+9024 11 00 30     LD   DE,12288 ; 3000h
+9027 CB 77        BIT  6,A
+9029 28 01        JR   Z,.sub166_l1 ; 902Ch
+902B 1C           INC  E
+902C .sub166_l1:
+902C 12           LD   (DE),A
+902D 32 00 10     LD   (DATA003),A ; 1000h
+9030 23           INC  HL
+9031 22 ED 8F     LD   (DATA146),HL ; 8FEDh
+9034 C9           RET
+9035 .sub166_l2:
+9035 2A EF 8F     LD   HL,(DATA148) ; 8FEFh
+9038 23           INC  HL
+9039 23           INC  HL
+903A CD 0A 90     CALL SUB164 ; 900Ah
+903D 7C           LD   A,H
+903E B7           OR   A
+903F 20 DE        JR   NZ,.sub166_loop ; 901Fh
+9041 C9           RET
 ~~~
 
 A SNA file contains an entry point into the code. So it is not necessary to provide a'--codelabel'.
@@ -118,7 +121,7 @@ $ ./z80dismblr-macos --bin 0 rom1.bin --bin 0x1000 rom2.bin --bin 0x2000 rom3.bi
 Note that you can but you don't have to provide a --codelable in this case.
 
 
-You can higly customize the appearance of the output, e.g. you can specify if the address is shown in front of each line or if the opcode bytes are shown.
+You can higly customize the appearance of the output, e.g. you can suppress the shown address or the opcode bytes.
 
 ~~~
 ; Subroutine is referenced by 1 location:
@@ -174,6 +177,13 @@ Apart from the disassembly output with the labels and the mnemonics z80dismblr a
 For each subroutines it lists the callers and callees.
 Additional the size of the subroutine is shown in bytes and the cyclomatic complexity (CC).
 
+~~~
+; Subroutine: Size=27, CC=1.
+; Called by: SUB300[D74Ch], SNA_LBL_MAIN_START_A660[CBA0h].
+; Calls: SUB042, SUB046, SUB077, SUB086, SUB244, SUB245.
+D72E SUB299:
+~~~
+
 
 ## Caller Graphs
 
@@ -211,12 +221,11 @@ Normally z80dismblr cannot find interrupts because it uses a CFG anaylsis and if
         CALL NZ,711D
         ...
 ~~~
-I.e. a recursive call to itself which was wrong coding simply. It was not intended to write a recursive function.
-However z80dismblr thinks LABEL is a subroutine because it is called via a CALL so it assigns the 711D as a label ("SUB007"). But no other location refers to 711D so that the address has no caller, i.e. no arrow pointing to it.
+I.e. a recursive call to itself which was wrong coding simply. I didn't intend to write a recursive function.
+However z80dismblr thinks 711D is a subroutine because it is called via a CALL so it assigns the 711D as a label ("SUB007"). But no other location refers to 711D so that the address has no caller, i.e. no arrow pointing to it.
 z80dismblr will spit out a warning now in cases like the one above:
 ~~~
 $ Warning: Address: 711Dh. A subroutine was found that calls itself recursively but is not called from any other location.
-z80dismblr.ts:39
 ~~~
 In the dot graphic the subroutine is highlighted by a different color.
 
