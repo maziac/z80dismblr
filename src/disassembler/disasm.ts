@@ -106,6 +106,9 @@ export class Disassembler extends EventEmitter {
 	// The SNA start address.
 	protected snaStartAddress = -1;
 
+	/// Used to prohibit that empty lines are written more than once.
+	protected emptyLinesWritten = false;
+
 	/// For debugging:
 	protected DBG_COLLECT_LABELS = false;	//true;
 
@@ -1777,7 +1780,7 @@ export class Disassembler extends EventEmitter {
 			address = addr;
 			let prevMemoryAttribute = MemAttribute.DATA;
 
-			let prevStopCode = false;
+			let prevParent;
 
 			// disassemble until unassigned memory found
 			while(true) {
@@ -1788,14 +1791,21 @@ export class Disassembler extends EventEmitter {
 					break;	// E.g. an EQU label
 				}
 
+				// Get association of address
+				this.resetAddEmptyLine();
+				const parent = this.addressParents[address];
+				if(parent != prevParent) {
+					this.addEmptyLines(lines);
+					prevParent = parent;
+				}
+
 				// Check if label needs to be added to line (print label on own line)
 				const addrLabel = this.labels.get(address);
 
 				if(addrLabel) {
 					// Add empty lines in case this is a SUB, LBL or DATA label
 					const type = addrLabel.type;
-					if( prevStopCode ||
-						type == NumberType.CODE_SUB || type == NumberType.CODE_LBL || type == NumberType.DATA_LBL || type == NumberType.CODE_RST) {
+					if(type == NumberType.CODE_SUB || type == NumberType.CODE_LBL || type == NumberType.DATA_LBL || type == NumberType.CODE_RST) {
 						this.addEmptyLines(lines);
 					}
 					// Add comment with references
@@ -1825,13 +1835,6 @@ export class Disassembler extends EventEmitter {
 				if(attr & MemAttribute.CODE) {
 					// CODE
 
-					// Add empty lines in case there is no label, but the previous area was DATA or there was a stop opcode.
-					if(!addrLabel) {
-						if(prevStopCode || (prevMemoryAttribute & MemAttribute.DATA)) {
-							this.addEmptyLines(lines);
-						}
-					}
-
 					// Read opcode at address
 					const opcode = Opcode.getOpcodeAt(this.memory, address);
 
@@ -1839,15 +1842,13 @@ export class Disassembler extends EventEmitter {
 					const opCodeDescription = opcode.disassemble();
 					line = this.formatDisassembly(address, opcode.length, opCodeDescription.mnemonic, opCodeDescription.comment);
 
-					prevStopCode = ((opcode.flags & OpcodeFlag.STOP) != 0);
-
 					addAddress = opcode.length;
 				}
 
 				else {
 					// DATA
-//					if(!(prevMemoryAttribute & MemAttribute.DATA))
-//						this.addEmptyLines(lines);
+					if(!(prevMemoryAttribute & MemAttribute.DATA))
+						this.addEmptyLines(lines);
 
 					// Turn memory to data memory
 					attr |= MemAttribute.DATA;
@@ -1862,7 +1863,6 @@ export class Disassembler extends EventEmitter {
 
 					// Next address
 					addAddress = 1;
-					prevStopCode = false;
 				}
 
 				// Debug
@@ -1923,9 +1923,21 @@ export class Disassembler extends EventEmitter {
 	 * @param lines Array to add the empty lines.
 	 */
 	protected addEmptyLines(lines: Array<string>) {
+		if(this.emptyLinesWritten)
+			return;	// Already written
 		for(let i=0; i<this.numberOfLinesBetweenBlocks; i++) {
 			lines.push('');
 		}
+		this.emptyLinesWritten = true;
+	}
+
+
+	/**
+	 * Enables writing empyty lines.
+	 * Used to prohibit that empty lines are written more than once.
+	 */
+	protected resetAddEmptyLine() {
+		this.emptyLinesWritten = false;
 	}
 
 
