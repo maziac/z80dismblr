@@ -1691,14 +1691,13 @@ export class Disassembler extends EventEmitter {
 					// Line 3
 				let line3 = 'Calls: ';
 				first = true;
+				const callees = new Set<DisLabel>();
 				for(const callee of addrLabel.calls) {
-					if(!first)
-						line3 += ', ';
-					line3 += callee.name
-					first = false;
+					callees.add(callee);
 				}
+				line3 += Array.from(callees).map(refLabel => refLabel.name).join(', ');
 				// Check if anything has been output
-				line3 += (addrLabel.calls.length > 0) ? '.' : '-';
+				line3 += (callees.size > 0) ? '.' : '-';
 
 				// Store lines
 				lineArray.push(line1);
