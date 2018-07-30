@@ -288,7 +288,8 @@ export class Opcode {
 		if(this.valueType == NumberType.CODE_LBL
 			|| this.valueType == NumberType.CODE_LOCAL_LBL
 			|| this.valueType == NumberType.CODE_LOCAL_LOOP
-			|| this.valueType == NumberType.CODE_SUB) {
+			|| this.valueType == NumberType.CODE_SUB
+			|| this.valueType == NumberType.CODE_RST) {
 			const val = this.value;
 			valueName = Opcode.convertToLabel(val);
 			comment = Format.getConversionForAddress(val);
