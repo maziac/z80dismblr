@@ -473,7 +473,7 @@ export class Disassembler extends EventEmitter {
 				// Comment: number converter to hex.
 				line += ' ; ' + Format.getHexString(address, 4) + 'h.';
 				// Comment with references.
-				const refArray = this.getReferencesString(label);
+				const refArray = this.getReferencesString(label, false);
 				line += ' ' + refArray.join(' ');
 				// Store
 				lines.push(line);
@@ -1632,10 +1632,12 @@ export class Disassembler extends EventEmitter {
 	 * Creates a human readable string telling which locations reference this address
 	 * and which locations are called (if it is a subroutine).
 	 * @param addrLabel The label for which the references are requested.
+	 * @param addCalls If true adds a line with the callees. For EQU labels this is
+	 * not required (it is anyhow not known what they call), In this case use 'false'.
 	 * @return An array of string with statistics about the label. E.g. for
 	 * subroutines is tells the soze , cyclomatic complexity, all callers and all callees.
 	 */
-	protected getReferencesString(addrLabel: DisLabel) {
+	protected getReferencesString(addrLabel: DisLabel, addCalls = true) {
 		const lineArray = new Array<string>();
 		const refCount = addrLabel.references.size;
 		let line1;
@@ -1688,30 +1690,32 @@ export class Disassembler extends EventEmitter {
 				else
 					line1 += '.';
 
-					// Line 3
-				let line3 = 'Calls: ';
-				first = true;
-				const callees = new Set<DisLabel>();
-				for(const callee of addrLabel.calls) {
-					callees.add(callee);
-				}
-				line3 += Array.from(callees).map(refLabel => refLabel.name).join(', ');
-				// Check if anything has been output
-				line3 += (callees.size > 0) ? '.' : '-';
-
 				// Store lines
 				lineArray.push(line1);
 				lineArray.push(line2);
-				lineArray.push(line3);
+
+				// Only if "Calls:" line is wanted
+				if(addCalls) {
+					// Line 3
+					let line3 = 'Calls: ';
+					first = true;
+					const callees = new Set<DisLabel>();
+					for(const callee of addrLabel.calls) {
+						callees.add(callee);
+					}
+					line3 += Array.from(callees).map(refLabel => refLabel.name).join(', ');
+					// Check if anything has been output
+					line3 += (callees.size > 0) ? '.' : '-';
+
+					lineArray.push(line3);
+				}
 				break;
 			}
 
 			default:
 			{
-				line1 = name + ' is referenced by ' + refCount + ' location';
-				if(refCount != 1)
-					line1 += 's';
-				line1 += (refCount > 0) ? ':' : '.';
+				line1 = name;
+				line1 += (refCount > 0) ? ' accessed by:' : ' not accessed.';
 				lineArray.push(line1);
 
 				// 2nd line
