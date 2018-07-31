@@ -56,7 +56,7 @@ export class Disassembler extends EventEmitter {
 	protected statisticsMin: SubroutineStatistics = { sizeInBytes:Number.MAX_SAFE_INTEGER, countOfInstructions: Number.MAX_SAFE_INTEGER, CyclomaticComplexity: Number.MAX_SAFE_INTEGER };
 
 	/// Labels that should be marked (with a color) are put here. String contains the color of the label for the dot graphic.
-	protected dotMarkedLabels = new Map<DisLabel, string>();
+	protected dotMarkedLabels = new Map<number, string>();
 
 	// dot-color for warning-marks for labels.
 	protected dotWarningMark = 'lightblue';
@@ -94,11 +94,22 @@ export class Disassembler extends EventEmitter {
 	public labelIntrptPrefix = "INTRPT";
 
 
+    /// If set the disassemble will automatically add address 0 or the SNA address to the labels.
+	public automaticAddresses = true;
+
+
 	/// Column areas. e.g. area for the bytes shown before each command
 	public clmnsAddress = 5;		///< size for the address at the beginning of each line. If 0 no address is shown.
 	public clmnsBytes = 4*3 + 1;	///< 4* length of hex-byte
 	public clmnsOpcodeFirstPart = 4 + 1;	///< First part of the opcodes, e.g. "LD" in "LD A,7"
 	public clmsnOpcodeTotal = 5 + 6 + 1;		///< Total length of the opcodes. After this an optional comment may start.
+
+
+	// Dot format options. E.g. "${label}\n${address}\nCC=${CC}\nSize=${size}\ninstr=${instructions}\n"
+	//public dotFormat = "${label}\\n0x${address}\\nCC=${CC}\\nInstr=${instructions}\\n";
+	public dotFormat = "${label}\\n0x${address}\\nSize=${size}\\n";
+	//public dotFormat = "${label}\\nID=${id}\\n0x${address}\\nSize=${size}\\nInstr=${instructions}\\nCC=${CC}\\n";
+
 
 	/// The disassembled lines.
 	protected disassembledLines: Array<string>;
@@ -149,21 +160,33 @@ export class Disassembler extends EventEmitter {
 	}
 
 	/**
-	 * Adds address 0 to the labels if it has not been added already.
+	 * Adds address 0 to the labels if it has not been added already
+	 * or the SNA address.
 	 */
-	public addAddress0000() {
-		// Check for code label at address 0.
-		if(this.memory.getAttributeAt(0) & MemAttribute.ASSIGNED) {
-			// Check if label exists
-			let label0 = this.labels.get(0);
-			if(!label0) {
-				this.setFixedCodeLabel(0, 'ORG_0000');
+	public addAutomaticAddresses() {
+		if(!this.automaticAddresses)
+			return;
+
+		// If a SNA address is already given, omit address 0
+		if(this.snaStartAddress >= 0) {
+			// Use sna address
+			this.addressQueue.push(this.snaStartAddress);
+		}
+		else {
+			// Use address 0.
+			// Check for code label at address 0.
+			if(this.memory.getAttributeAt(0) & MemAttribute.ASSIGNED) {
+				// Check if label exists
+				let label0 = this.labels.get(0);
+				if(!label0) {
+					this.setFixedCodeLabel(0, 'ORG_0000');
+				}
+				else {
+					// Make sure it is a code label
+					label0.type = NumberType.CODE_LBL;
+				}
+				this.addressQueue.push(0);	// Note: if address 0 was already previously pushed it is now pushed again. But it doesn't harm.
 			}
-			else {
-				// Make sure it is a code label
-				label0.type = NumberType.CODE_LBL;
-			}
-			this.addressQueue.push(0);	// Note: if address 0 was already previously pushed it is now pushed again. But it doesn't harm.
 		}
 	}
 
@@ -188,6 +211,9 @@ export class Disassembler extends EventEmitter {
 	 * @returns An array of strings with the disassembly.
 	 */
 	public disassemble() {
+        // Add address 0
+		this.addAutomaticAddresses();
+
 		// Pass: Collect labels
 		this.collectLabels();
 
@@ -283,9 +309,7 @@ export class Disassembler extends EventEmitter {
 		// Set start label
 		this.setLabel(start, 'SNA_LBL_MAIN_START_'+start.toString(16).toUpperCase(), NumberType.CODE_LBL);
 		*/
-		this.addressQueue.push(start);
 		this.snaStartAddress = start;
-
 		// Disable warnings when trying to disassemble unassigned memory:
 		// SNA files don't contain the Spectrum ROM, it is clear that this will result in  warnings.
 		this.no_warning_disassemble_unassigned_memory = true;
@@ -607,11 +631,13 @@ export class Disassembler extends EventEmitter {
 	 * is not continuous.
 	 */
 	protected setSpecialLabels() {
-		// Do special SNA handling. I.e. check if the SNA start address is meaningful
-		if(this.snaStartAddress >= 0) {
-			const label = this.labels.get(this.snaStartAddress);
-			if(!label)	// if not found by other means.
-				this.setLabel(this.snaStartAddress, 'SNA_LBL_MAIN_START_'+this.snaStartAddress.toString(16).toUpperCase(), NumberType.CODE_LBL);
+		if(this.automaticAddresses) {
+			// Do special SNA handling. I.e. check if the SNA start address is meaningful
+			if(this.snaStartAddress >= 0) {
+				const label = this.labels.get(this.snaStartAddress);
+				if(!label)	// if not found by other means.
+					this.setLabel(this.snaStartAddress, 'SNA_LBL_MAIN_START_'+this.snaStartAddress.toString(16).toUpperCase(), NumberType.CODE_LBL);
+			}
 		}
 
 		// Check whole memory
@@ -636,7 +662,7 @@ export class Disassembler extends EventEmitter {
 
 
 	/**
-	 * Finds interrupt labels. I.e. start of progrma code
+	 * Finds interrupt labels. I.e. start of program code
 	 * that doesn't have any lable yet.
 	 * As z80dismblr uses CFG analysis this can normally not happen.
 	 * But if you e.g. provide a trace (tr) file this also includes interrupt traces.
@@ -1062,6 +1088,8 @@ export class Disassembler extends EventEmitter {
 					// Get all addresses belonging to the subroutine
 					const addrsArray = new Array<number>();
 					this.getSubroutineAddresses(address, addrsArray);
+					// Now reduce array. I.e. only a conherent block will be treated as a subroutine.
+					this.reduceSubroutineAddresses(address, addrsArray);
 					// Iterate array
 					for(let addr of addrsArray) {
 						// Don't check start address
@@ -1165,21 +1193,41 @@ export class Disassembler extends EventEmitter {
 		} while(!(opcodeClone.flags & OpcodeFlag.STOP));
 	}
 
-	// Helper: REMOVE:
-	protected checkRefDoubleAssignment() {
-		// Check if references are assigned twice
-		const allRefs = new Array<number>();
-		for( let [, label] of this.labels) {
-			const refs = label.references;
-			for(let ref of refs) {
-				if(allRefs.indexOf(ref) >= 0) {
-					// Shouldn't be
-					console.error("error: double assignement");
-				}
-				allRefs.push(ref);
-			}
+
+	/**
+	 * Reduces the given array to a coherent area. I.e. if there is a "hole"
+	 * inside the subroutine the parts are treated as two separte subroutines.
+	 * @param address The start address of the subroutine.
+	 * @param addrsArray The array with addresses (was filled by this.getSubroutineAddresses).
+	 */
+	protected reduceSubroutineAddresses(address: number, addrsArray: Array<number>) {
+		// sort array
+		addrsArray.sort((a, b) => a - b);
+		// Throw away all addresses smaller than the start address
+		const array = addrsArray.filter(value => value >= address);
+
+		// It's just required to disassemble the straight line of addresses, no branches.
+		addrsArray.length = 0;	// clear array
+		let nextAddress = address;
+		for(const addr of array) {
+			// Check for coherent block
+			if(addr != nextAddress)
+				break;
+
+			// check opcode
+			const opcode = Opcode.getOpcodeAt(this.memory, addr);
+
+			// Add to array
+			addrsArray.push(address);
+
+			// TODO: For the RST problem: Here I need to check if the opcode is a CALL/RST
+			// and then get the return PC value (i.e. if a byte is skipped after the RST)
+
+			// Next
+			nextAddress = addr + opcode.length;
 		}
 	}
+
 
 	/**
 	 * Iterates through all Labels.
@@ -1241,7 +1289,7 @@ export class Disassembler extends EventEmitter {
 				// itself -> do a warning. Maybe this was a programming error in the assembler code.
 				// Note: It is also checked if there is no ref at all to exclude the interrupts.
 				this.emit('warning', 'Address: ' + Format.getHexString(address,4) + 'h. A subroutine was found that calls itself recursively but is not called from any other location.');
-				this.dotMarkedLabels.set(label,this.dotWarningMark);
+				this.dotMarkedLabels.set(address,this.dotWarningMark);
 			}
 		}
 	}
@@ -1983,7 +2031,7 @@ export class Disassembler extends EventEmitter {
 		// Iterate through all subroutine labels to assign the text and size
 		// (fontsize) to the nodes (bubbles), also the coloring.
 		// And connect the nodes with arrows.
-		for(let [, label] of this.labels) {
+		for(let [address, label] of this.labels) {
 
 			if(label.type != NumberType.CODE_SUB
 				&& label.type != NumberType.CODE_LBL
@@ -1991,11 +2039,17 @@ export class Disassembler extends EventEmitter {
 				continue;
 			//console.log(label.name + '(' + Format.getHexString(address) + '):')
 
+			// Handle fill color (highlights)
+			let colorString = this.dotMarkedLabels.get(address);
+
 			// Skip other labels
 			if(label.isEqu) {
 				// output gray label to indicate an EQU label
-				text += label.name + ' [fillcolor=lightgray, style=filled];\n';
+				if(!colorString)
+					colorString = 'lightgray';
 				text += label.name + ' [fontsize="' + fontSizeMin + '"];\n';
+				const nodeName = this.nodeFormat(label.name, label.id, address, undefined, undefined, undefined);
+				text += label.name + ' [label="' + nodeName + '"];\n';
 			}
 			else {
 				// A normal label.
@@ -2008,7 +2062,8 @@ export class Disassembler extends EventEmitter {
 
 				// Output
 				text += label.name + ' [fontsize="' + Math.round(fontSize) + '"];\n';
-				text += label.name + ' [label="' + label.name + '\\nSize=' + stats.sizeInBytes + '\\nCC=' + stats.CyclomaticComplexity + '\\n"];\n';
+				const nodeName = this.nodeFormat(label.name, label.id, address, stats.CyclomaticComplexity, stats.sizeInBytes, stats.countOfInstructions);
+				text += label.name + ' [label="' + nodeName + '"];\n';
 				//text += label.name + ' [label="' + label.name + '\\nID=' + label.id + '\\nCC=' + stats.CyclomaticComplexity + '\\n"];\n';
 
 				// List each callee only once
@@ -2017,22 +2072,23 @@ export class Disassembler extends EventEmitter {
 					callees.add(callee);
 				}
 				// Output all called labels in different color:
-				let colorText = this.dotMarkedLabels.get(label);
 				if(label.references.size == 0 || label.type == NumberType.CODE_LBL) {
 					//const callers = this.getCallersOf(label);
-					if(!colorText)
-						colorText = 'lightyellow';
+					if(!colorString)
+						colorString = 'lightyellow';
 					if(label.references.size == 0)
 						rankSame1.push(label.name);
 					else
 						rankSame2.push(label.name);
 				}
-				if(colorText)
-					text += label.name + ' [fillcolor=' + colorText + ', style=filled];\n';
 
 				if(callees.size > 0)
 					text += label.name + ' -> { ' + Array.from(callees).map(refLabel => refLabel.name).join(' ') + ' };\n';
 			}
+
+			// Color
+			if(colorString)
+				text += label.name + ' [fillcolor=' + colorString + ', style=filled];\n';
 		}
 
 		// Do some ranking.
@@ -2045,6 +2101,43 @@ export class Disassembler extends EventEmitter {
 
 		// return
 		return text;
+	}
+
+
+	/**
+	 * Does the formatting for the node in the dot file.
+	 * @param labelName E.g. "SUB33"
+	 * @param labelId The unique number of each label.
+	 * @param address E.g. F7A9
+	 * @param cc Cyclomatic Complexity, e.g. 3
+	 * @param size Size in bytes.
+	 * @param instructions Number of instructions.
+	 */
+	protected nodeFormat(labelName: string, labelId: number, address: number, cc?: number, size?: number, instructions?: number): string {
+		// Check if formatting is correct
+		let text = this.dotFormat;
+		try {
+			text = text.replace(/\${label}/g, labelName);
+			text = text.replace(/\${id}/g, labelId.toString());
+			text = text.replace(/\${address}/g, Format.getHexString(address,4));
+			text = text.replace(/\${CC}/g, (cc) ? cc.toString() : '?');
+			text = text.replace(/\${size}/g, (size) ? size.toString() : '?');
+			text = text.replace(/\${instructions}/g, (instructions) ? instructions.toString() : '?');
+		}
+		catch(e) {
+			throw Error('Dot format string wrong: ' + e);
+		}
+		return text;
+	}
+
+
+	/**
+	 * Highlights a node (bubble) in the dot graphics.
+	 * @param addr The address (node) to highlight.
+	 * @param colorString The color used for highlighting. E.g. "yellow".
+	 */
+	public setDotHighlightAddress(addr: number, colorString: string) {
+		this.dotMarkedLabels.set(addr, colorString);
 	}
 
 

@@ -25,13 +25,20 @@
             "name": "Launch Program",
 			"program": "${workspaceFolder}/out/z80dismblr.js",
 			"args": [
-				"--args", "argsfile2",
-				//"--sna", "src/tests/data/sw.sna",
+				//"--args", "argsfile2",
+				//"--args", "argsfile_esxdos",
+				"--sna", "src/tests/data/sw.sna",
 				"--out", "out/tests/out2.asm",
 				"--dot", "out/tests/out2.dot",
 				"--addbytes",
-				//"--tr", "src/tests/data/sw_short.tr",
+				"--tr", "src/tests/data/sw_short.tr",
+				//"--tr", "src/tests/data/sw.tr",
 
+				//"--noautomaticaddr",
+				//"--codelabel", "0x735E", "SUB19",
+				//"--codelabel", "0x7390", "SUB20",
+
+				"--dothighlight", "0x7015=red",
 			],
             "outFiles": [
                 "${workspaceFolder}/**/*.js"

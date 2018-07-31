@@ -187,7 +187,14 @@ D72E SUB299:
 
 With the '--dot' option it is possible to let z80dismblr create .dot files for use with [Graphviz](http://www.graphviz.org).
 
-An example for the program "Star Warrior" (48K ZX Spectrum) is shown here:
+Here is an example for the program "Star Warrior" (48K ZX Spectrum). Use z80dismblr like this:
+~~~
+$ ./z80dismblr-macos --sna starwarrior.sna --out starwarrior.list --dot starwarrior.dot
+~~~
+
+It will generate the 'starwarrior.dot' file from the SNA file.
+If you look at the dot file with Graphviz it will look like this:
+
 ![](documentation/images/starwarrior_dot.jpg)
 
 Although this looks very confusing on first sight a few things can be learned from this view:
@@ -239,6 +246,25 @@ A leaf (i.e. a subroutine that does not call any other subroutine):
 A call to unassigned memory result in a gray bubble (in case of SNA files for the ZX Spectrum this would be calls into the ROM area):
 
 ![](documentation/images/starwarrior_dot_equ.jpg)
+
+
+### Sub Graphs
+
+It is also possible to let z80dismblr generate only a part of the caller graphs e.g. to focus on a certain subroutine.
+
+For this add "--noautomaticaddr" to the commandline. This will prevent that z80dimblr will use address 0000 or the SNA start address automatically.
+
+Additionally add the address of the subroutine you want to see with a "--codelabel" option:
+~~~
+$ ./z80dismblr-macos --sna starwarrior.sna --dot starwarrior.dot --noautomaticaddr --codelabel 0x735E SUB19
+~~~
+You can additionally add a label name (here we chose "SUB19" so that it is the same name as in the big caller graph diagram).
+You can get the address from the previously created 'starwarrior.list' file.
+
+The result is a call graph just for subroutine at address 0x753E:
+
+![](documentation/images/starwarrior_sub19.jpg)
+
 
 
 ## Interactive Usage

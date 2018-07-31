@@ -1,6 +1,6 @@
 {
   "name": "z80dismblr",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "publisher": "maziac",
   "description": "A Z80 disassembler.",
   "main": "./out/main.js",
@@ -11,7 +11,8 @@
     "watch": "tsc -w -p ./src",
     "test": "mocha -u tdd ./out/tests/",
     "package": "vsce package",
-    "publish": "vsce publish"
+    "publish": "vsce publish",
+    "build-docs": "typedoc --out ./out/typedoc --target ES6 --module commonjs --exclude \"**/tests/**/*\" ./src"
   },
   "author": {
     "name": "Thomas Busse"

@@ -17,8 +17,6 @@ class Startup {
     /// The dot (graphviz) output path.
     protected static dotPath: string|undefined;
 
-    /// If set the disassemble will automatically add address 0 to the labels.
-    protected static addAddress0000 = true;
 
     /**
      * Main function. Called on startup.
@@ -59,10 +57,6 @@ class Startup {
             // Lower case opcodes?
             if(this.dasm.opcodesLowerCase)
                 Opcode.makeLowerCase();
-
-            // Add address 0?
-            if(this.addAddress0000)
-                this.dasm.addAddress0000();
 
             // Execute
             this.dasm.disassemble();
@@ -126,9 +120,6 @@ z80dismblr [options]
         --codelabel or --tr is mandatory to
         obtain any disassembly results.
     --out file: Output file. z80dismblr will write the disassembly here.
-    --dot file: Output a dot file. This file can be used for visualization
-    with graphviz. Each bubble is a function and is connected to other
-    functions that it calls. Only main labels are written (i.e. no local labels.)
     --tr file: Add a MAME trace file. This can be used instead of --codelabel.
         Providing a trace file will increase the quality of the
         disassembly output.
@@ -137,7 +128,8 @@ z80dismblr [options]
         codelabel is required so  that disassembly can start from that address.
         Please note that address 0000h is set automatically.You could of course
         set it e.g. to change the label name.
-    --noaddr0: The disassemble will automatically add addresss 0000h to the labels
+    --noautomaticaddr: The disassemble will automatically add addresss 0000h or
+        (if a SNA file has been used) the SNA start address to the labels
         and start disassembly here. If this option is given this behaviour is suppressed.
     --jmptable address size: If it is known that a jump-table exists in memory
         then its address and size can be given here. 'size' is the number of addresses.
@@ -166,6 +158,24 @@ z80dismblr [options]
         --clmnsopcodetotal value: The size of the complete opcode, e.g. 'LD  A,(HL)'.
         --uppercase: Use upper case for the opcodes, e.g. 'ld a,(hl)'.
         --addbytes: Print also the byte values of the opcodes (the opcode bytes).
+
+    Dot options:
+        --dot file: Output a dot file. This file can be used for visualization
+            with graphviz. Each bubble is a function and is connected to other
+            functions that it calls. Only main labels are written (i.e. no local labels.)
+        --dotformat formatstring: You can format the text in the dot nodes.
+            E.g. use \'--dotformat "\${label}\\n\${address}\\nCC=\${CC}\\nSize=\${size}\\ninstr=\${instructions}\\n"
+            will show the label name, it's address, the cyclomatic complexity, the size
+            in bytes and the number of instructions. Possible labels are:
+            - \${label}: The label name.
+            - \${address}: It's address.
+            - \${CC}: The cyclomatic complexity of the subroutine.
+            - \${size}: The size of the subroutine in bytes.
+            - \${instructions}: The number of instructions of the subroutine.
+            You can use '\\n' for centered text, and '\\l', '\\r' for left- rightaligned text.
+        --dothighlight addr1[=red|green|...] addr2 ... addrN: Highlight the associated
+        nodes in the dot file with a color.
+
     `);
     }
 
@@ -248,14 +258,6 @@ z80dismblr [options]
                     }
                     break;
 
-                // output dot file
-                case '--dot':
-                    this.dotPath = args.shift();
-                    if(!this.dotPath) {
-                        throw arg + ': No path given.';
-                    }
-                    break;
-
                 // TRACE (.tr) file
                 case '--tr':
                     path = args.shift();
@@ -285,9 +287,9 @@ z80dismblr [options]
                     this.dasm.setFixedCodeLabel(addr, labelName);
                     break;
 
-                // set a code label
-                case '--noaddr0':
-                    this.addAddress0000 = false;
+                // turn off automatic addresses
+                case '--noautomaticaddr':
+                    this.dasm.automaticAddresses = false;
                     break;
 
                 // set a jump table
@@ -439,9 +441,65 @@ z80dismblr [options]
                     this.dasm.addOpcodeBytes = true;
                     break;
 
+
+                // DOT:
+
+                // output dot file
+                case '--dot':
+                    this.dotPath = args.shift();
+                    if(!this.dotPath) {
+                        throw arg + ': No path given.';
+                    }
+                    break;
+
+                // Format string for the dot nodes
+                case '--dotformat':
+                    const dotformat = args.shift();
+                    if(!dotformat) {
+                        throw arg + ': No format string given.';
+                    }
+                    this.dasm.dotFormat = dotformat;
+                    break;
+
+                // Highlight certain addressed in dot file
+                case '--dothighlight':
+                    while(true) {
+                        // parse address
+                        const addressColorString = args.shift();
+                        if(!addressColorString)
+                            break;
+                        // Check for next option
+                        if(addressColorString.startsWith('--')) {
+                            // is the next arguments
+                            args.unshift(addressColorString);
+                            break;
+                        }
+                        // search for '='
+                        const k = addressColorString.indexOf('=');
+                        let colorString;
+                        let addressString
+                        if(k >= 0) {
+                            // parse color
+                            colorString = addressColorString.substr(k+1);
+                            addressString = addressColorString.substr(0,k);
+                        }
+                        else {
+                            // use default color
+                            colorString = "yellow";
+                            addressString = addressColorString;
+                        }
+                        addr = this.parseValue(addressString);
+                        if(isNaN(addr)) {
+                            throw arg + ": Not a number: " + addressString;
+                        }
+                        // Add pair to map
+                        this.dasm.setDotHighlightAddress(addr, colorString);
+                        }
+                    break;
+
+
                 default:
                     throw "Unknown argument: '" + arg + "'";
-                    return 1;
             }
         }
     }
@@ -500,9 +558,7 @@ z80dismblr [options]
              // next
              k = l;
         }
-
-        // return
-        return args;
+        // Will never reach here.
     }
 
 
