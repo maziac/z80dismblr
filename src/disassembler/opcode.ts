@@ -309,14 +309,15 @@ export class Opcode {
 		else {
 			// Use direct value
 			const val = this.value;
-			valueName = val.toString();	// decimal
 			// Add comment
 			if(this.valueType == NumberType.NUMBER_BYTE) {
 				// byte
+				valueName = Format.getHexString(val, 2) + 'h';
 				comment = Format.getVariousConversionsForByte(val);
 			}
 			else {
 				// word
+				valueName = Format.getHexString(val, 4) + 'h';
 				comment = Format.getVariousConversionsForWord(val);
 			}
 		}

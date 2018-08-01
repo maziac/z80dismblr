@@ -53,7 +53,7 @@ export class Format {
 
 	/**
 	 * Puts together a few common conversions for a byte value.
-	 * E.g. hex, decimal and ASCII.
+	 * E.g. decimal and ASCII.
 	 * Used to create the comment for an opcode or a data label.
 	 * @param byteValue The value to convert. [-128;255]
 	 * @returns A string with all conversions, e.g. "20h, 32, ' '"
@@ -62,7 +62,7 @@ export class Format {
 		// byte
 		if(byteValue < 0)
 			byteValue = 0x100 + byteValue;
-		let result = Format.getHexString(byteValue, 2) + "h";
+		let result = byteValue.toString();
 		// Negative?
 		let convValue = byteValue;
 		if(convValue >= 0x80) {
@@ -92,14 +92,14 @@ export class Format {
 
 	/**
 	 * Puts together a few common conversions for a word value.
-	 * E.g. hex and decimal.
+	 * E.g. decimal.
 	 * Used to create the comment for an EQU label.
 	 * @param wordValue The value to convert.
-	 * @returns A string with all conversions, e.g. "FA20h, -3212"
+	 * @returns A string with all conversions, e.g. "62333, -3212"
 	 */
 	public static getVariousConversionsForWord(wordValue: number): string {
 		// word
-		let result = this.getConversionForAddress(wordValue);
+		let result = wordValue.toString();
 		// Negative?
 		let convValue = wordValue;
 		if(convValue >= 0x8000) {

@@ -1908,7 +1908,7 @@ export class Disassembler extends EventEmitter {
 					let memValue = this.memory.getValueAt(address);
 
 					// Disassemble the data line
-					let mainString = this.rightCase('DEFB ') + memValue;
+					let mainString = this.rightCase('DEFB ') +  Format.getHexString(memValue, 2) + 'h';
 					let comment = Format.getVariousConversionsForByte(memValue);
 					line = this.formatDisassembly(address, 1, mainString, comment);
 
