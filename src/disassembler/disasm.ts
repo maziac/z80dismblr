@@ -5,24 +5,13 @@ import { MAX_MEM_SIZE } from './basememory';
 import { Memory, MemAttribute } from './memory';
 import { Opcode, OpcodeFlag } from './opcode';
 import { NumberType, getNumberTypeAsString } from './numbertype'
-import { DisLabel } from './dislabel'
+import { DisLabel } from './dislabel';
+import { Comment } from './comment';
+import { SubroutineStatistics } from './statistics';
 import { EventEmitter } from 'events';
 import { Format } from './format';
 import { readFileSync } from 'fs';
 
-
-
-/// Used for subroutine statistics like size or cyclomatic complexity.
-interface SubroutineStatistics {
-	/// In case of a SUB routine (or RST): The size of the subroutine in bytes.
-	sizeInBytes: number;
-
-	/// In case of a SUB routine (or RST): The size of the subroutine in number of instructions.
-	countOfInstructions: number;
-
-	/// In case of a SUB routine (or RST): The Cyclomatic Complexity.
-	CyclomaticComplexity: number;
-}
 
 
 /**
@@ -45,6 +34,9 @@ export class Disassembler extends EventEmitter {
 
 	/// Queue for start addresses only addresses of opcodes
 	protected addressQueue = new Array<number>();
+
+	// USed for (user) comments for labels (addresses).
+	protected addressComments = new Map<number, Comment>();
 
 	/// Map for statistics (size of subroutines, cyclomatic complexity)
 	protected subroutineStatistics = new Map<DisLabel, SubroutineStatistics>();
@@ -249,6 +241,9 @@ export class Disassembler extends EventEmitter {
 
 		// Assign label names
 		this.assignLabelNames();
+
+		// Add label comments
+		this.addLabelComments();
 
 		// Pass: Disassemble opcode with label names
 		const disLines = this.disassembleMemory();
@@ -493,14 +488,12 @@ export class Disassembler extends EventEmitter {
 					firstLabel = false;
 				}
 				// "Disassemble"
-				let line =  Format.addSpaces(label.name+':', this.clmnsBytes) + this.rightCase('EQU ') + Format.fillDigits(address.toString(), ' ', 5);
-				// Comment: number converter to hex.
-				line += ' ; ' + Format.getHexString(address, 4) + 'h.';
-				// Comment with references.
-				const refArray = this.getLabelComments(label);
-				line += ' ' + refArray.join(' ');
+				const statement =  Format.addSpaces(label.name+':', this.clmnsBytes) + this.rightCase('EQU ') + Format.fillDigits(address.toString(), ' ', 5);
+				// Comment
+				const comment = this.getAddressComment(address);
+				const commentLines = Comment.getLines(comment, statement);
 				// Store
-				lines.push(line);
+				lines.push(...commentLines);
 			}
 		}
 		return lines;
@@ -1543,7 +1536,7 @@ export class Disassembler extends EventEmitter {
 		let labelSelfModifyingCount = 0;
 
 		// Loop through all labels
-		for( let [address,label] of this.labels) {
+		for(const [address,label] of this.labels) {
 			const type = label.type;
 			switch(type) {
 				// Count main labels
@@ -1594,7 +1587,7 @@ export class Disassembler extends EventEmitter {
 		let dataSelfModifyingIndex = 1;	// SELF_MOD
 
 		// Loop through all labels (labels is sorted by address)
-		for( let [address,label] of this.labels) {
+		for(const [address,label] of this.labels) {
 			// Check if label was already set (e.g. from commandline)
 			if(label.name)
 				continue;
@@ -1644,7 +1637,7 @@ export class Disassembler extends EventEmitter {
 
 		// Loop through all labels (labels is sorted by address)
 		// Local Labels:
-		for( let [parentLabel, childLabels] of localLabels) {
+		for(const [parentLabel, childLabels] of localLabels) {
 			const localPrefix = parentLabel.name.toLowerCase();
 			const count = childLabels.length;
 			const digitCount = count.toString().length;
@@ -1677,16 +1670,69 @@ export class Disassembler extends EventEmitter {
 
 
 	/**
+	 * Add/create the comments for the labels.
+	 * If a comment already exists (e.g. set by the user) it is not overwritten.
+	 */
+	protected addLabelComments() {
+		// Loop through all labels (labels is sorted by address)
+		for(const [address,label] of this.labels) {
+			// Only for the main labels
+			const type = label.type;
+			if(type != NumberType.CODE_SUB
+				&& type != NumberType.CODE_RST
+				&& type != NumberType.CODE_LBL
+				&& type != NumberType.DATA_LBL)
+				continue;
+
+			// Check if comment already exists
+			let comment = this.addressComments.get(address);
+			if(comment)
+				continue;
+
+			// Create comment
+			comment = this.getAddressComment(address);
+			if(comment)
+				this.addressComments.set(address, comment);
+		}
+	}
+
+
+	/**
+	 * Returns the 3 comment lines for an address.
+	 * It first searches if there is a label at that address.
+	 * If label exists
+	 * 	- if there is a comment in addressComments then this
+	 * comment is returned.
+	 *  - otherwise the comment for the label is generated.
+	 * If label does not exist
+	 *  - the comment from addressComments is returned.
+	 * @param address The address.
+	 */
+	protected getAddressComment(address: number): Comment|undefined {
+		let comments = this.addressComments.get(address);
+		if(comments)
+			return comments;
+		return this.getLabelComments(address);
+	}
+
+
+	/**
 	 * Creates a human readable string telling which locations reference this address
 	 * and which locations are called (if it is a subroutine).
-	 * @param addrLabel The label for which the references are requested.
-	 * @return An array of string with statistics about the label. E.g. for
-	 * subroutines is tells the soze , cyclomatic complexity, all callers and all callees.
+	 * @param address The address.
+	 * @return The comment with statistics about the label. E.g. for
+	 * subroutines is tells the size , cyclomatic complexity, all callers and all callees.
 	 */
-	protected getLabelComments(addrLabel: DisLabel): Array<string> {
+	protected getLabelComments(address: number): Comment|undefined {
+		const addrLabel = this.labels.get(address);
+		if(!addrLabel)
+			return undefined;
+
 		const lineArray = new Array<string>();
 		const refCount = addrLabel.references.size;
 		let line1;
+		let line2;
+		let line3;
 
 		// Name
 		const type = addrLabel.type;
@@ -1704,7 +1750,7 @@ export class Disassembler extends EventEmitter {
 			case NumberType.CODE_RST:
 			{
 				// Line 2
-				let line2 = 'Called by: ';
+				line2 = 'Called by: ';
 				let first = true;
 				let recursiveFunction = false;
 				for(const ref of addrLabel.references) {
@@ -1734,7 +1780,7 @@ export class Disassembler extends EventEmitter {
 				if(stat)
 					line1 += ': ' + ((recursiveFunction) ? 'Recursive, ' : '') + 'Size=' + stat.sizeInBytes + ', CC=' + stat.CyclomaticComplexity + '.';
 				else
-					line1 += '.'; <- dieser Punkt ist manchmal zu viel  .
+					line1 += '.';
 
 				// Store lines
 				lineArray.push(line1);
@@ -1743,7 +1789,7 @@ export class Disassembler extends EventEmitter {
 				// Only if "Calls:" line is wanted
 				if(!addrLabel.isEqu) {
 					// Line 3
-					let line3 = 'Calls: ';
+					line3 = 'Calls: ';
 					first = true;
 					const callees = new Set<DisLabel>();
 					for(const callee of addrLabel.calls) {
@@ -1782,8 +1828,19 @@ export class Disassembler extends EventEmitter {
 				break;
 			}
 		}
+
+		// For EQU labels return everything in one line.
+		let comment = new Comment();
+		if(addrLabel.isEqu) {
+			comment.lineOn = Format.getHexString(address, 4) + 'h. ' + lineArray.join('. ');
+		}
+		else {
+			// Put the lines in the comments structure
+			comment.linesBefore = lineArray;
+		}
+
 		// return
-		return lineArray;
+		return comment;
 	}
 
 
@@ -1857,16 +1914,6 @@ export class Disassembler extends EventEmitter {
 					if(type == NumberType.CODE_SUB || type == NumberType.CODE_LBL || type == NumberType.DATA_LBL || type == NumberType.CODE_RST) {
 						this.addEmptyLines(lines);
 					}
-					// Add comment with references
-					if((type == NumberType.CODE_SUB && this.addReferencesToSubroutines)
-					|| (type == NumberType.CODE_LBL && this.addReferencesToAbsoluteLabels)
-					|| (type == NumberType.CODE_RST && this.addReferencesToRstLabels)
-					|| (type == NumberType.DATA_LBL && this.addReferencesToDataLabels)) {
-						// Get line with references
-						const refArray = this.getLabelComments(addrLabel).map(s => '; '+s);
-						lines.push(...refArray);
-					}
-
 					// Add label on separate line
 					let labelLine = addrLabel.name + ':';
 					if(this.clmnsAddress > 0) {
@@ -1874,8 +1921,13 @@ export class Disassembler extends EventEmitter {
 						if(this.DBG_ADD_DEC_ADDRESS) {
 							labelLine = Format.addSpaces(address.toString(), 5) + ' ' + labelLine;
 						}
-							}
-					lines.push(labelLine);
+					}
+
+					// Add comments
+					//const comment = this.getAddressComment(address);
+					const comment = this.addressComments.get(address);
+					const commentLines = Comment.getLines(comment, labelLine);
+					lines.push(...commentLines);
 				}
 
 				// Check if code or data should be disassembled
@@ -2157,16 +2209,10 @@ export class Disassembler extends EventEmitter {
 
 			// Store address, label and comments
 			const addrLabelLine = Format.getHexString(address, 4) + '\t' + label.name;
-			const comments = this.getLabelComments(label);
-			if(label.isEqu) {
-				// EQU: one line comment
-				text += addrLabelLine + '\t; ' + comments.join('. ');
-			}
-			else {
-				// Several line comment
-				text += comments.join('\n');
-				text += addrLabelLine;
-			}
+			const comment = this.getAddressComment(address);
+			const commentLines = Comment.getLines(comment, addrLabelLine);
+
+			text += commentLines.join('\n');
 
 			// Next
 			text += '\n\n';
