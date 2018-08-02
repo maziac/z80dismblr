@@ -497,7 +497,7 @@ export class Disassembler extends EventEmitter {
 				// Comment: number converter to hex.
 				line += ' ; ' + Format.getHexString(address, 4) + 'h.';
 				// Comment with references.
-				const refArray = this.getReferencesString(label, false);
+				const refArray = this.getLabelComments(label);
 				line += ' ' + refArray.join(' ');
 				// Store
 				lines.push(line);
@@ -1680,12 +1680,10 @@ export class Disassembler extends EventEmitter {
 	 * Creates a human readable string telling which locations reference this address
 	 * and which locations are called (if it is a subroutine).
 	 * @param addrLabel The label for which the references are requested.
-	 * @param addCalls If true adds a line with the callees. For EQU labels this is
-	 * not required (it is anyhow not known what they call), In this case use 'false'.
 	 * @return An array of string with statistics about the label. E.g. for
 	 * subroutines is tells the soze , cyclomatic complexity, all callers and all callees.
 	 */
-	protected getReferencesString(addrLabel: DisLabel, addCalls = true) {
+	protected getLabelComments(addrLabel: DisLabel): Array<string> {
 		const lineArray = new Array<string>();
 		const refCount = addrLabel.references.size;
 		let line1;
@@ -1736,14 +1734,14 @@ export class Disassembler extends EventEmitter {
 				if(stat)
 					line1 += ': ' + ((recursiveFunction) ? 'Recursive, ' : '') + 'Size=' + stat.sizeInBytes + ', CC=' + stat.CyclomaticComplexity + '.';
 				else
-					line1 += '.';
+					line1 += '.'; <- dieser Punkt ist manchmal zu viel  .
 
 				// Store lines
 				lineArray.push(line1);
 				lineArray.push(line2);
 
 				// Only if "Calls:" line is wanted
-				if(addCalls) {
+				if(!addrLabel.isEqu) {
 					// Line 3
 					let line3 = 'Calls: ';
 					first = true;
@@ -1864,8 +1862,8 @@ export class Disassembler extends EventEmitter {
 					|| (type == NumberType.CODE_LBL && this.addReferencesToAbsoluteLabels)
 					|| (type == NumberType.CODE_RST && this.addReferencesToRstLabels)
 					|| (type == NumberType.DATA_LBL && this.addReferencesToDataLabels)) {
-						// Get line wit hreferences
-						const refArray = this.getReferencesString(addrLabel).map(s => '; '+s);
+						// Get line with references
+						const refArray = this.getLabelComments(addrLabel).map(s => '; '+s);
 						lines.push(...refArray);
 					}
 
@@ -2033,9 +2031,10 @@ export class Disassembler extends EventEmitter {
 		// And connect the nodes with arrows.
 		for(let [address, label] of this.labels) {
 
-			if(label.type != NumberType.CODE_SUB
-				&& label.type != NumberType.CODE_LBL
-				&& label.type != NumberType.CODE_RST)
+			const type = label.type;
+			if(type != NumberType.CODE_SUB
+				&& type != NumberType.CODE_LBL
+				&& type != NumberType.CODE_RST)
 				continue;
 			//console.log(label.name + '(' + Format.getHexString(address) + '):')
 
@@ -2138,6 +2137,44 @@ export class Disassembler extends EventEmitter {
 	 */
 	public setDotHighlightAddress(addr: number, colorString: string) {
 		this.dotMarkedLabels.set(addr, colorString);
+	}
+
+
+	/**
+	 * Returns all (main) labels with address and comments.
+	 */
+    public getMainLabels(): string {
+		let text = '';
+
+		for(let [address, label] of this.labels) {
+
+			const type = label.type;
+			if(type != NumberType.CODE_SUB
+				&& type != NumberType.CODE_LBL
+				&& type != NumberType.CODE_RST
+				&& type != NumberType.DATA_LBL)
+				continue;
+
+			// Store address, label and comments
+			const addrLabelLine = Format.getHexString(address, 4) + '\t' + label.name;
+			const comments = this.getLabelComments(label);
+			if(label.isEqu) {
+				// EQU: one line comment
+				text += addrLabelLine + '\t; ' + comments.join('. ');
+			}
+			else {
+				// Several line comment
+				text += comments.join('\n');
+				text += addrLabelLine;
+			}
+
+			// Next
+			text += '\n\n';
+
+		}
+
+		// Return
+		return text;
 	}
 
 
