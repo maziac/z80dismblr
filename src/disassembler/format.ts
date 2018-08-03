@@ -123,9 +123,8 @@ export class Format {
 	 * @param address The address of the opcode. Only used if 'memory' is available (to retrieve opcodes) or if 'clmsnAddress' is not 0.
 	 * @param size The size of the opcode. Only used to display the opcode byte values and only used if memory is defined.
 	 * @param mainString The opcode string, e.g. "LD HL,35152"
-	 * @param commentString An optional comment string.
 	 */
-	public static formatDisassembly(memory: BaseMemory|undefined, opcodesLowerCase: boolean, clmnsAddress: number, clmnsBytes: number, clmnsOpcodeFirstPart: number, clmsnOpcodeTotal: number, address: number, size: number, mainString: string, commentString?: string): string {
+	public static formatDisassembly(memory: BaseMemory|undefined, opcodesLowerCase: boolean, clmnsAddress: number, clmnsBytes: number, clmnsOpcodeFirstPart: number, clmsnOpcodeTotal: number, address: number, size: number, mainString: string): string {
 		let line = '';
 
 		// Add address field?
@@ -151,11 +150,6 @@ export class Format {
 		resMainString = Format.addSpaces(resMainString+' ', clmsnOpcodeTotal);
 
 		line +=  resMainString;
-
-		// Add comment
-		if(commentString && commentString.length > 0) {
-			line += '; ' + commentString;
-		}
 
 		// return
 		return line;

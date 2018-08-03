@@ -267,9 +267,121 @@ The result is a call graph just for subroutine at address 0x753E:
 
 
 
-## Interactive Usage
+## "Interactive" Usage
 
-\<Not yet. Probably next version.\>
+During reverse engineering of a binary at first very little is known about the code.
+Then after looking at the disassembly the one or the other subroutine is understood and can be commented with more senseful comments than the one that z80dismblr generates.
+
+Therefore you can input a file with labels and comments via the '--lblsin file' option.
+
+The file is read and substitutes the label name and the comments for a given address.
+
+Here is a small real world example of a printing subroutine.
+The original disassembled code:
+~~~
+; Subroutine: Recursive, Size=44, CC=4.
+; Called by: SUB443[D752h], SUB442[D734h], SUB178[8405h], SUB179[8439h], SUB005[706Dh], SUB359[CB27h], self[7631h], SUB006[70A9h], SUB004[7054h].
+; Calls: SUB039, SUB055, SUB103.
+760A SUB055:
+760A 7E           ld   a,(hl)
+760B 23           inc  hl
+760C FE FF        cp   FFh    	; 255,   -1
+760E C8           ret  z
+760F FE FE        cp   FEh    	; 254,   -2
+7611 28 09        jr   z,.sub055_l1 	; 761Ch
+7613 FE FD        cp   FDh    	; 253,   -3
+7615 28 15        jr   z,.sub055_l2 	; 762Ch
+7617 CD 44 74     call SUB039 	; 7444h
+761A 18 EE        jr   SUB055 	; 760Ah
+761C .sub055_l1:
+761C 7E           ld   a,(hl)
+761D 23           inc  hl
+761E E5           push hl
+761F 66           ld   h,(hl)
+7620 6F           ld   l,a
+7621 7E           ld   a,(hl)
+7622 23           inc  hl
+7623 66           ld   h,(hl)
+7624 6F           ld   l,a
+7625 CD 24 7B     call SUB103 	; 7B24h
+7628 .sub055_loop:
+7628 E1           pop  hl
+7629 23           inc  hl
+762A 18 DE        jr   SUB055 	; 760Ah
+762C .sub055_l2:
+762C 7E           ld   a,(hl)
+762D 23           inc  hl
+762E E5           push hl
+762F 66           ld   h,(hl)
+7630 6F           ld   l,a
+7631 CD 0A 76     call SUB055 	; 760Ah
+7634 18 F2        jr   .sub055_loop 	; 7628h
+~~~
+
+After analysing we found out what the purpose is and how it works so we add comments in a special file:
+~~~
+; Subroutine to print a text in HL until an end-of-string (0xFF) is found.
+; There is a little formatting allowed:
+; FEh: the next 2 bytes are interpreted as a number
+; FDh: the next 2 bytes are interpreted as a pointer to another text
+; (which could also contain formatting.)
+760a sub_print_formatted_text_hl
+
+760c ; End of string
+
+760f ; integer (%d)
+
+7613 ; string (%s)
+
+~~~
+
+This results in the more readable disassembly:
+~~~
+; Subroutine to print a text in HL until an end-of-string (0xFF) is found.
+; There is a little formatting allowed:
+; FEh: the next 2 bytes are interpreted as a number
+; FDh: the next 2 bytes are interpreted as a pointer to another text
+; (which could also contain formatting.)
+760A sub_print_formatted_text_hl:
+760A 7E           ld   a,(hl)
+760B 23           inc  hl
+760C FE FF        cp   FFh    	; End of string
+760E C8           ret  z
+760F FE FE        cp   FEh    	; integer (%d)
+7611 28 09        jr   z,.sub_print_formatted_text_hl_l1 	; 761Ch
+7613 FE FD        cp   FDh    	; string (%s)
+7615 28 15        jr   z,.sub_print_formatted_text_hl_l2 	; 762Ch
+7617 CD 44 74     call SUB039 	; 7444h
+761A 18 EE        jr   sub_print_formatted_text_hl 	; 760Ah
+761C .sub_print_formatted_text_hl_l1:
+761C 7E           ld   a,(hl)
+761D 23           inc  hl
+761E E5           push hl
+761F 66           ld   h,(hl)
+7620 6F           ld   l,a
+7621 7E           ld   a,(hl)
+7622 23           inc  hl
+7623 66           ld   h,(hl)
+7624 6F           ld   l,a
+7625 CD 24 7B     call SUB102 	; 7B24h
+7628 .sub_print_formatted_text_hl_loop:
+7628 E1           pop  hl
+7629 23           inc  hl
+762A 18 DE        jr   sub_print_formatted_text_hl 	; 760Ah
+762C .sub_print_formatted_text_hl_l2:
+762C 7E           ld   a,(hl)
+762D 23           inc  hl
+762E E5           push hl
+762F 66           ld   h,(hl)
+7630 6F           ld   l,a
+7631 CD 0A 76     call sub_print_formatted_text_hl 	; 760Ah
+7634 18 F2        jr   .sub_print_formatted_text_hl_loop 	; 7628h
+~~~
+
+Please note:
+- The label for the address is used now not only at address 760A but also in all locations that jump to or call this address. See e.g. address 761A or 7631
+- The addresses 7D0C, 760F and 7613 get an inline comment which explains roughly the purpose of the comparison.
+
 
 
 ## Recommendations

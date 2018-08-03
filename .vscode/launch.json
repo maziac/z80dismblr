@@ -41,6 +41,7 @@
 				//"--dothighlight", "0x7015=red",
 
 				"--lblsout", "out/tests/out2.lbls",
+				"--lblsin",  "out/tests/in2.lbls",
 			],
             "outFiles": [
                 "${workspaceFolder}/**/*.js"

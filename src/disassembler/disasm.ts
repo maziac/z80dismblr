@@ -488,9 +488,9 @@ export class Disassembler extends EventEmitter {
 					firstLabel = false;
 				}
 				// "Disassemble"
-				const statement =  Format.addSpaces(label.name+':', this.clmnsBytes) + this.rightCase('EQU ') + Format.fillDigits(address.toString(), ' ', 5);
+				const statement =  Format.addSpaces(label.name+':', this.clmnsBytes-1) + ' ' + this.rightCase('EQU ') + Format.fillDigits(address.toString(), ' ', 5);
 				// Comment
-				const comment = this.getAddressComment(address);
+				const comment = this.addressComments.get(address);
 				const commentLines = Comment.getLines(comment, statement);
 				// Store
 				lines.push(...commentLines);
@@ -1832,15 +1832,139 @@ export class Disassembler extends EventEmitter {
 		// For EQU labels return everything in one line.
 		let comment = new Comment();
 		if(addrLabel.isEqu) {
-			comment.lineOn = Format.getHexString(address, 4) + 'h. ' + lineArray.join('. ');
+			comment.inlineComment = '; ' + Format.getHexString(address, 4) + 'h. ' + lineArray.join(' ');
 		}
 		else {
 			// Put the lines in the comments structure
-			comment.linesBefore = lineArray;
+			comment.linesBefore = lineArray.map(s => '; ' + s);
 		}
 
 		// return
 		return comment;
+	}
+
+
+	/**
+	 * Reads in a filerom the user that sets address labels and the comments to show in the disassembly.
+	 * @param commentsFile The file to read. Format:
+	 * ; comment1
+	 * address: label ; comment2
+	 * ; comments 3
+	 * newline(s)
+	 */
+	public setAddressComments(commentsFile: string) {
+		enum State {
+			LinesBefore, lineOn, LinesAfter,
+		};
+		const commentsLines = readFileSync(commentsFile).toString().split('\n');
+		commentsLines.push('');	// Add empty line to make sure the last comment is processed.
+		let state = State.LinesBefore;
+		let comment = new Comment();
+		let commentAddr;
+		let commentLabelName;
+		let lineNr = 0;
+		for(const line of commentsLines) {
+			lineNr ++;
+			// Read in comments "before"
+			const match = /^\s*([^;]+)?(;.*)?(\S+)?/.exec(line);
+			assert(match);
+			if(!match)	continue;	// calm the transpiler
+			const addressPart = match[1];
+			const commentPart = match[2];
+			const misc = match[3];
+			if(misc)  {
+				// Unexpected line
+				throw Error('Unexpected line: "' + line + '", ' + commentsFile + ':' + lineNr + '.');
+			}
+			if(!addressPart && !commentPart) {
+				// Comment finished, line empty
+				if(commentAddr != undefined) {
+					// Set comment
+					this.addressComments.set(commentAddr, comment);
+					// Set label
+					if(commentLabelName) {
+						this.setLabel(commentAddr,commentLabelName, NumberType.DATA_LBL);	// Data label might be changed to something else.
+					}
+				}
+				// Next state
+				state = State.LinesBefore;
+				comment = new Comment();
+				commentAddr = undefined;
+				commentLabelName = undefined;
+				continue;
+			}
+			// check for state change
+			if(addressPart) {
+				if(state == State.LinesBefore) {
+					// Next state
+					state = State.lineOn;
+				}
+
+			}
+
+			// add lines
+			switch(state) {
+				case State.LinesBefore:
+					comment.addBefore(commentPart);
+					break;
+				case State.lineOn:
+					comment.inlineComment = commentPart;
+					// Determine address and label
+					const match2 = /^([0-9a-f]+)(\s+([a-z][a-z_0-9]*))?/i.exec(addressPart);
+					if(match2) {
+						const addrString = match2[1];
+						commentAddr = parseInt(addrString,16);
+						commentLabelName = match2[3];
+						// Next state
+						state = State.LinesAfter;
+					}
+					else  {
+						throw Error('Expected an address: "' + line + '", ' + commentsFile + ':' + lineNr + '.');
+					}
+					break;
+				case State.LinesAfter:
+					if(addressPart) {
+						throw Error('Expected "after"-comment or newline: "' + line + '", ' + commentsFile + ':' + lineNr + '.');
+					}
+					comment.addAfter(match[2]);
+					break;
+
+			}
+
+		}
+
+	}
+
+
+	/**
+	 * Returns all (main) labels with address and comments.
+	 */
+    public getMainLabels(): string {
+		let text = '';
+
+		for(let [address, label] of this.labels) {
+
+			const type = label.type;
+			if(type != NumberType.CODE_SUB
+				&& type != NumberType.CODE_LBL
+				&& type != NumberType.CODE_RST
+				&& type != NumberType.DATA_LBL)
+				continue;
+
+			// Store address, label and comments
+			const addrLabelLine = Format.getHexString(address, 4) + '\t' + label.name;
+			const comment = this.getAddressComment(address);
+			const commentLines = Comment.getLines(comment, addrLabelLine);
+
+			text += commentLines.join('\n');
+
+			// Next
+			text += '\n\n';
+
+		}
+
+		// Return
+		return text;
 	}
 
 
@@ -1907,6 +2031,7 @@ export class Disassembler extends EventEmitter {
 
 				// Check if label needs to be added to line (print label on own line)
 				const addrLabel = this.labels.get(address);
+				const comment = this.addressComments.get(address);
 
 				if(addrLabel) {
 					// Add empty lines in case this is a SUB, LBL or DATA label
@@ -1924,8 +2049,6 @@ export class Disassembler extends EventEmitter {
 					}
 
 					// Add comments
-					//const comment = this.getAddressComment(address);
-					const comment = this.addressComments.get(address);
 					const commentLines = Comment.getLines(comment, labelLine);
 					lines.push(...commentLines);
 				}
@@ -1933,6 +2056,7 @@ export class Disassembler extends EventEmitter {
 				// Check if code or data should be disassembled
 				let addAddress;
 				let line;
+				let commentText;
 				if(attr & MemAttribute.CODE) {
 					// CODE
 
@@ -1941,8 +2065,8 @@ export class Disassembler extends EventEmitter {
 
 					// Disassemble the single opcode
 					const opCodeDescription = opcode.disassemble();
-					line = this.formatDisassembly(address, opcode.length, opCodeDescription.mnemonic, opCodeDescription.comment);
-
+					line = this.formatDisassembly(address, opcode.length, opCodeDescription.mnemonic);
+					commentText = opCodeDescription.comment;
 					addAddress = opcode.length;
 				}
 
@@ -1959,8 +2083,8 @@ export class Disassembler extends EventEmitter {
 
 					// Disassemble the data line
 					let mainString = this.rightCase('DEFB ') +  Format.getHexString(memValue, 2) + 'h';
-					let comment = Format.getVariousConversionsForByte(memValue);
-					line = this.formatDisassembly(address, 1, mainString, comment);
+					commentText = Format.getVariousConversionsForByte(memValue);
+					line = this.formatDisassembly(address, 1, mainString);
 
 					// Next address
 					addAddress = 1;
@@ -1971,8 +2095,18 @@ export class Disassembler extends EventEmitter {
 					line = Format.addSpaces(address.toString(), 5) + ' ' + line;
 				}
 
-				// Store
-				lines.push(line);
+				// If not done before, add comments
+				if(!comment || addrLabel) {
+					// main comment already added or no comment present
+					if(commentText && commentText.length > 0)
+						line += '\t; ' + commentText;
+					lines.push(line);
+				}
+				else {
+					// Add comments
+					const commentLines = Comment.getLines(comment, line);
+					lines.push(...commentLines);
+				}
 
 				// Next address
 				address += addAddress;
@@ -1999,11 +2133,10 @@ export class Disassembler extends EventEmitter {
 	 * @param address The address (for conditional output of the opcode byte values)
 	 * @param size The size of the opcode.
 	 * @param mainString The opcode string, e.g. "LD HL,35152"
-	 * @param commentString An optional comment string.
 	 */
-	protected formatDisassembly(address: number, size: number, mainString: string, commentString?: string): string {
+	protected formatDisassembly(address: number, size: number, mainString: string): string {
 		const memory = (this.addOpcodeBytes) ? this.memory : undefined;
-		return Format.formatDisassembly(memory, this.opcodesLowerCase, this.clmnsAddress, this.clmnsBytes, this.clmnsOpcodeFirstPart, this.clmsnOpcodeTotal, address, size, mainString, commentString);
+		return Format.formatDisassembly(memory, this.opcodesLowerCase, this.clmnsAddress, this.clmnsBytes, this.clmnsOpcodeFirstPart, this.clmsnOpcodeTotal, address, size, mainString);
 	}
 
 
@@ -2191,37 +2324,6 @@ export class Disassembler extends EventEmitter {
 		this.dotMarkedLabels.set(addr, colorString);
 	}
 
-
-	/**
-	 * Returns all (main) labels with address and comments.
-	 */
-    public getMainLabels(): string {
-		let text = '';
-
-		for(let [address, label] of this.labels) {
-
-			const type = label.type;
-			if(type != NumberType.CODE_SUB
-				&& type != NumberType.CODE_LBL
-				&& type != NumberType.CODE_RST
-				&& type != NumberType.DATA_LBL)
-				continue;
-
-			// Store address, label and comments
-			const addrLabelLine = Format.getHexString(address, 4) + '\t' + label.name;
-			const comment = this.getAddressComment(address);
-			const commentLines = Comment.getLines(comment, addrLabelLine);
-
-			text += commentLines.join('\n');
-
-			// Next
-			text += '\n\n';
-
-		}
-
-		// Return
-		return text;
-	}
 
 
 	/**

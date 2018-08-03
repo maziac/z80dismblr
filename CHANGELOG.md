@@ -3,7 +3,7 @@
 - Changed "--noaddr0" to "--noautomaticaddr". Also suppresses the SNA start address.
 - Subroutines are divided into several subroutines if not in a coherent block.
 - Opcodes use hex numbers now, comments decimal.
-- "--lblsout": Output of labels with comments.
+- "--lblsin": Input of labels with comments.
 
 ## 1.1.0
 - Supports output of callgraphs into dot files for visualization with graphviz.
