@@ -185,11 +185,11 @@ D72E SUB299:
 
 ## Caller Graphs
 
-With the '--dot' option it is possible to let z80dismblr create .dot files for use with [Graphviz](http://www.graphviz.org).
+With the '--dotout' option it is possible to let z80dismblr create .dot files for use with [Graphviz](http://www.graphviz.org).
 
 Here is an example for the program "Star Warrior" (48K ZX Spectrum). Use z80dismblr like this:
 ~~~
-$ ./z80dismblr-macos --sna starwarrior.sna --out starwarrior.list --dot starwarrior.dot
+$ ./z80dismblr-macos --sna starwarrior.sna --out starwarrior.list --dotout starwarrior.dot
 ~~~
 
 It will generate the 'starwarrior.dot' file from the SNA file.
@@ -256,7 +256,7 @@ For this add "--noautomaticaddr" to the commandline. This will prevent that z80d
 
 Additionally add the address of the subroutine you want to see with a "--codelabel" option:
 ~~~
-$ ./z80dismblr-macos --sna starwarrior.sna --dot starwarrior.dot --noautomaticaddr --codelabel 0x735E SUB19
+$ ./z80dismblr-macos --sna starwarrior.sna --dotout starwarrior.dot --noautomaticaddr --codelabel 0x735E SUB19
 ~~~
 You can additionally add a label name (here we chose "SUB19" so that it is the same name as in the big caller graph diagram).
 You can get the address from the previously created 'starwarrior.list' file.
