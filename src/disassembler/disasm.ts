@@ -488,7 +488,7 @@ export class Disassembler extends EventEmitter {
 					firstLabel = false;
 				}
 				// "Disassemble"
-				const statement =  Format.addSpaces(label.name+':', this.clmnsBytes-1) + ' ' + this.rightCase('EQU ') + Format.fillDigits(address.toString(), ' ', 5);
+				const statement =  Format.addSpaces(label.name+':', this.clmnsBytes-1) + ' ' + this.rightCase('EQU ') + Format.fillDigits(Format.getHexString(address,4), ' ', 5) +'h';
 				// Comment
 				const comment = this.addressComments.get(address);
 				const commentLines = Comment.getLines(comment, statement);
@@ -1832,7 +1832,7 @@ export class Disassembler extends EventEmitter {
 		// For EQU labels return everything in one line.
 		let comment = new Comment();
 		if(addrLabel.isEqu) {
-			comment.inlineComment = '; ' + Format.getHexString(address, 4) + 'h. ' + lineArray.join(' ');
+			comment.inlineComment = '; ' + address.toString() + '. ' + lineArray.join(' ');
 		}
 		else {
 			// Put the lines in the comments structure

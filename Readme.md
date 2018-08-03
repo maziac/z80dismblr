@@ -217,8 +217,8 @@ The highlighted roots:
 This example shows 4 roots. Why is this?
 1. SNA_LBL_MAIN_START_A660 is the address from the SNA file. Since no other code parts reference (jumps to) it, it is a root. Here truly the program starts.
 2. INTRPT1 is the interrupt that is called 50 times per second on the Spectrum.
-Normally z80dismblr cannot find interrupts because it uses a CFG anaylsis and if no location refers to the interrupt z80dismblr cannot see it. So you would have to manually set the interrupt address via an argument to z80dimblr ("--codelabel address"). In this case however the "-tr" option was used and so z80dismblr could additionally analyse the traces and find the interrupt by itself.
-3. INTRPT2: This in fact is the real interrupt location. Here a simple "JP INTERPT1" could be found. The reason why z80dismblr did not draw any lines from here is: it is self-modifying code. The binary that z80dismblr anaylsed simply contains 3 "NOP" operations. Thus there is no label. The jump operation and the jump location is written by executing the code. But since z80dismblr doesn't do a dynamic analysis it cannot see the these values.
+Normally z80dismblr cannot find interrupts because it uses a CFG analysis and if no location refers to the interrupt z80dismblr cannot see it. So you would have to manually set the interrupt address via an argument to z80dimblr ("--codelabel address"). In this case however the "-tr" option was used and so z80dismblr could additionally analyse the traces and find the interrupt by itself.
+3. INTRPT2: This in fact is the real interrupt location. Here a simple "JP INTERPT1" could be found. The reason why z80dismblr did not draw any lines from here is: it is self-modifying code. The binary that z80dismblr analysed simply contains 3 "NOP" operations. Thus there is no label. The jump operation and the jump location is written by executing the code. But since z80dismblr doesn't do a dynamic analysis it cannot see the these values.
 4. SUB007: This looks strange. And indeed, this helped me to find an error in the assembler program. It was hard to find but in the end the code boiled down to the very simple:
 ~~~
 711D:
@@ -261,7 +261,7 @@ $ ./z80dismblr-macos --sna starwarrior.sna --dotout starwarrior.dot --noautomati
 You can additionally add a label name (here we chose "SUB19" so that it is the same name as in the big caller graph diagram).
 You can get the address from the previously created 'starwarrior.list' file.
 
-The result is a call graph just for subroutine at address 0x753E:
+The result is a call graph just for the subroutine at address 0x753E:
 
 ![](documentation/images/starwarrior_sub19.jpg)
 
@@ -400,7 +400,7 @@ As z80dismblr doesn't know about dynamic changes you might find code areas with 
 
 
 
-## How it works
+## How It Works
 
 The z80dismblr uses a [Control-Flow-Graph](https://en.wikipedia.org/wiki/Control_flow_graph) (CFG) to analyse the binary file(s).
 I.e. it runs through the code through all possible paths and disassembles it.

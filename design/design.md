@@ -29,13 +29,21 @@
 
 **Format**: Helper methods to format strings.
 
+**Comment**: Small class that holds the (user) comments.
 
-## Flow diagram
+**NumberType**: Just an enumeration type to categorize numbers used in opcodes.
+
+**Statistics**: Small structure that holds some info about a subroutine (e.g. size and cyclomatic complexity).
+
+## Main Flow Diagram
 
 ~~~
-
-┌──────────────────────────────────────┐
-│Label collection                      │
+       ┌──────────────────────────┐        Adds 0000 address or the SNA
+       │ Add automatic addresses  │             address as label.
+       └──────────────────────────┘            (If not turned off)
+                     │
+┌────────────────────┼─────────────────┐
+│Label collection    ▼                 │
 │          ┌───────────────────┐       │    Start from the given code
 │          │  Collect labels   │       │  labels, check all opcodes for
 │          └─────────┬─────────┘       │   branches and add branches to         Mark the code areas.
@@ -68,8 +76,8 @@
 │         ┌────────────────────┐       │  Check if LBLs are actually
 │         │ Turn LBL into SUB  │       │     SUBs (subroutines).
 │         └────────────────────┘       │
-│                                      │
-│   ┌────────────────────────────────┐ │
+│                    │                 │
+│   ┌────────────────┴───────────────┐ │
 │   │Find local labels in subroutines│ │   Determine local labels
 │   └────────────────┬───────────────┘ │    inside subroutines.
 └────────────────────┼─────────────────┘ Turn these labels to local
@@ -79,9 +87,9 @@
 │References          ▼                 │   Each label gets a parent.
 │       ┌────────────────────────┐     │  Self references are removed.
 │       │ Add parent references  │     │
-│       └────────────┬───────────┘     │
-│                    │                 │
-│       ┌────────────┴───────────┐     │ All called subroutines are added
+│       └────────────┬───────────┘     │Loop through the labels list and
+│                    │                 │  assign names depending on the
+│       ┌────────────┴───────────┐     │ All calledlabel type.s are added
 │       │Add call list to labels │     │       to subroutine labels.
 │       └────────────┬───────────┘     │
 └────────────────────┼─────────────────┘
@@ -94,8 +102,12 @@
                      ▼
           ┌────────────────────┐          Loop through the labels list and
           │ Assign label names │            assign names depending on the
-          └────────────────────┘                     label type.
+          └──────────┬─────────┘                     label type.
                      │
+                     ▼
+          ┌────────────────────┐             Adds comments to the labels
+          │ Add label comments │            (if there is no user comment)
+          └────────────────────┘
                      │
 ┌────────────────────┼───────────────────┐
 │Output              ▼                   │
@@ -103,11 +115,10 @@
 │  │Disassemble opcode with label names│ │    exchange the addresses with
 │  └───────────────────────────────────┘ │           label names.
 │                    │                   │
-│                    │                   │
 │     ┌──────────────┴─────────────┐     │
-│     │ Add all EQU labels to the  │     │   Labels marked as EQU are
-│     │beginning of the disassembly│     │        output first.
-│     └──────────────┬─────────────┘     │
+│     │ Add all EQU labels to the  │     │
+│     │beginning of the disassembly│     │   Labels marked as EQU are
+│     └──────────────┬─────────────┘     │        output first.
 └────────────────────┼───────────────────┘
                      │
                      ▼
