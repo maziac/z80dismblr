@@ -11,6 +11,8 @@ export enum OpcodeFlag {
 	BRANCH_ADDRESS = 0x01,	///< contains a branch address, e.g. jp, jp cc, jr, jr cc, call, call cc.
 	CALL = 0x02,	///< is a subroutine call, e.g. call, call cc or rst
 	STOP = 0x04,	///< is a stop-code. E.g. ret, reti, jp or jr. Disassembly procedure stops here.
+	RET = 0x08,		///< is a RETURN from a subroutine
+	CONDITIONAL = 0x10,	///< is a conditional opcode, e.g. JP NZ, RET Z, CALL P etc.
 }
 
 
@@ -122,16 +124,16 @@ export class Opcode {
 					if(name.startsWith("CALL")) {
 						this.flags |= OpcodeFlag.CALL | OpcodeFlag.BRANCH_ADDRESS;
 						this.valueType = NumberType.CODE_SUB;
+						// Check if conditional
+						if(name.indexOf(',') >= 0)
+							this.flags |= OpcodeFlag.CONDITIONAL;
 					}
 					else if(name.startsWith("JP")) {
 						this.flags |= OpcodeFlag.BRANCH_ADDRESS;
 						this.valueType = NumberType.CODE_LBL;
 						// Now check if it is conditional, i.e. if there is a ',' in the opcode
-						// If it is not conditional it is a stop-code.
-						if(name.indexOf(',') < 0) {
-							// not conditional -> stop-code
-							this.flags |= OpcodeFlag.STOP;
-						}
+						// Check if conditional or stop code
+						this.flags |= (name.indexOf(',') >= 0) ? OpcodeFlag.CONDITIONAL : OpcodeFlag.STOP;
 					}
 					else {
 						// Either call nor jp
@@ -151,17 +153,13 @@ export class Opcode {
 				if(name.startsWith("DJNZ")) {
 					//this.valueType = NumberType.CODE_LOCAL_LOOP;
 					this.valueType = NumberType.CODE_LOCAL_LBL;	// Becomes a loop because it jumps backwards.
-					this.flags |= OpcodeFlag.BRANCH_ADDRESS;
+					this.flags |= OpcodeFlag.BRANCH_ADDRESS|OpcodeFlag.CONDITIONAL;
 				}
 				if(name.startsWith("JR")) {
 					this.valueType = NumberType.CODE_LOCAL_LBL;
 					this.flags |= OpcodeFlag.BRANCH_ADDRESS;
-					// Now check if it is conditional, i.e. if there is a ',' in the opcode
-					// If it is not conditional it is a stop-code.
-					if(name.indexOf(',') < 0) {
-						// not conditional -> stop-code
-						this.flags |= OpcodeFlag.STOP;
-					}
+					// Check if conditional or stop code
+					this.flags |= (name.indexOf(',') >= 0) ? OpcodeFlag.CONDITIONAL : OpcodeFlag.STOP;
 				}
 				else if(name.startsWith("IN") || name.startsWith("OUT")) {
 					// a port
@@ -169,9 +167,10 @@ export class Opcode {
 				}
 			}
 		}
-		else if(name == "RET" || name == "RETI" || name == "RETN") {	// "RET" without condition
-			// not conditional -> stop-code
-			this.flags |= OpcodeFlag.STOP;
+		else if(name.startsWith("RET")) {	// "RETN", "RETI", "RET" with or without condition
+			this.flags |= OpcodeFlag.RET;
+			// Check if conditional or stop code
+			this.flags |= (name.indexOf(' ') >= 0) ? OpcodeFlag.CONDITIONAL : OpcodeFlag.STOP;
 		}
 		else if(name.startsWith("RST")) {	// "RST"
 			// Use like a CALL
