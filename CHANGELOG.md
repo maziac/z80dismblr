@@ -1,9 +1,15 @@
+## 1.3.0
+- "--dot..." renamed to "--callgraph...".
+- "--flowchartout": Output flow-chart for a particular address (subroutine).
+
+
 ## 1.2.0
 - "--dotformat": Formatting of dot node output.
 - Changed "--noaddr0" to "--noautomaticaddr". Also suppresses the SNA start address.
 - Subroutines are divided into several subroutines if not in a coherent block.
 - Opcodes use hex numbers now, comments decimal.
 - "--lblsin": Input of labels with comments.
+
 
 ## 1.1.0
 - Supports output of callgraphs into dot files for visualization with graphviz.

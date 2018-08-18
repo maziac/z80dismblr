@@ -535,7 +535,7 @@ export class Disassembler extends EventEmitter {
 				// Read memory value
 				opcode = Opcode.getOpcodeAt(this.memory, address);
 				if(this.DBG_COLLECT_LABELS)
-					console.log(Format.getHexString(address) + '\t' + opcode.disassemble(undefined, true).mnemonic)
+					console.log(Format.getHexString(address) + '\t' + opcode.disassemble().mnemonic);
 
 				// Check if memory area has already been PARTLY disassembled
 				const len = opcode.length;
@@ -1027,8 +1027,8 @@ export class Disassembler extends EventEmitter {
 			const opcode = Opcode.getOpcodeAt(this.memory, address);
 			opcodeClone = {...opcode};	// Required otherwise opcode is overwritten on next call to 'getOpcodeAt' if it's the same opcode.
 
-			// Check if RET(I)
-			if(opcodeClone.name.toUpperCase().startsWith("RET")) {
+			// Check if RET
+			if(opcodeClone.flags & OpcodeFlag.RET) {
 				DelayedLog.log(() => 'findRET: address=' + DelayedLog.getNumber(address) + ': SUB FOUND. RET code = ' + opcodeClone.name + '.');
 				return true;
 			}
@@ -1081,7 +1081,7 @@ export class Disassembler extends EventEmitter {
 					// Get all addresses belonging to the subroutine
 					const addrsArray = new Array<number>();
 					this.getSubroutineAddresses(address, addrsArray);
-					// Now reduce array. I.e. only a conherent block will be treated as a subroutine.
+					// Now reduce array. I.e. only a coherent block will be treated as a subroutine.
 					this.reduceSubroutineAddresses(address, addrsArray);
 					// Iterate array
 					for(let addr of addrsArray) {
@@ -1140,7 +1140,7 @@ export class Disassembler extends EventEmitter {
 	/**
 	 * Returns an array with all addresses used by the subroutine
 	 * given at 'address'.
-	 * Does NOT stop if it reaches a lbale of another subroutine.
+	 * Does NOT stop if it reaches a lable of another subroutine.
 	 * Works recursively.
 	 * @param address The start address of the subroutine.
 	 * @param addrsArray An empty array in the beginning that is filled with
@@ -1207,14 +1207,11 @@ export class Disassembler extends EventEmitter {
 			if(addr != nextAddress)
 				break;
 
-			// check opcode
+			// get opcode
 			const opcode = Opcode.getOpcodeAt(this.memory, addr);
 
 			// Add to array
-			addrsArray.push(address);
-
-			// TODO: For the RST problem: Here I need to check if the opcode is a CALL/RST
-			// and then get the return PC value (i.e. if a byte is skipped after the RST)
+			addrsArray.push(nextAddress);
 
 			// Next
 			nextAddress = addr + opcode.length;
@@ -1470,8 +1467,9 @@ export class Disassembler extends EventEmitter {
 				if(opcode.name.indexOf(',') >= 0 )
 					statistics.CyclomaticComplexity ++;
 			}
-			else if(opcodeClone.name.toUpperCase().startsWith("RET ")) {
-				// It is a conditional return (note the ' ' at the end of RET)
+			else if((opcodeClone.flags & OpcodeFlag.RET)
+					&& (opcodeClone.flags & OpcodeFlag.CONDITIONAL)) {
+				// It is a conditional return
 				statistics.CyclomaticComplexity ++;
 			}
 
@@ -2188,7 +2186,6 @@ export class Disassembler extends EventEmitter {
 	}
 
 
-
 	/**
 	 * Returns the labels call graph in dot syntax.
 	 * Every main labels represents a bubble.
@@ -2325,23 +2322,135 @@ export class Disassembler extends EventEmitter {
 	}
 
 
+	/**
+	 * Returns a Flow-Chart of the given participant address.
+	 * Output can be used as input to graphviz.
+	 * @param startAddress The start address of the subroutine.
+	 */
+	public getFlowChart(startAddress: number): string {
+		// header
+		let text = 'digraph FlowChart {\n\n';
+
+		// appearance
+		text += 'node [shape=box];\n';
+
+		while(true) {
+		// Start
+		let label = this.labels.get(startAddress);
+		let name = (label) ? label.name+'\\l' : '';
+		const addressString = Format.getHexString(startAddress,4);
+		name += (label) ? '[' + addressString + ']' + '\\l' : addressString + '\\l' ;
+		let start = 'b' + addressString + 'start';
+		text += start + ' [label="' + name + '", fillcolor=lightgray, style=filled, shape=tab];\n';
+		text += start + ' -> b' + Format.getHexString(startAddress,4) + ';\n';
+		let end = 'b' + addressString + 'end';
+		text += end + ' [label="end", shape=doublecircle];\n';
+
+		// Get all addresses belonging to the subroutine
+		const addrsArray = new Array<number>();
+		this.getSubroutineAddresses(startAddress, addrsArray);
+		// Now reduce array. I.e. only a coherent block will be treated as a subroutine.
+		this.reduceSubroutineAddresses(startAddress, addrsArray);
+
+		// get the text for all branches
+		const processedAddrsArray = new Array<number>();
+		const bText = this.getBranchForAddress(startAddress, addrsArray, processedAddrsArray);
+		text += bText;
+
+		if(startAddress == 0xA3AB)
+			break;
+
+
+		startAddress = 0xA3AB;
+		}
+
+		// ending
+		text += '\n}\n';
+
+		// return
+		return text;
+	}
+
 
 	/**
-	 * Returns all callers of a label.
-	 * I.e. the parents of the references.
-	 * @param label The label for which you need the callers.
-	 * @return Array of caller labels.
+	 * Returns the text of one branch (or recursively more branches)
+	 * of the flowchart of one subroutine.
+	 * @param address The start address of the branch.
+	 * @param addrsArray The array that contains all addresses belonging to the subroutine.
+	 * @param processedAddrsArray At the start an empty array. Is filled with all processed addresses.
 	 */
-	/*
-	protected getCallersOf(label: DisLabel): Array<DisLabel> {
-		const callers = new Array<DisLabel>();
-		for(const ref of label.references) {
-			const parent = this.addressParents[ref];
-			assert(parent);
-			callers.push(parent);
+	protected getBranchForAddress(address: number, addrsArray: Array<number>, processedAddrsArray: Array<number>): string {
+		const branch = 'b' + Format.getHexString(address,4);
+		let text = branch + ' [label="';
+		let disTexts: Array<string> = [];
+		let opcode;
+
+		do {
+			// Add to new array
+			processedAddrsArray.push(address);
+
+			// check opcode
+			opcode = Opcode.getOpcodeAt(this.memory, address);
+
+			// Add disassembly to label text
+			const disText = opcode.disassemble();
+			disTexts.push(disText.mnemonic);
+
+			// Next
+			address += opcode.length;
+
+
+		} while(!(opcode.flags & OpcodeFlag.BRANCH_ADDRESS) // branch-address includes a CALL
+			&& !(opcode.flags & OpcodeFlag.RET)
+			&& !(opcode.flags & OpcodeFlag.STOP));
+
+		// finish text
+		text += disTexts.join('\\l') + '\\l';
+		text += '"];\n'
+
+		// Maybe branch
+		if(opcode.flags & OpcodeFlag.BRANCH_ADDRESS) {
+			const branchAddress = opcode.value;
+			// Check if outside
+			if(addrsArray.indexOf(branchAddress) >= 0) {
+				// Inside
+				text += branch + ' -> b' + Format.getHexString(address,4) + ';\n';
+				// Check if already disassembled
+				if(processedAddrsArray.indexOf(branchAddress) < 0) {
+					// No, so disassemble
+					const textBranch = this.getBranchForAddress(branchAddress, addrsArray, processedAddrsArray);
+					text += textBranch;
+				}
+			}
 		}
-		return callers;
+
+
+		// Check if we need to call another branch
+		if(!(opcode.flags & OpcodeFlag.STOP)) {
+			// Call another branch.
+			// Check if outside
+			if(addrsArray.indexOf(address) >= 0) {
+				// Inside
+				text += branch + ' -> b' + Format.getHexString(address,4) + ';\n';
+				// Check if already disassembled
+				if(processedAddrsArray.indexOf(address) < 0) {
+					// No, so disassemble
+					const textBranch = this.getBranchForAddress(address, addrsArray, processedAddrsArray);
+					text += textBranch;
+				}
+			}
+		}
+
+		// Check if subroutine ends here (RET or JP)
+		if(opcode.flags & (OpcodeFlag.STOP|OpcodeFlag.RET)) {
+			// Subroutine ends
+			assert(addrsArray.length > 0);
+			text += branch + ' -> b' + Format.getHexString(addrsArray[0],4) + 'end;\n';
+		}
+
+		// Return
+		return text;
 	}
-	*/
+
 }
 

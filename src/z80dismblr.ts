@@ -14,15 +14,20 @@ class Startup {
     /// The disassembly output file path.
     protected static outPath: string|undefined;
 
-    /// The dot (graphviz) output path.
-    protected static dotPath: string|undefined;
+    /// The caller-graph dot (graphviz) output path.
+    protected static callGraphOutPath: string|undefined;
 
-   /// The labels output path.
-   protected static lblsOutPath: string|undefined;
+    /// The labels output path.
+    protected static lblsOutPath: string|undefined;
 
-   /// The labels input path.
-   protected static lblsInPath: string|undefined;
+    /// The labels input path.
+    protected static lblsInPath: string|undefined;
 
+    /// The out path for the flow-chart dot file.
+    protected static flowChartOutPath: string|undefined;
+
+    /// The flow chart start address.
+    protected static flowChartStartAddress: number;
 
     /**
      * Main function. Called on startup.
@@ -56,8 +61,8 @@ class Startup {
             this.processArgs(args);
 
             // Check if any output is given
-            if(!this.outPath && !this.dotPath) {
-                throw "You need to set an output path via '--out' or '--dot'.";
+            if(!this.outPath && !this.callGraphOutPath) {
+                throw "You need to set an output path via '--out' or '--callgraph'.";
             }
 
             // Lower case opcodes?
@@ -79,14 +84,23 @@ class Startup {
             }
 
             // Output dot (graphviz)
-            if(this.dotPath) {
+            if(this.callGraphOutPath) {
                 // labels/references to dot file
-                let name = Path.basename(this.dotPath);
+                let name = Path.basename(this.callGraphOutPath);
                 const k = name.indexOf('.');
                 if(k > 0)
                     name = name.substr(0, k);
                 const text = this.dasm.getCallGraph(name);
-                writeFileSync(this.dotPath, text);
+                writeFileSync(this.callGraphOutPath, text);
+            }
+
+            // Output flow-chart file
+            if(this.flowChartOutPath) {
+                // Check if start address given
+                if(!this.flowChartStartAddress)
+                    throw "You need to give a start address for the flow chart with '--flowchartaddress'";
+                const text = this.dasm.getFlowChart(this.flowChartStartAddress);
+                writeFileSync(this.flowChartOutPath, text);
             }
 
             // Output labels
@@ -176,11 +190,11 @@ z80dismblr [options]
         --addbytes: Print also the byte values of the opcodes (the opcode bytes).
 
         Dot options:
-        --dotout file: Output a dot file. This file can be used for visualization
+        --callgraphout file: Output a dot file. This file can be used for visualization
             with graphviz. Each bubble is a function and is connected to other
             functions that it calls. Only main labels are written (i.e. no local labels.)
-        --dotformat formatstring: You can format the text in the dot nodes.
-            E.g. use \'--dotformat "\${label}\\n\${address}\\nCC=\${CC}\\nSize=\${size}\\ninstr=\${instructions}\\n"
+        --callgraphformat formatstring: You can format the text in the dot nodes.
+            E.g. use \'--callgraphformat "\${label}\\n\${address}\\nCC=\${CC}\\nSize=\${size}\\ninstr=\${instructions}\\n"
             will show the label name, it's address, the cyclomatic complexity, the size
             in bytes and the number of instructions. Possible labels are:
             - \${label}: The label name.
@@ -189,7 +203,7 @@ z80dismblr [options]
             - \${size}: The size of the subroutine in bytes.
             - \${instructions}: The number of instructions of the subroutine.
             You can use '\\n' for centered text, and '\\l', '\\r' for left- rightaligned text.
-        --dothighlight addr1[=red|green|...] addr2 ... addrN: Highlight the associated
+        --callgraphhighlight addr1[=red|green|...] addr2 ... addrN: Highlight the associated
         nodes in the dot file with a color.
 
         Labels options:
@@ -208,6 +222,11 @@ z80dismblr [options]
                 8000 prg_start
 
                 8002 ; add x+5
+
+        Flow-Charts:
+        --flowchartout file: Output file. A file will be generated that contains the flow-chart
+            a particular address (subroutine).
+        --flowchartaddress address: This defines the start address of the flow-chart.
     `);
     }
 
@@ -477,15 +496,15 @@ z80dismblr [options]
                 // DOT:
 
                 // output dot file
-                case '--dotout':
-                    this.dotPath = args.shift();
-                    if(!this.dotPath) {
+                case '--callgraphout':
+                    this.callGraphOutPath = args.shift();
+                    if(!this.callGraphOutPath) {
                         throw arg + ': No path given.';
                     }
                     break;
 
                 // Format string for the dot nodes
-                case '--dotformat':
+                case '--callgraphformat':
                     const dotformat = args.shift();
                     if(!dotformat) {
                         throw arg + ': No format string given.';
@@ -494,7 +513,7 @@ z80dismblr [options]
                     break;
 
                 // Highlight certain addressed in dot file
-                case '--dothighlight':
+                case '--callgraphhighlight':
                     while(true) {
                         // parse address
                         const addressColorString = args.shift();
@@ -546,6 +565,30 @@ z80dismblr [options]
                     if(!this.lblsInPath) {
                         throw arg + ': No path given.';
                     }
+                    break;
+
+
+                // Flow-Charts:
+
+                // Flow-Chart outfile
+                case '--flowchartout':
+                    this.flowChartOutPath = args.shift();
+                    if(!this.flowChartOutPath) {
+                        throw arg + ': No path given.';
+                    }
+                    break;
+
+                // Labels in file
+                case '--flowchartaddress':
+                    // parse address
+                    addressString = args.shift();
+                    // Convert to number
+                    addr = this.parseValue(addressString);
+                    if(isNaN(addr)) {
+                        throw arg + ": Not a number: " + addressString;
+                    }
+                    // Add to array
+                    this.flowChartStartAddress = addr;
                     break;
 
 
