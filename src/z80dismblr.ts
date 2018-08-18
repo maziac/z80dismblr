@@ -27,7 +27,7 @@ class Startup {
     protected static flowChartOutPath: string|undefined;
 
     /// The flow chart start address.
-    protected static flowChartStartAddress: number;
+    protected static flowChartStartAddresses = new Array<number>();
 
     /**
      * Main function. Called on startup.
@@ -97,9 +97,9 @@ class Startup {
             // Output flow-chart file
             if(this.flowChartOutPath) {
                 // Check if start address given
-                if(!this.flowChartStartAddress)
-                    throw "You need to give a start address for the flow chart with '--flowchartaddress'";
-                const text = this.dasm.getFlowChart(this.flowChartStartAddress);
+                if(this.flowChartStartAddresses.length == 0)
+                    throw "You need to set at least one start address for a flow chart with '--flowchartaddresses'";
+                const text = this.dasm.getFlowChart(this.flowChartStartAddresses);
                 writeFileSync(this.flowChartOutPath, text);
             }
 
@@ -226,7 +226,7 @@ z80dismblr [options]
         Flow-Charts:
         --flowchartout file: Output file. A file will be generated that contains the flow-chart
             a particular address (subroutine).
-        --flowchartaddress address: This defines the start address of the flow-chart.
+        --flowchartaddresses addr1 addr2 ... addrN: This defines the start addresses of the flow-charts. At least one address is required.
     `);
     }
 
@@ -545,7 +545,7 @@ z80dismblr [options]
                         }
                         // Add pair to map
                         this.dasm.setDotHighlightAddress(addr, colorString);
-                        }
+                    }
                     break;
 
 
@@ -578,17 +578,26 @@ z80dismblr [options]
                     }
                     break;
 
-                // Labels in file
-                case '--flowchartaddress':
-                    // parse address
-                    addressString = args.shift();
-                    // Convert to number
-                    addr = this.parseValue(addressString);
-                    if(isNaN(addr)) {
-                        throw arg + ": Not a number: " + addressString;
+                // The addresses for the flow charts
+                case '--flowchartaddresses':
+                    while(true) {
+                        // parse address
+                        const addressString = args.shift();
+                        if(!addressString)
+                            break;
+                        // Check for next option
+                        if(addressString.startsWith('--')) {
+                            // is the next arguments
+                            args.unshift(addressString);
+                            break;
+                        }
+                        addr = this.parseValue(addressString);
+                        if(isNaN(addr)) {
+                            throw arg + ": Not a number: " + addressString;
+                        }
+                       // Add to array
+                       this.flowChartStartAddresses.push(addr);
                     }
-                    // Add to array
-                    this.flowChartStartAddress = addr;
                     break;
 
 

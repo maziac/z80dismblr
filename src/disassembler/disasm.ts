@@ -2323,45 +2323,39 @@ export class Disassembler extends EventEmitter {
 
 
 	/**
-	 * Returns a Flow-Chart of the given participant address.
+	 * Returns a Flow-Chart for the given addresses.
 	 * Output can be used as input to graphviz.
-	 * @param startAddress The start address of the subroutine.
+	 * @param startAddresses An array with the start address of the subroutines.
 	 */
-	public getFlowChart(startAddress: number): string {
+	public getFlowChart(startAddresses: Array<number>): string {
 		// header
 		let text = 'digraph FlowChart {\n\n';
 
 		// appearance
 		text += 'node [shape=box];\n';
 
-		while(true) {
-		// Start
-		let label = this.labels.get(startAddress);
-		let name = (label) ? label.name+'\\l' : '';
-		const addressString = Format.getHexString(startAddress,4);
-		name += (label) ? '[' + addressString + ']' + '\\l' : addressString + '\\l' ;
-		let start = 'b' + addressString + 'start';
-		text += start + ' [label="' + name + '", fillcolor=lightgray, style=filled, shape=tab];\n';
-		text += start + ' -> b' + Format.getHexString(startAddress,4) + ';\n';
-		let end = 'b' + addressString + 'end';
-		text += end + ' [label="end", shape=doublecircle];\n';
+		for(const startAddress of startAddresses) {
+			// Start
+			const label = this.labels.get(startAddress);
+			let name = (label) ? label.name+'\\l' : '';
+			const addressString = Format.getHexString(startAddress,4);
+			name += (label) ? '[' + addressString + ']' + '\\l' : addressString + '\\l' ;
+			const start = 'b' + addressString + 'start';
+			text += start + ' [label="' + name + '", fillcolor=lightgray, style=filled, shape=tab];\n';
+			text += start + ' -> b' + Format.getHexString(startAddress,4) + ';\n';
+			const end = 'b' + addressString + 'end';
+			text += end + ' [label="end", shape=doublecircle];\n';
 
-		// Get all addresses belonging to the subroutine
-		const addrsArray = new Array<number>();
-		this.getSubroutineAddresses(startAddress, addrsArray);
-		// Now reduce array. I.e. only a coherent block will be treated as a subroutine.
-		this.reduceSubroutineAddresses(startAddress, addrsArray);
+			// Get all addresses belonging to the subroutine
+			const addrsArray = new Array<number>();
+			this.getSubroutineAddresses(startAddress, addrsArray);
+			// Now reduce array. I.e. only a coherent block will be treated as a subroutine.
+			this.reduceSubroutineAddresses(startAddress, addrsArray);
 
-		// get the text for all branches
-		const processedAddrsArray = new Array<number>();
-		const bText = this.getBranchForAddress(startAddress, addrsArray, processedAddrsArray);
-		text += bText;
-
-		if(startAddress == 0xA3AB)
-			break;
-
-
-		startAddress = 0xA3AB;
+			// get the text for all branches
+			const processedAddrsArray = new Array<number>();
+			const bText = this.getBranchForAddress(startAddress, addrsArray, processedAddrsArray);
+			text += bText;
 		}
 
 		// ending

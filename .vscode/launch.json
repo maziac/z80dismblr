@@ -29,7 +29,7 @@
 				//"--args", "argsfile_esxdos",
 				"--sna", "src/tests/data/sw.sna",
 				"--out", "out/tests/out2.asm",
-				"--dotout", "out/tests/out2.dot",
+				"--callgraphout", "out/tests/out2.dot",
 				"--addbytes",
 				"--tr", "src/tests/data/sw_short.tr",
 				//"--tr", "src/tests/data/sw.tr",
@@ -38,10 +38,14 @@
 				//"--codelabel", "0x735E", "SUB19",
 				//"--codelabel", "0x7390", "SUB20",
 
-				//"--dothighlight", "0x7015=red",
+				//"--callgraphhighlight", "0x7015=red",
 
-				"--lblsout", "out/tests/out2.lbls",
-				"--lblsin",  "out/tests/in2.lbls",
+				//"--lblsout", "out/tests/out2.lbls",
+				//"--lblsin",  "out/tests/in2.lbls",
+
+				"--flowchartout", "out/tests/msc.dot",
+				"--flowchartaddresses", "7015h", "A3ABh"
+
 			],
             "outFiles": [
                 "${workspaceFolder}/**/*.js"
