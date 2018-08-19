@@ -13,6 +13,7 @@ export enum OpcodeFlag {
 	STOP = 0x04,	///< is a stop-code. E.g. ret, reti, jp or jr. Disassembly procedure stops here.
 	RET = 0x08,		///< is a RETURN from a subroutine
 	CONDITIONAL = 0x10,	///< is a conditional opcode, e.g. JP NZ, RET Z, CALL P etc.
+	LOAD_STACK_TOP = 0x20,	///< value is the stack top value.
 }
 
 
@@ -135,6 +136,11 @@ export class Opcode {
 						// Check if conditional or stop code
 						this.flags |= (name.indexOf(',') >= 0) ? OpcodeFlag.CONDITIONAL : OpcodeFlag.STOP;
 					}
+					else if(name.startsWith("LD SP,")) {
+						// The stack pointer is loaded, so this is the top of the stack.
+						this.valueType = NumberType.DATA_STACK_TOP;
+						this.comment = 'top of stack';
+					}
 					else {
 						// Either call nor jp
 						this.valueType = NumberType.NUMBER_WORD;
@@ -232,6 +238,10 @@ export class Opcode {
 			case NumberType.CODE_SUB:
 			case NumberType.DATA_LBL:
 			case NumberType.NUMBER_WORD:
+				// word value
+				this.value = memory.getWordValueAt(address+1);
+			break;
+			case NumberType.DATA_STACK_TOP:
 				// word value
 				this.value = memory.getWordValueAt(address+1);
 			break;

@@ -35,7 +35,7 @@ export class Disassembler extends EventEmitter {
 	/// Queue for start addresses only addresses of opcodes
 	protected addressQueue = new Array<number>();
 
-	// USed for (user) comments for labels (addresses).
+	// Used for (user) comments for labels (addresses).
 	protected addressComments = new Map<number, Comment>();
 
 	/// Map for statistics (size of subroutines, cyclomatic complexity)
@@ -804,9 +804,20 @@ export class Disassembler extends EventEmitter {
 		}
 		else if(opcode.valueType == NumberType.DATA_LBL) {
 			// It's a data label, like "LD A,(nn)"
-			const address = opcode.value;
+			let address = opcode.value;
+			// Check if it the top of stack
+			if(opcode.flags & OpcodeFlag.LOAD_STACK_TOP) {
+				// yes, top of stack i.e. "LD SP,nn".
+				// In this case the data 2 byte below is shown as last stack element
+				address -= 2;
+				// add comment
+				const comment = new Comment();
+				comment.addBefore('Last element of stack:');
+				comment.addAfter('Top of stack.');
+				this.addressComments.set(address, comment);
+			}
+			// "normal", e.g. "LD A,(nn)"
 			const attr = this.memory.getAttributeAt(address);
-
 			// Create new label or prioritize if label already exists
 			this.setFoundLabel(address, new Set([opcodeAddress]), opcode.valueType, attr);
 		}
@@ -1739,6 +1750,7 @@ export class Disassembler extends EventEmitter {
 			case NumberType.CODE_SUB: name = 'Subroutine'; break;
 			case NumberType.CODE_RST: name = 'Restart'; break;
 			case NumberType.DATA_LBL: name = 'Data'; break;
+			case NumberType.DATA_STACK_TOP: name = 'Top of stack'; break;
 			default: name = 'Label'; break;
 		}
 
@@ -1802,6 +1814,15 @@ export class Disassembler extends EventEmitter {
 				break;
 			}
 
+			case NumberType.DATA_STACK_TOP:
+			{
+				// This data is accessed below the actual address. So it does not make sense to add who it accesses.
+				line1 = name;
+				lineArray.push(line1);
+				lineArray.push('\n');
+				break;
+			}
+
 			default:
 			{
 				line1 = name;
@@ -1843,7 +1864,7 @@ export class Disassembler extends EventEmitter {
 
 
 	/**
-	 * Reads in a filerom the user that sets address labels and the comments to show in the disassembly.
+	 * Reads in a file from the user that sets address labels and the comments to show in the disassembly.
 	 * @param commentsFile The file to read. Format:
 	 * ; comment1
 	 * address: label ; comment2
