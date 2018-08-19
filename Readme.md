@@ -278,9 +278,9 @@ With '--flowchartout filename' you specify the output path. The generated file i
 with '--flowchartaddresses addr1 addr2 ... addrN' you can specify one or more subroutines that you want to visualize.
 
 E.g.:
-
+~~~
 $ ./z80dismblr-macos --sna starwarrior.sna --flowchartout fc.dot --flowchartaddresses 7015h A3ABh
-
+~~~
 will create the following graph:
 
 ![starwarrior_fc_dot](documentation/images/starwarrior_fc_dot.jpg)
