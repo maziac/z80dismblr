@@ -2355,7 +2355,7 @@ export class Disassembler extends EventEmitter {
 			const label = this.labels.get(startAddress);
 			let name = (label) ? label.name+'\\l' : '';
 			const addressString = Format.getHexString(startAddress,4);
-			name += (label) ? '[' + addressString + ']' + '\\l' : addressString + '\\l' ;
+			name += (label) ? '[0x' + addressString + ']' + '\\l' : '0x' + addressString + '\\l' ;
 			const start = 'b' + addressString + 'start';
 			text += start + ' [label="' + name + '", fillcolor=lightgray, style=filled, shape=tab];\n';
 			text += start + ' -> b' + Format.getHexString(startAddress,4) + ';\n';
@@ -2409,6 +2409,9 @@ export class Disassembler extends EventEmitter {
 			// Next
 			address += opcode.length;
 
+			// stop if a label is found
+			if(this.labels.get(address))
+				break;
 
 		} while(!(opcode.flags & OpcodeFlag.BRANCH_ADDRESS) // branch-address includes a CALL
 			&& !(opcode.flags & OpcodeFlag.RET)
@@ -2424,7 +2427,7 @@ export class Disassembler extends EventEmitter {
 			// Check if outside
 			if(addrsArray.indexOf(branchAddress) >= 0) {
 				// Inside
-				text += branch + ' -> b' + Format.getHexString(address,4) + ';\n';
+				text += branch + ' -> b' + Format.getHexString(branchAddress,4) + ' [headport="n", tailport="r"];\n';
 				// Check if already disassembled
 				if(processedAddrsArray.indexOf(branchAddress) < 0) {
 					// No, so disassemble

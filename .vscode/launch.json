@@ -44,7 +44,7 @@
 				//"--lblsin",  "out/tests/in2.lbls",
 
 				"--flowchartout", "out/tests/msc.dot",
-				"--flowchartaddresses", "7015h", "A3ABh"
+				"--flowchartaddresses", "CD10h", //"7015h", "A3ABh"
 
 			],
             "outFiles": [
