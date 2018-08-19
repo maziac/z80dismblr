@@ -12,7 +12,9 @@ Please don't hesitate to report any problem that you find.
 - Can read MAME trace (*.tr) files for better results.
 - Supports undocumented opcodes.
 - Supports Spectrum Next opcodes.
-- .dot output of caller graphs for visualization with Graphviz
+- Graphical visualization via Graphivz .dot of
+  - call graphs
+  - flow-charts
 - Disassembles the given binary via Code-Flow-Grap analysis.
 - Divides into data and code area.
 - Separates subroutines visually.
@@ -20,9 +22,9 @@ Please don't hesitate to report any problem that you find.
 - Uses "local" label syntax inside subroutines.
 - Points out all callers/callees of a subroutine.
 - Customization of the output
-	- Label prefixes
-	- List file with or without address and opcode bytes
-	- Opcodes in upper or lower case
+  - Label prefixes
+  - List file with or without address and opcode bytes
+  - Opcodes in upper or lower case
 
 
 ## Installation
@@ -52,7 +54,7 @@ _Note: Usage is shown here for MacOS only, it should work similar for Linux and 
 To create an assembler listing for the snapshot file 'myfile.sna' just use:
 ~~~
 $ ./z80dismblr-macos --sna myfile.sna --out myfile.list
-~~~~
+~~~
 
 It reads in the file (which is in SNA file format) and writes it to the 'myfile.list' file.
 
@@ -105,7 +107,7 @@ For binary files you have to provide additional info of the offset address
 of the loaded file.
 ~~~
 $ ./z80dismblr-macos --bin 0 rom1.bin --bin 0x1000 rom2.bin --bin 0x2000 rom3.bin --codelabel 0x800 MAIN_START --out roms.list
-~~~~
+~~~
 This will load 3 binary files (rom1.bin, rom2.bin and rom3.bin).
 rom1.bin starts at address 0, rom2.bin at address 0x1000 and rom3.bin at address 0x2000.
 There are 2 initial labels where code starts: at 0x800 the main program starts. Address 0 is added automatically as program start.
@@ -142,6 +144,7 @@ SUB156:
              jr   nz,.sub156_loop ; 8E6Dh
              ret
 ~~~
+
 
 Please use
 ~~~
@@ -182,8 +185,9 @@ Additional the size of the subroutine is shown in bytes and the cyclomatic compl
 D72E SUB299:
 ~~~
 
+## Visualization
 
-## Caller Graphs
+### Caller Graphs
 
 With the '--callgraphout' option it is possible to let z80dismblr create .dot files for use with [Graphviz](http://www.graphviz.org).
 
@@ -234,7 +238,6 @@ $ Warning: Address: 711Dh. A subroutine was found that calls itself recursively 
 ~~~
 In the dot graphic the subroutine is highlighted by a different color.
 
-
 ---
 
 
@@ -248,7 +251,7 @@ A call to unassigned memory result in a gray bubble (in case of SNA files for th
 ![](documentation/images/starwarrior_dot_equ.jpg)
 
 
-### Sub Graphs
+#### Sub Graphs
 
 It is also possible to let z80dismblr generate only a part of the caller graphs e.g. to focus on a certain subroutine.
 
@@ -266,6 +269,22 @@ The result is a call graph just for the subroutine at address 0x753E:
 ![](documentation/images/starwarrior_sub19.jpg)
 
 
+
+### Flow Charts
+
+Via the '--flowchart...' arguments it is possible to create flowcharts of subroutines.
+
+With '--flowchartout filename' you specify the output path. The generated file is a .dot file that can be visualized with [Graphviz](http://www.graphviz.org).
+
+with '--flowchartaddresses addr1 addr2 ... addrN' you can specify one or more subroutines that you want to visualize.
+
+E.g.:
+
+$ ./z80dismblr-macos --sna starwarrior.sna --flowchartout fc.dot --flowchartaddresses 7015h A3ABh
+
+will create the following graph:
+
+![starwarrior_fc_dot](documentation/images/starwarrior_fc_dot.jpg)
 
 ## "Interactive" Usage
 
@@ -318,7 +337,7 @@ The original disassembled code:
 7634 18 F2        jr   .sub055_loop 	; 7628h
 ~~~
 
-After analysing we found out what the purpose is and how it works so we add comments in a special file:
+After analysing we find out what the purpose is and how it works so we add comments in a special file:
 ~~~
 ; Subroutine to print a text in HL until an end-of-string (0xFF) is found.
 ; There is a little formatting allowed:
@@ -332,7 +351,6 @@ After analysing we found out what the purpose is and how it works so we add comm
 760f ; integer (%d)
 
 7613 ; string (%s)
-
 ~~~
 
 This results in the more readable disassembly:
@@ -423,7 +441,7 @@ Consider the following example:
 0017h C9           RET
 
 0018h FF           ??
-~~~~
+~~~
 
 If z80dismblr is told to start at address 0008h it steps through the code until a branch (JR, JR cc, JP, JP cc, CALL or Call cc) is found.
 It then uses the new address as another start point to opcodes.
@@ -580,6 +598,5 @@ START:
              CALL SUB2   ; 8004h
              RET
 ~~~
-
 
 

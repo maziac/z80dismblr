@@ -8,8 +8,6 @@ export const enum NumberType {
 
 	// "Data LBL"-type, low priority, might be changed to SUB if necessary.
 	DATA_LBL,
-	// The top of the stack. I.e. at this point there is no data but below. Found by searching for "LD SP,#nn".
-	DATA_STACK_TOP,
 	// Label for "out/in" command
 	PORT_LBL,	// TODO: Port needs other handling. Is another space, i.e. a memory label nd a port label could have same number.
 

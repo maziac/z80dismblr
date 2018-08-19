@@ -138,7 +138,8 @@ export class Opcode {
 					}
 					else if(name.startsWith("LD SP,")) {
 						// The stack pointer is loaded, so this is the top of the stack.
-						this.valueType = NumberType.DATA_STACK_TOP;
+						this.valueType = NumberType.DATA_LBL;
+						this.flags |= OpcodeFlag.LOAD_STACK_TOP;
 						this.comment = 'top of stack';
 					}
 					else {
@@ -238,10 +239,6 @@ export class Opcode {
 			case NumberType.CODE_SUB:
 			case NumberType.DATA_LBL:
 			case NumberType.NUMBER_WORD:
-				// word value
-				this.value = memory.getWordValueAt(address+1);
-			break;
-			case NumberType.DATA_STACK_TOP:
 				// word value
 				this.value = memory.getWordValueAt(address+1);
 			break;

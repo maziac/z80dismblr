@@ -25,7 +25,7 @@ export class Disassembler extends EventEmitter {
 	/// The labels.
 	protected labels = new Map<number,DisLabel>();
 
-	/// Temporarily offset labels. Just an offset number ot the address of the real label.
+	/// Temporarily offset labels. Just an offset number of the address of the real label.
 	protected offsetLabels = new Map<number,number>();
 
 	/// Here the association from an address to it's parent, i.e. the subroutine it
@@ -325,7 +325,7 @@ export class Disassembler extends EventEmitter {
 
 	/**
 	 * You can set one (or more) initial labels here.
-	 * At least one lable should be set, so that the disassembly
+	 * At least one label should be set, so that the disassembly
 	 * algorithm knows where to start from.
 	 * More labels could be set e.g. to tell where the interrupt starts at.
 	 * Optionally a name for the label can be given.
@@ -809,12 +809,17 @@ export class Disassembler extends EventEmitter {
 			if(opcode.flags & OpcodeFlag.LOAD_STACK_TOP) {
 				// yes, top of stack i.e. "LD SP,nn".
 				// In this case the data 2 byte below is shown as last stack element
-				address -= 2;
+				const offs = -2;
+				// add offset label
+				this.offsetLabels.set(address, offs);
+				// change address
+				address += offs;
 				// add comment
-				const comment = new Comment();
-				comment.addBefore('Last element of stack:');
-				comment.addAfter('Top of stack.');
-				this.addressComments.set(address, comment);
+				if(!this.addressComments.get(address)) {
+					const comment = new Comment();
+					comment.addBefore('; Last element of stack:');
+					this.addressComments.set(address, comment);
+				}
 			}
 			// "normal", e.g. "LD A,(nn)"
 			const attr = this.memory.getAttributeAt(address);
@@ -1750,7 +1755,6 @@ export class Disassembler extends EventEmitter {
 			case NumberType.CODE_SUB: name = 'Subroutine'; break;
 			case NumberType.CODE_RST: name = 'Restart'; break;
 			case NumberType.DATA_LBL: name = 'Data'; break;
-			case NumberType.DATA_STACK_TOP: name = 'Top of stack'; break;
 			default: name = 'Label'; break;
 		}
 
@@ -1811,15 +1815,6 @@ export class Disassembler extends EventEmitter {
 
 					lineArray.push(line3);
 				}
-				break;
-			}
-
-			case NumberType.DATA_STACK_TOP:
-			{
-				// This data is accessed below the actual address. So it does not make sense to add who it accesses.
-				line1 = name;
-				lineArray.push(line1);
-				lineArray.push('\n');
 				break;
 			}
 
