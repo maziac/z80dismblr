@@ -2,7 +2,6 @@
 
 z80dismblr is a Z80 command line disassembler written in typescript.
 
-It is available now in version 1.1.0.
 I.e. it is complete and working in general but it is still very young so there might be some faults still.
 Please don't hesitate to report any problem that you find.
 
@@ -251,7 +250,7 @@ A call to unassigned memory result in a gray bubble (in case of SNA files for th
 ![](documentation/images/starwarrior_dot_equ.jpg)
 
 
-#### Sub Graphs
+#### Sub Call Graphs
 
 It is also possible to let z80dismblr generate only a part of the caller graphs e.g. to focus on a certain subroutine.
 
