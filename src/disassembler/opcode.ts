@@ -98,7 +98,7 @@ export class Opcode {
 	 */
 	constructor(code?: number, name = '') {
 		if(code == undefined)
-			return;	// Ignore the rest because values wil becopied anyway.
+			return;	// Ignore the rest because values wil be copied anyway.
 		name = name.trim();
 		this.code = code;
 		this.comment = '';
@@ -123,7 +123,7 @@ export class Opcode {
 				else {
 					// now check for opcode flags
 					if(name.startsWith("CALL")) {
-						this.flags |= OpcodeFlag.CALL | OpcodeFlag.BRANCH_ADDRESS;
+						this.flags |= OpcodeFlag.CALL|OpcodeFlag.BRANCH_ADDRESS;
 						this.valueType = NumberType.CODE_SUB;
 						// Check if conditional
 						if(name.indexOf(',') >= 0)

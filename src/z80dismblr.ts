@@ -1,7 +1,9 @@
 import { Disassembler } from './disassembler/disasm';
 import { readFileSync, writeFileSync } from 'fs';
-import { Opcode } from './disassembler/opcode';
+import { Opcode, Opcodes, OpcodeFlag } from './disassembler/opcode';
+import { CustomOpcode } from './disassembler/customopcode';
 import * as Path from 'path';
+import * as assert from 'assert';
 
 class Startup {
 
@@ -62,7 +64,7 @@ class Startup {
 
             // Check if any output is given
             if(!this.outPath && !this.callGraphOutPath) {
-                throw "You need to set an output path via '--out' or '--callgraph'.";
+                throw "You need to set an output path via '--out' or '--callgraphout'.";
             }
 
             // Lower case opcodes?
@@ -206,7 +208,7 @@ z80dismblr [options]
         --callgraphhighlight addr1[=red|green|...] addr2 ... addrN: Highlight the associated
         nodes in the dot file with a color.
 
-        Labels options:
+    Labels options:
         --lblsin file: Input a file with labels, addresses and comments.
             If a label is specified here it will be used instead of the internally generated
             label.
@@ -223,10 +225,32 @@ z80dismblr [options]
 
                 8002 ; add x+5
 
-        Flow-Charts:
+    Flow-Charts:
         --flowchartout file: Output file. A file will be generated that contains the flow-chart
             a particular address (subroutine).
         --flowchartaddresses addr1 addr2 ... addrN: This defines the start addresses of the flow-charts. At least one address is required.
+
+    User opcodes:
+        It is possible to create used-defined-opcodes. With this additional opcodes can be
+        modelled. Main purpose is to allow a "custom" opcode for special command sequences.
+        E.g. it would be possible to define a special RST command that is followed by a byte that
+        further distinguishes what the RST should do. See the example:
+        --opcode "opcode1 ... 'format' [CALL=nn] [conditional]"
+            opcodeX: the opcode (or opcode sequence), e.g. "0xD7"
+            'format': the text that should appear in the disassembly, e.g. 'RST 16,#n'.
+            It can contain further variables:
+                #n: a single byte that follows the opcode(s)
+                #nn: a word that follows the opcode(s)
+            type:
+                "CALL=nn": This is basically a subroutine call that is ended with "RET" or similar. nn is the calling address.
+            conditional: Use "conditional" if it isconditionally executed like e.g. "CALL Z,0800h".
+        Example:
+        --opcode "0xD7 'RST 16,#n' CALL=0x0010"
+        This would overwrite the existing opcode "RST 16" (0xD7). It additionally defines a
+        following byte that is used in this "RST 16" subroutine by stack manipulation. This
+        byte would be shown in the disassembly.
+        Furthermore please note that the next disassembled opcode will start after this byte.
+
     `);
     }
 
@@ -595,11 +619,86 @@ z80dismblr [options]
                         if(isNaN(addr)) {
                             throw arg + ": Not a number: " + addressString;
                         }
-                       // Add to array
-                       this.flowChartStartAddresses.push(addr);
+                        // Add to array
+                        this.flowChartStartAddresses.push(addr);
                     }
                     break;
 
+
+                // User opcodes: format: '--opcode "opcode1 ... 'format' [type=nn] [conditional]"'
+                case '--opcode':
+                    const opcString = args.shift();
+                    if(!opcString) {
+                        throw arg + ': No opcode string given.';
+                    }
+
+                    const opcs = new Array<number>();
+                    let name = '';
+                    let flags = OpcodeFlag.NONE;
+                    let branchString = '';
+                    let k = 0;
+                    const len = opcString.length;
+                    while(k < len) {
+                        // Find first non whitespace
+                        k = this.skipWhiteSpaces(opcString, k);
+                        // Find end
+                        let l = this.findWhiteSpace(opcString, k);
+                        // get part
+                        const elem = opcString.substr(k, l-k);
+                        // read parts
+                        let state = 0;
+                        switch(state) {
+                            case 0: // opcode bytes
+                                if(elem.startsWith("'")) {
+                                    k ++;
+                                    l = opcString.indexOf("'", k);
+                                    if(l < 0) {
+                                        throw arg + ": Wrong opcode string: " + opcString;
+                                    }
+                                    name = opcString.substr(k, l-k);
+                                    // Next state
+                                    state ++;
+                                }
+                                else {
+                                    // read byte opcode
+                                    const byte = this.parseValue(elem);
+                                    opcs.push(byte);
+                                }
+                                break;
+
+                            case 1: // the rest: CALL, conditional ...
+                                if(elem.startsWith("CALL=")) {
+                                    const valString = elem.substr(5);
+                                    branchString = valString;
+                                    flags |= OpcodeFlag.CALL|OpcodeFlag.BRANCH_ADDRESS;
+                                    /*
+                                    const addr = this.parseValue(addrString);
+                                    if(isNaN(addr)) {
+                                        throw arg + ": Wrong address in: " + elem;
+                                    }
+                                    */
+                                }
+                                else if(elem == 'conditional') {
+                                    // Is a conditional opcode
+                                    flags |= OpcodeFlag.CONDITIONAL;
+                                }
+                                else {
+                                    throw arg + ": Unknown argument: " + elem;
+                                }
+                                break;
+
+                            default:
+                                assert(false);
+                                break;
+                        }
+                        // Create new opcode
+                        this.dasm.createNewOpcode(opcs, name, flags, branchString);
+
+                        // Next
+                        k = l+1;
+                    }
+
+                    break;
 
                 default:
                     throw "Unknown argument: '" + arg + "'";

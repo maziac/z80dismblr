@@ -1,3 +1,6 @@
+## 1.4.0
+- User opcodes
+
 ## 1.3.0
 - Output of flowcharts:
   "--flowchartout" and "--flowchartaddresses: Output flow-chart for a particular address (subroutine).
