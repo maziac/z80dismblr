@@ -599,3 +599,37 @@ START:
 ~~~
 
 
+
+## Misc
+
+### Opcode Extensions
+
+It is possible to tweak some opcodes a little bit. I.e. it is possible to instruct z80dismblr to treat the data following the opcode in a special way and add it to the disassembly text of the preceeding opcode.
+
+E.g. consider the following assembler listing
+
+~~~
+LD A,5
+RST 8
+DEFB 3Eh
+LD HL,1234h
+~~~
+
+In this example the "RST 8" will modif teh stack in such a way that it a) looks for the value following the "RST 8" instruction and b) return to the instruction after the additional byte, i.e. "LD HL,1234h".
+
+To modify opcode you need the '--opcode byte appendtext' argument.
+
+'byte' is the opcode to extend (in this case 0xCF for "RST 8") and 'appendtext' contains the formatting for the addtional byte.
+
+I.e. with this argument '--opcode 0xCF " CODE=#n"' the disassembly will look like:
+
+~~~
+LD A,5
+RST 8, CODE=3Eh  	; Custom opcode
+LD HL,1234h
+~~~
+
+Please note that without the extended opcode z80dismblr would have interpreted the 3Eh as an opcode. Now it ignores it and the disassembly continues at "LD HL,1234h".
+
+
+

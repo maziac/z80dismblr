@@ -1,5 +1,5 @@
 ## 1.4.0
-- User opcodes
+- "--opcode": User opcode extensions
 
 ## 1.3.0
 - Output of flowcharts:

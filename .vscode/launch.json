@@ -26,12 +26,12 @@
 			"program": "${workspaceFolder}/out/z80dismblr.js",
 			"args": [
 				//"--args", "argsfile2",
-				//"--args", "argsfile_esxdos",
-				"--sna", "src/tests/data/sw.sna",
+				"--args", "argsfile_esxdos",
+				//"--sna", "src/tests/data/sw.sna",
 				"--out", "out/tests/out2.asm",
 				"--callgraphout", "out/tests/out2.dot",
 				"--addbytes",
-				"--tr", "src/tests/data/sw_short.tr",
+				//"--tr", "src/tests/data/sw_short.tr",
 				//"--tr", "src/tests/data/sw.tr",
 
 				//"--noautomaticaddr",
@@ -43,8 +43,10 @@
 				//"--lblsout", "out/tests/out2.lbls",
 				//"--lblsin",  "out/tests/in2.lbls",
 
-				"--flowchartout", "out/tests/msc.dot",
-				"--flowchartaddresses", "CD10h", //"7015h", "A3ABh"
+				//"--flowchartout", "out/tests/msc.dot",
+				//"--flowchartaddresses", "CD10h", //"7015h", "A3ABh"
+
+				"--opcode", "0xCF", "#n",	// RST 08
 
 			],
             "outFiles": [

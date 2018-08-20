@@ -1,10 +1,14 @@
 import { Disassembler } from './disassembler/disasm';
 import { readFileSync, writeFileSync } from 'fs';
-import { Opcode, Opcodes, OpcodeFlag } from './disassembler/opcode';
-import { CustomOpcode } from './disassembler/customopcode';
+import { Opcode, Opcodes } from './disassembler/opcode';
 import * as Path from 'path';
-import * as assert from 'assert';
+//import * as assert from 'assert';
 
+
+
+/**
+ * The main program.
+ */
 class Startup {
 
     /// String containing all whitespaces.
@@ -230,27 +234,32 @@ z80dismblr [options]
             a particular address (subroutine).
         --flowchartaddresses addr1 addr2 ... addrN: This defines the start addresses of the flow-charts. At least one address is required.
 
-    User opcodes:
-        It is possible to create used-defined-opcodes. With this additional opcodes can be
-        modelled. Main purpose is to allow a "custom" opcode for special command sequences.
-        E.g. it would be possible to define a special RST command that is followed by a byte that
-        further distinguishes what the RST should do. See the example:
-        --opcode "opcode1 ... 'format' [CALL=nn] [conditional]"
-            opcodeX: the opcode (or opcode sequence), e.g. "0xD7"
-            'format': the text that should appear in the disassembly, e.g. 'RST 16,#n'.
-            It can contain further variables:
-                #n: a single byte that follows the opcode(s)
-                #nn: a word that follows the opcode(s)
-            type:
-                "CALL=nn": This is basically a subroutine call that is ended with "RET" or similar. nn is the calling address.
-            conditional: Use "conditional" if it isconditionally executed like e.g. "CALL Z,0800h".
-        Example:
-        --opcode "0xD7 'RST 16,#n' CALL=0x0010"
-        This would overwrite the existing opcode "RST 16" (0xD7). It additionally defines a
-        following byte that is used in this "RST 16" subroutine by stack manipulation. This
-        byte would be shown in the disassembly.
-        Furthermore please note that the next disassembled opcode will start after this byte.
-
+    User opcode extensions:
+        It is possible to create user-defined-opcode extensions to already existing
+        opcodes. This was added especially to allow disassembly of the use of "RST 8"
+        in ESXDOS. Here the "RST 8" opcode was followed by an additional byte that
+        was evaluated by the RST by manipulating the stack. Also the returned PC was
+        modified such that it returns to the address after the extra byte.
+        Here is the example:
+        --opcode 0xCF "#n"
+        This will result now in e.g. the following disassembly:
+        0280 CF 80        rst  8,80h  	; Custom opcode
+        CF was "RST 8". The additional byte 0x80 is appended to the opcode.
+        Usage of this command is limited but it is able to define an arbitrary number
+        of bytes.
+        --opcode byte appendtext
+            byte: the opcode, e.g. "0xCF"
+            appendtext: the text that should appear in the disassembly after the
+                original disasssembly.
+                If the text contains spaces please enclose in quotation marks.
+                '#n' and '#nn' have a special meaning:
+                    #n: single byte following the opcode
+                    #nn: a word following the opcode
+                    In the disassembly these will be exchanged with the real byte(s)
+                    following the opcodes.
+                It is possible to add several '#n' ot '#nn'. E.g. the following is
+                a valid append text: "code1=#n,word=#n,code2=#n" and would decode the
+                4 byte following the opcode.
     `);
     }
 
@@ -625,79 +634,27 @@ z80dismblr [options]
                     break;
 
 
-                // User opcodes: format: '--opcode "opcode1 ... 'format' [type=nn] [conditional]"'
+                // User opcodes: format: '--opcode byte "format"
                 case '--opcode':
-                    const opcString = args.shift();
-                    if(!opcString) {
-                        throw arg + ': No opcode string given.';
+                    // opcode byte
+                    const byteString = args.shift();
+                    if(!byteString) {
+                        throw arg + ': No opcode given.';
                     }
-
-                    const opcs = new Array<number>();
-                    let name = '';
-                    let flags = OpcodeFlag.NONE;
-                    let branchString = '';
-                    let k = 0;
-                    const len = opcString.length;
-                    while(k < len) {
-                        // Find first non whitespace
-                        k = this.skipWhiteSpaces(opcString, k);
-                        // Find end
-                        let l = this.findWhiteSpace(opcString, k);
-                        // get part
-                        const elem = opcString.substr(k, l-k);
-                        // read parts
-                        let state = 0;
-                        switch(state) {
-                            case 0: // opcode bytes
-                                if(elem.startsWith("'")) {
-                                    k ++;
-                                    l = opcString.indexOf("'", k);
-                                    if(l < 0) {
-                                        throw arg + ": Wrong opcode string: " + opcString;
-                                    }
-                                    name = opcString.substr(k, l-k);
-                                    // Next state
-                                    state ++;
-                                }
-                                else {
-                                    // read byte opcode
-                                    const byte = this.parseValue(elem);
-                                    opcs.push(byte);
-                                }
-                                break;
-
-                            case 1: // the rest: CALL, conditional ...
-                                if(elem.startsWith("CALL=")) {
-                                    const valString = elem.substr(5);
-                                    branchString = valString;
-                                    flags |= OpcodeFlag.CALL|OpcodeFlag.BRANCH_ADDRESS;
-                                    /*
-                                    const addr = this.parseValue(addrString);
-                                    if(isNaN(addr)) {
-                                        throw arg + ": Wrong address in: " + elem;
-                                    }
-                                    */
-                                }
-                                else if(elem == 'conditional') {
-                                    // Is a conditional opcode
-                                    flags |= OpcodeFlag.CONDITIONAL;
-                                }
-                                else {
-                                    throw arg + ": Unknown argument: " + elem;
-                                }
-                                break;
-
-                            default:
-                                assert(false);
-                                break;
-                        }
-                        // Create new opcode
-                        this.dasm.createNewOpcode(opcs, name, flags, branchString);
-
-                        // Next
-                        k = l+1;
+                    const byteVal = this.parseValue(byteString);
+                    if(isNaN(byteVal)) {
+                        throw arg + ': opcode is not-a-number: ' + byteString;
                     }
-
+                    if(byteVal < 0 || byteVal > 255) {
+                        throw arg + ': opcode is out of range [0-255]: ' + byteString;
+                    }
+                    // append text
+                    const appendText = args.shift();
+                    if(!appendText) {
+                        throw arg + ': No opcode append text given.';
+                    }
+                    // Append opcode
+                    Opcodes[byteVal].appendToOpcode(appendText);
                     break;
 
                 default:

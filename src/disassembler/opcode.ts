@@ -40,6 +40,13 @@ export class Opcode {
 	/// Is only a temporary value, decoded for the current instruction.
 	public value: number;
 
+	/// For custom opcodes further bytes to decode can be added.
+	public appendValues: Array<number>;
+
+	/// For custom opcodes further bytes to decode can be added.
+	public appendValueTypes: Array<NumberType>;
+
+
 
 	/**
 	 * Sets the handler to convert a number into a label string.
@@ -205,6 +212,7 @@ export class Opcode {
 		this.valueType = src.valueType;
 		this.length = src.length;
 		this.value = src.value;
+		// Note: appendValues and appendValueTypes are not copied because they are not used in the clone.
 	}
 
 
@@ -222,6 +230,50 @@ export class Opcode {
 
 
 	/**
+	 * For custom opcodes like the extension to RST.
+	 * E.g. for a byte that follows a RST use the following appendName:
+	 * "#n"
+	 * This will result in e.g. the name "RST 16,#n" which will decode the
+	 * #n as a byte in the disassembly.
+	 * @param appendName A string that is appended to the opcode name which includes also
+	 * further bytes to decode, e.g. "#n" or "#nn" or even "#n,#nn,#nn"
+	 */
+	public appendToOpcode(appendName: string) {
+		if(!appendName || appendName.length == 0)
+			return;
+
+		this.appendValues = new Array<number>();
+		this.appendValueTypes = new Array<NumberType>();
+
+		// Calculate length and convert #n to %s
+		let k = 0;
+		let text = appendName + ' ';
+		let len = 0;
+		while((k = text.indexOf("#n",k)) >= 0) {
+			// Increment
+			len ++;
+			// Check for word
+			if(text[k+2] == "n") {
+				k ++;
+				len ++;
+				this.appendValueTypes.push(NumberType.NUMBER_WORD);
+			}
+			else {
+				this.appendValueTypes.push(NumberType.NUMBER_BYTE);
+			}
+			// Next
+			k += 2;
+		}
+		this.length += len;
+		// Substitute formatting
+		this.name += ',' + appendName.replace(/#nn?/g, "%s");
+
+		// Comment
+		this.comment = 'Custom opcode';
+	}
+
+
+	/**
 	 * The 1 byte opcodes just return self (this).
 	 * @param memory
 	 * @param address
@@ -229,6 +281,7 @@ export class Opcode {
 	 */
 	public getOpcodeAt(memory: BaseMemory, address: number): Opcode {
 		// Get value (if any)
+		let offs = 0;
 		switch(this.valueType) {
 			case NumberType.CODE_RST:
 			case NumberType.NONE:
@@ -241,16 +294,19 @@ export class Opcode {
 			case NumberType.NUMBER_WORD:
 				// word value
 				this.value = memory.getWordValueAt(address+1);
+				offs = 2;
 			break;
 			case NumberType.NUMBER_WORD_BIG_ENDIAN:
 				// e.g. for PUSH $nnnn
 				this.value = memory.getBigEndianWordValueAt(address+1);
+				offs = 2;
 			break;
 			case NumberType.RELATIVE_INDEX:
 			case NumberType.CODE_LOCAL_LBL:
 			case NumberType.CODE_LOCAL_LOOP:
 				// byte value
 				this.value = memory.getValueAt(address+1);
+				offs = 1;
 				if(this.value >= 0x80)
 					this.value -= 0x100;
 				// Change relative jump address to absolute
@@ -260,16 +316,36 @@ export class Opcode {
 			case NumberType.NUMBER_BYTE:
 				// byte value
 				this.value = memory.getValueAt(address+1);
+				offs = 1;
 			break;
 			case NumberType.PORT_LBL:
 				// TODO: need to be implemented differently
 				this.value = memory.getValueAt(address+1);
+				offs = 1;
 			break;
 			default:
 				assert(false, 'getOpcodeAt');
 			break;
-
 		}
+
+		// Check for custom code
+		if(this.appendValueTypes) {
+			this.appendValues.length = 0;
+			let addr = address + 1 + offs;
+			for(const vType of this.appendValueTypes) {
+				let val;
+				if(vType == NumberType.NUMBER_BYTE) {
+					val = memory.getValueAt(addr);
+					addr ++;
+				}
+				else {
+					val = memory.getWordValueAt(addr);
+					addr += 2;
+				}
+				this.appendValues.push(val);
+			}
+		}
+
 		return this;
 	}
 
@@ -294,8 +370,7 @@ export class Opcode {
 		if(this.valueType == NumberType.CODE_LBL
 			|| this.valueType == NumberType.CODE_LOCAL_LBL
 			|| this.valueType == NumberType.CODE_LOCAL_LOOP
-			|| this.valueType == NumberType.CODE_SUB
-			|| this.valueType == NumberType.CODE_RST) {
+			|| this.valueType == NumberType.CODE_SUB) {
 			const val = this.value;
 			valueName = Opcode.convertToLabel(val);
 			comment = Format.getConversionForAddress(val);
@@ -311,6 +386,10 @@ export class Opcode {
 			let val = this.value;
 			valueName = (val >= 0) ? '+' : '';
 			valueName += val.toString();
+		}
+		else if(this.valueType == NumberType.CODE_RST) {
+			// Use value instead of label (looks better)
+			valueName = this.value.toString();
 		}
 		else {
 			// Use direct value
@@ -329,8 +408,26 @@ export class Opcode {
 		}
 
 		// Disassemble
-		const opCodeString = util.format(this.name, valueName);
+		let opCodeString;
+		if(!this.appendValueTypes) {
+			// Nomal disassembly
+			opCodeString = util.format(this.name, valueName);
+		}
+		else {
+			// Custom opcode with appended bytes.
+			const len = this.appendValueTypes.length;
+			const vals = new Array<string>();
+			for(let k=0; k<len; k++) {
+				const vType = this.appendValueTypes[k];
+				const val = this.appendValues[k];
+				let valName = (vType == NumberType.NUMBER_BYTE) ? Format.getHexString(val, 2): Format.getHexString(val, 4);
+				valName += 'h';
+				vals.push(valName);
+			}
+			opCodeString = util.format(this.name, valueName, ...vals);
+		}
 
+		// Comments
 		if(Opcode.enableComments) {
 			if(this.comment) {
 				if(comment.length > 0)
