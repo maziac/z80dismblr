@@ -15,7 +15,7 @@ suite('Disassembler', () => {
 		const lines2 = new Array<string>();
 		for(let line of lines) {
 			// remove comment
-			const match = /(^.*:|^([0-9a-f]{4})?\s+([^;:]*).*|^[^\s].*)/.exec(line);
+			const match = /(^\S*:|^([0-9a-f]{4})?\s+([^;:]*).*|^[^\s].*)/.exec(line);
 			if(match)
 				line = match[3] || '';
 			line = line.trim();
@@ -926,7 +926,7 @@ suite('Disassembler', () => {
 
 			const memory = [
 /*5000*/ 					// STARTA1:
-/*5000*/ 0xc3, 0x03, 0x50,	// 	    jp 0x0000
+/*5000*/ 0xc3, 0x03, 0x50,	// 	    jp 0x5003
 /*5003*/ 					// STARTA2:
 /*5003*/ 0x21, 0x00, 0x60,	// 	    ld hl,0x6000
 /*5006*/ 0x22, 0x01, 0x50,	// 	    ld (STARTA1+1),hl
@@ -947,6 +947,7 @@ suite('Disassembler', () => {
 			//assert(lines[3] == 'LD (SELF_MOD1+1),HL');
 			assert(linesUntrimmed[6] == 'SUB1:');
 			assert(lines[3] == 'LD (SUB1+1),HL');
+			assert(linesUntrimmed[10].indexOf("WARNING") >= 0);
 		});
 
 
@@ -970,11 +971,10 @@ suite('Disassembler', () => {
 
 			assert(linesUntrimmed[4] == 'LBL1:');
 			assert(lines[2] == 'JP LBL1+1');
+			assert(linesUntrimmed[6].indexOf("WARNING") >= 0);
 		});
 
     });
-
-
 
 
 	suite('several memories', () => {

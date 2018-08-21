@@ -1,6 +1,7 @@
 import * as util from 'util';
 import * as assert from 'assert';
 import { BaseMemory } from './basememory';
+import { Memory, MemAttribute } from './memory';
 import { NumberType } from './numbertype'
 import { Format } from './format';
 
@@ -275,8 +276,8 @@ export class Opcode {
 
 	/**
 	 * The 1 byte opcodes just return self (this).
-	 * @param memory
-	 * @param address
+	 * @param memory The memory area to get the opcode from.
+	 * @param address The address of the opcode.
 	 * @returns this
 	 */
 	public getOpcodeAt(memory: BaseMemory, address: number): Opcode {
@@ -355,8 +356,9 @@ export class Opcode {
 	 * is one).
 	 * @returns A string that contains the disassembly, e.g. "LD A,(DATA_LBL1)"
 	 * or "JR Z,.sub1_lbl3".
+ 	 * @param memory The memory area. Use to distinguish if the access is maybe wrong.
 	 */
-	public disassemble(): {mnemonic: string, comment: string} {
+	public disassemble(memory: Memory): {mnemonic: string, comment: string} {
 		// optional comment
 		let comment = '';
 
@@ -370,11 +372,31 @@ export class Opcode {
 		if(this.valueType == NumberType.CODE_LBL
 			|| this.valueType == NumberType.CODE_LOCAL_LBL
 			|| this.valueType == NumberType.CODE_LOCAL_LOOP
-			|| this.valueType == NumberType.CODE_SUB
-			|| this.valueType == NumberType.DATA_LBL) {
+			|| this.valueType == NumberType.CODE_SUB) {
 			const val = this.value;
 			valueName = Opcode.convertToLabel(val);
 			comment = Format.getConversionForAddress(val);
+			// Check if branching into the middle of an opcode
+			const memAttr = memory.getAttributeAt(val);
+			if(memAttr & MemAttribute.ASSIGNED) {
+				if(!(memAttr & MemAttribute.CODE_FIRST)) {
+					// Yes, it jumps into the middle of an opcode.
+					comment += ', WARNING: Branches into the middle of an opcode!';
+				}
+			}
+		}
+		else if(this.valueType == NumberType.DATA_LBL) {
+			const val = this.value;
+			valueName = Opcode.convertToLabel(val);
+			comment = Format.getConversionForAddress(val);
+			// Check if accessing code area
+			const memAttr = memory.getAttributeAt(val);
+			if(memAttr & MemAttribute.ASSIGNED) {
+				if(memAttr & MemAttribute.CODE) {
+					// Yes, code is accessed
+					comment += ', WARNING: Instruction accesses code!';
+				}
+			}
 		}
 		else if(this.valueType == NumberType.RELATIVE_INDEX) {
 			// E.g. in 'LD (IX+n),a'

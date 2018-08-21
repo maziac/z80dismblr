@@ -245,7 +245,7 @@ export class Disassembler extends EventEmitter {
 		// Add label comments
 		this.addLabelComments();
 
-		// Pass: Disassemble opcode with label names
+		// Disassemble opcode with label names
 		const disLines = this.disassembleMemory();
 
 		// Add all EQU labels to the beginning of the disassembly
@@ -548,7 +548,7 @@ export class Disassembler extends EventEmitter {
 						assert(attr & MemAttribute.CODE_FIRST, 'Internal error: Expected CODE_FIRST');
 						const otherOpcode = Opcode.getOpcodeAt(this.memory, memAddress);
 						// emit warning
-						this.emit('warning', 'Aborting disassembly: Ambiguous disassembly: Trying to disassemble opcode "' + opcode.name + '" at address 0x' + address.toString(16) + ' but address 0x' + memAddress.toString(16) + ' alrady contains opcode "' + otherOpcode.name + '".');
+						this.emit('warning', 'Aborting disassembly: Ambiguous disassembly: Trying to disassemble opcode "' + opcode.name + '" at address 0x' + address.toString(16) + ' but address 0x' + memAddress.toString(16) + ' already contains opcode "' + otherOpcode.name + '".');
 						return;
 					}
 				}
@@ -777,24 +777,7 @@ export class Disassembler extends EventEmitter {
 			this.setFoundLabel(branchAddress, new Set([opcodeAddress]), vType, attr);
 
 			// Check if code from the branching address has already been disassembled
-			if(attr & MemAttribute.CODE) {
-				// It has already been disassembled
-				if(!(attr & MemAttribute.CODE_FIRST)) {
-					// The branch address would jump into the middle of an instruction -> error
-					let branchOpcodeAddress = branchAddress;
-					do {	// Find start of opcode.
-						branchOpcodeAddress --;
-						if(branchAddress-branchOpcodeAddress > 4)
-							assert(false, 'Internal error: Could not find start of opcode.');
-					} while(!(this.memory.getAttributeAt(branchOpcodeAddress) & MemAttribute.CODE_FIRST));
-					// Get opcode to branch to
-					const branchOpcode = Opcode.getOpcodeAt(this.memory, branchOpcodeAddress);
-					// emit warning
-					this.emit('warning', 'Aborting disassembly: Ambiguous disassembly: encountered branch instruction into the middle of an opcode. Opcode "' + opcode.name + '" at address 0x' + opcodeAddress.toString(16) + ' would branch into "' + branchOpcode.name + '" at address 0x' + branchOpcodeAddress.toString(16) + '.');
-					return false;
-				}
-			}
-			else {
+			if(!(attr & MemAttribute.CODE)) {
 				// It has not been disassembled yet
 				if(attr & MemAttribute.ASSIGNED) {
 					// memory location exists, so queue it for disassembly
@@ -2083,7 +2066,7 @@ export class Disassembler extends EventEmitter {
 					const opcode = Opcode.getOpcodeAt(this.memory, address);
 
 					// Disassemble the single opcode
-					const opCodeDescription = opcode.disassemble();
+					const opCodeDescription = opcode.disassemble(this.memory);
 					line = this.formatDisassembly(address, opcode.length, opCodeDescription.mnemonic);
 					commentText = opCodeDescription.comment;
 					addAddress = opcode.length;
