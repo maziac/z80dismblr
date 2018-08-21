@@ -4,6 +4,7 @@ import { BaseMemory } from './basememory';
 import { Memory, MemAttribute } from './memory';
 import { NumberType } from './numbertype'
 import { Format } from './format';
+import { REGISTER } from './regs';
 
 
 /// Classifies opcodes.
@@ -47,7 +48,11 @@ export class Opcode {
 	/// For custom opcodes further bytes to decode can be added.
 	public appendValueTypes: Array<NumberType>;
 
+	/// Contains a list of registers (only byte registers) that are changed by the instruction. E.g. the "B" in "LD B,C"
+	public outputRegisters = new Array<REGISTER>();
 
+	/// Contains a list of registers (only byte registers) that are used by the instruction. E.g. the "C" in "LD B,C"
+	public inputRegisters = new Array<REGISTER>();
 
 	/**
 	 * Sets the handler to convert a number into a label string.
@@ -213,6 +218,8 @@ export class Opcode {
 		this.valueType = src.valueType;
 		this.length = src.length;
 		this.value = src.value;
+		this.inputRegisters = src.inputRegisters;
+		this.outputRegisters = src.outputRegisters;
 		// Note: appendValues and appendValueTypes are not copied because they are not used in the clone.
 	}
 

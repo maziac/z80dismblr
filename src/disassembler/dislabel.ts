@@ -1,6 +1,7 @@
 //import * as assert from 'assert';
 //import { CodeLocation } from './codelocation';
 import { NumberType, getNumberTypeAsString } from './numbertype';
+import { REGISTER } from './regs';
 
 
 
@@ -29,6 +30,12 @@ export class DisLabel {
 
 	/// A list with all called subroutine labels. (for statistics)
 	public calls = new Array<DisLabel>();
+
+	/// A set of used registers. I.e. registers changed by the subroutine.
+	public usedRegisters: Set<REGISTER>;
+
+	/// A set of input registers. I.e. registers that are used as input to the subroutine.
+	public inputRegisters: Set<REGISTER>;
 
 	/// True if it is an EQU label. A label whose memory was not given as binary value.
 	/// I.e. outside the range of the given memory.

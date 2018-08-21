@@ -88,6 +88,22 @@ suite('Regs', () => {
 		assert(regs.getRegName(REGISTER.IYH) == "IYH");
 	});
 
+	test('getIndexForRegName', () => {
+		const regs = new Regs();
+		// test
+		assert(regs.getIndexForRegName("A") == REGISTER.A);
+		assert(regs.getIndexForRegName("B") == REGISTER.B);
+		assert(regs.getIndexForRegName("C") == REGISTER.C);
+		assert(regs.getIndexForRegName("D") == REGISTER.D);
+		assert(regs.getIndexForRegName("E") == REGISTER.E);
+		assert(regs.getIndexForRegName("H") == REGISTER.H);
+		assert(regs.getIndexForRegName("L") == REGISTER.L);
+		assert(regs.getIndexForRegName("IXL") == REGISTER.IXL);
+		assert(regs.getIndexForRegName("IXH") == REGISTER.IXH);
+		assert(regs.getIndexForRegName("IYL") == REGISTER.IYL);
+		assert(regs.getIndexForRegName("IYH") == REGISTER.IYH);
+	});
+
 	test('usedRegs', () => {
 		const regs = new Regs();
 
@@ -169,6 +185,39 @@ suite('Regs', () => {
 		assert(used.has(REGISTER.E));
 		assert(used.has(REGISTER.D));
 		assert(used.has(REGISTER.L));
+	});
+
+	test('mergeRegs', () => {
+		const regs = new Regs();
+		const usedRegs = new Set<REGISTER>();
+		const inpRegs = new Set<REGISTER>();
+
+		// Prefill regs
+		regs.use(REGISTER.B);
+		regs.inputRegs.add(REGISTER.C);
+
+		// Fill registers
+		usedRegs.add(REGISTER.D);
+		usedRegs.add(REGISTER.E);
+		usedRegs.add(REGISTER.L);
+		inpRegs.add(REGISTER.F2);
+		inpRegs.add(REGISTER.IYL);
+
+		// Merge
+		regs.mergeRegs(usedRegs, inpRegs);
+
+		// test regs
+		const used = regs.usedRegs();
+		assert(used.size == 4);
+		assert(used.has(REGISTER.B));
+		assert(used.has(REGISTER.E));
+		assert(used.has(REGISTER.D));
+		assert(used.has(REGISTER.L));
+
+		assert(regs.inputRegs.size == 3);
+		assert(regs.inputRegs.has(REGISTER.C));
+		assert(regs.inputRegs.has(REGISTER.F2));
+		assert(regs.inputRegs.has(REGISTER.IYL));
 	});
 
 });

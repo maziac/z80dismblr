@@ -103,6 +103,17 @@ export class Regs {
 		return Regs.names[r];
 	}
 
+	/**
+	 * Returns the index of the register name.
+	 * @param name The register as name, e.g. "H"
+	 * @return the register as number, e.g. H
+	 */
+	public getIndexForRegName(name: string): REGISTER {
+		const r = Regs.names.indexOf(name);
+		assert(r >= 0);
+		return r;
+	}
+
 
 	/**
 	 * Returns all used registers as a set.
@@ -152,5 +163,22 @@ export class Regs {
 			if(otherRegs.regs[r] != r)
 				this.regs[r] = otherRegs.regs[r];
 		}
+	}
+
+
+	/**
+	 * Merges used registers and input registers into this instance.
+	 * Is used if an already analysed subroutine is merged into the
+	 * current anaylsis.
+	 * @param usedRegs A set of used registers.
+	 * @param inpRegs A set of input registers.
+	 */
+	public mergeRegs(usedRegs: Set<REGISTER>, inpRegs: Set<REGISTER>) {
+		// Used registers
+		for(const r of usedRegs)
+			this.use(r);
+		// Input registers
+		for(const r of inpRegs)
+			this.inputRegs.add(r);
 	}
 }
