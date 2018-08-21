@@ -609,8 +609,8 @@ It is possible to tweak some opcodes a little bit. I.e. it is possible to instru
 E.g. consider the following assembler listing
 
 ~~~
-LD A,5
-RST 8
+LD A,05h
+RST 08h
 DEFB 3Eh
 LD HL,1234h
 ~~~
@@ -621,11 +621,11 @@ To modify opcode you need the '--opcode byte appendtext' argument.
 
 'byte' is the opcode to extend (in this case 0xCF for "RST 8") and 'appendtext' contains the formatting for the addtional byte.
 
-I.e. with this argument '--opcode 0xCF " CODE=#n"' the disassembly will look like:
+I.e. with this argument '--opcode 0xCF ", CODE=#n"' the disassembly will look like:
 
 ~~~
-LD A,5
-RST 8, CODE=3Eh  	; Custom opcode
+LD A,05h
+RST 08h, CODE=3Eh  	; Custom opcode
 LD HL,1234h
 ~~~
 

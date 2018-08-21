@@ -49,8 +49,8 @@
 │          └─────────┬─────────┘       │   branches and add branches to         Mark the code areas.
 │                    │                 │         the labels list.
 │       ┌────────────┴────────────┐    │
-│       │  Find Interrupt Labels  │    │    Find those labels that alter
-│       └────────────┬────────────┘    │               code.
+│       │  Find Interrupt Labels  │    │    Assign labels to interrupts.
+│       └────────────┬────────────┘    │
 │                    │                 │
 │       ┌────────────┴────────────┐    │
 │       │   Set Special Labels    │    │  Find opcode areas that do not
@@ -60,9 +60,9 @@
 │       │       Sort Labels       │    │  Such as start of a new memory
 │       └────────────┬────────────┘    │           area (ROM).
 │                    │                 │
-│    ┌───────────────┴──────────────┐  │
-│    │ Adjust self-modifying labels │  │   Add offset (e.g. "+1") if
-│    └───────────────┬──────────────┘  │          appropriate.
+│    ┌───────────────┴──────────────┐  │   Add offset (e.g. "+1") if
+│    │ Adjust code pointing labels  │  │  label points into the middle
+│    └───────────────┬──────────────┘  │         of an opcode.
 └────────────────────┼─────────────────┘
                      │
                      ▼
