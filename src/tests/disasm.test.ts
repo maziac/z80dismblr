@@ -919,7 +919,6 @@ suite('Disassembler', () => {
 		});
 
 
-
 		test('self-modifying jp', () => {
 			// Note: Regex to exchange list-output with bytes:
 			// find-pattern: ^([0-9a-f]+)\s+([0-9a-f]+)?\s+([0-9a-f]+)?\s+([0-9a-f]+)?\s?(.*)
@@ -948,6 +947,29 @@ suite('Disassembler', () => {
 			//assert(lines[3] == 'LD (SELF_MOD1+1),HL');
 			assert(linesUntrimmed[6] == 'SUB1:');
 			assert(lines[3] == 'LD (SUB1+1),HL');
+		});
+
+
+		test('wrong jp', () => {
+			const memory = [
+/*5000*/ 					// START:
+/*5000*/ 0x21, 0x00, 0x60,	// 	    ld hl,0x6000
+/*5003*/ 0xC3, 0x01, 0x50,	//		jp START+1
+/*5006*/ //0xC9, 				// 		ret
+			];
+
+			const org = 0x5000;
+			dasm.memory.setMemory(org, new Uint8Array(memory));
+			dasm.setLabel(org);
+			dasm.disassemble();
+			const linesUntrimmed = dasm.disassembledLines;
+
+			const lines = trimAllLines(linesUntrimmed);
+
+			//dasm.printLabels();
+
+			assert(linesUntrimmed[4] == 'LBL1:');
+			assert(lines[2] == 'JP LBL1+1');
 		});
 
     });

@@ -206,7 +206,7 @@ export class Disassembler extends EventEmitter {
         // Add address 0
 		this.addAutomaticAddresses();
 
-		// Pass: Collect labels
+		// Collect labels
 		this.collectLabels();
 
 		// Find interrupts
@@ -219,7 +219,7 @@ export class Disassembler extends EventEmitter {
 		this.sortLabels();
 
 		// Find self-modifying code
-		this.adjustSelfModifyingLabels();
+		this.adjustCodePointingLabels();
 
 		// Add more references if e.g. a SUB flows through to another SUB.
 		this.addFlowThroughReferences();
@@ -841,12 +841,17 @@ export class Disassembler extends EventEmitter {
 	 * 1. The current label is exchanged with an offset label
 	 * 2. Another label is created at the start of the opcode.
 	 */
-	protected adjustSelfModifyingLabels() {
+	protected adjustCodePointingLabels() {
 		const changeMap = new Map<number,DisLabel>();
 
 		// Loop through all labels
 		for( let [address, label] of this.labels) {
 			switch(label.type) {
+				case NumberType.CODE_LBL:
+				case NumberType.CODE_LOCAL_LBL:
+				case NumberType.CODE_LOCAL_LOOP:
+				case NumberType.CODE_RST:
+				case NumberType.CODE_SUB:
 				case NumberType.DATA_LBL:
 					const memAttr = this.memory.getAttributeAt(address);
 					if(memAttr & MemAttribute.CODE) {
