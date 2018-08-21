@@ -2,6 +2,7 @@ import * as assert from 'assert';
 import { Disassembler } from '../disassembler/disasm';
 import { NumberType } from '../disassembler/numbertype';
 import { writeFileSync } from 'fs';
+import { Opcodes } from '../disassembler/opcode';
 
 
 var dasm: any;
@@ -636,7 +637,7 @@ suite('Disassembler', () => {
 			//console.log(lines.join('\n'));
 
 			let i = -1;
-			assert(lines[++i] == 'ORG 0')
+			assert(lines[++i] == 'ORG 0000h')
 			assert(lines[++i] == 'LD (IX-9),C')
 			assert(lines[++i] == 'LD (IX-8),B')
 			assert(lines[++i] == 'LD A,(IX-9)')
@@ -701,7 +702,7 @@ suite('Disassembler', () => {
 			//console.log(lines.join('\n'));
 
 			let i = -1;
-			assert(lines[++i] == 'ORG 0')
+			assert(lines[++i] == 'ORG 0000h')
 			assert(lines[++i] == '[NOP]')
 			assert(lines[++i] == 'ADD IX,BC');
 			assert(lines[++i] == '[NOP]')
@@ -739,15 +740,15 @@ suite('Disassembler', () => {
 			//console.log(lines.join('\n'));
 
 			let i = -1;
-			assert(lines[++i] == 'ORG 4096')
-			assert(lines[++i] == 'RST 0')
-			assert(lines[++i] == 'RST 8');
-			assert(lines[++i] == 'RST 16')
-			assert(lines[++i] == 'RST 24');
-			assert(lines[++i] == 'RST 32')
-			assert(lines[++i] == 'RST 40');
-			assert(lines[++i] == 'RST 48');
-			assert(lines[++i] == 'RST 56')
+			assert(lines[++i] == 'ORG 1000h')
+			assert(lines[++i] == 'RST 00h')
+			assert(lines[++i] == 'RST 08h');
+			assert(lines[++i] == 'RST 10h')
+			assert(lines[++i] == 'RST 18h');
+			assert(lines[++i] == 'RST 20h')
+			assert(lines[++i] == 'RST 28h');
+			assert(lines[++i] == 'RST 30h');
+			assert(lines[++i] == 'RST 38h')
 		});
 
 
@@ -797,7 +798,7 @@ suite('Disassembler', () => {
 			//console.log(lines.join('\n'));
 
 			let i = -1;
-			assert(lines[++i] == 'ORG 0');
+			assert(lines[++i] == 'ORG 0000h');
 			assert(lines[++i] == 'LDIX');
 			assert(lines[++i] == 'LDWS');
 			assert(lines[++i] == 'LDIRX');
@@ -824,6 +825,30 @@ suite('Disassembler', () => {
 		});
 
 
+		test('custom opcode', () => {
+			const memory = [
+				/*1000*/	0xCF, 0x99,		// RST 08h, CODE=99h
+				/*1002*/	0xD7, 0x01, 0x34, 0x12, 0xFF	// RST 10h, a=01h, b=1234h, c=FFh
+			];
+
+			const org = 0x1000;
+			dasm.setMemory(org, new Uint8Array(memory));
+			dasm.setLabel(org);
+			Opcodes[0xCF].appendToOpcode(", CODE=#n")
+			Opcodes[0xD7].appendToOpcode(", a=#n, b=#nn, c=#n")
+			dasm.disassemble();
+			const linesUntrimmed = dasm.disassembledLines;
+
+			const lines = trimAllLines(linesUntrimmed);
+			//console.log(lines.join('\n'));
+
+			let i = -1;
+			assert(lines[++i] == 'ORG 1000h')
+			assert(lines[++i] == 'RST 08h, CODE=99h');
+			assert(lines[++i] == 'RST 10h, a=01h, b=1234h, c=FFh');
+		});
+
+
 		test('simple', () => {
 			const memory = [
 /*8000*/ 0x3e, 0xfd,		// ld a,0xfd (-3)
@@ -842,7 +867,7 @@ suite('Disassembler', () => {
 			//console.log(lines.join('\n'));
 
 			let i = -1;
-			assert(lines[++i] == 'ORG 0')
+			assert(lines[++i] == 'ORG 0000h')
 			assert(lines[++i] == 'LD A,FDh');		// 253
 			assert(lines[++i] == 'LD HL,FEDCh');	// 65244
 			assert(lines[++i] == 'RET');
@@ -956,10 +981,10 @@ suite('Disassembler', () => {
 			//console.log(lines.join('\n'));
 
 			let i = -1;
-			assert(lines[++i] == 'ORG 4096')
-			assert(lines[++i] == 'RST 0')
-			assert(lines[++i] == 'ORG 8192');
-			assert(lines[++i] == 'RST 32')
+			assert(lines[++i] == 'ORG 1000h')
+			assert(lines[++i] == 'RST 00h')
+			assert(lines[++i] == 'ORG 2000h');
+			assert(lines[++i] == 'RST 20h')
 		});
 
 	});

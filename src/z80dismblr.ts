@@ -241,9 +241,9 @@ z80dismblr [options]
         was evaluated by the RST by manipulating the stack. Also the returned PC was
         modified such that it returns to the address after the extra byte.
         Here is the example:
-        --opcode 0xCF "#n"
+        --opcode 0xCF ", value=#n"
         This will result now in e.g. the following disassembly:
-        0280 CF 80        rst  8,80h  	; Custom opcode
+        0280 CF 80        rst  08h, value=80h  	; Custom opcode
         CF was "RST 8". The additional byte 0x80 is appended to the opcode.
         Usage of this command is limited but it is able to define an arbitrary number
         of bytes.
@@ -257,8 +257,8 @@ z80dismblr [options]
                     #nn: a word following the opcode
                     In the disassembly these will be exchanged with the real byte(s)
                     following the opcodes.
-                It is possible to add several '#n' ot '#nn'. E.g. the following is
-                a valid append text: "code1=#n,word=#n,code2=#n" and would decode the
+                It is possible to add several '#n' or '#nn'. E.g. the following is
+                a valid append text: ", code1=#n,word=#n,code2=#n" and would decode the
                 4 byte following the opcode.
     `);
     }

@@ -1623,7 +1623,7 @@ export class Disassembler extends EventEmitter {
 				break;
 				case NumberType.CODE_RST:
 					// Set name
-					label.name = this.labelRstPrefix + Format.fillDigits(address.toString(), '0', 2);
+					label.name = this.labelRstPrefix + Format.getHexString(address,2);
 				break;
 				case NumberType.DATA_LBL:
 					// Check for self.modifying code
@@ -2005,7 +2005,7 @@ export class Disassembler extends EventEmitter {
 				// First line
 				// Print "ORG"
 				this.addEmptyLines(lines);
-				const orgLine =  ' '.repeat(this.clmnsBytes) + this.rightCase('ORG ') + Format.fillDigits(addr.toString(), ' ', 5) + ' ; ' + Format.getConversionForAddress(addr);
+				const orgLine =  ' '.repeat(this.clmnsBytes) + this.rightCase('ORG ') + Format.getHexString(addr)+'h ; ' + Format.getConversionForAddress(addr);
 				lines.push(orgLine);
 			}
 			else {
@@ -2016,7 +2016,7 @@ export class Disassembler extends EventEmitter {
 
 				// Print new "ORG"
 				this.addEmptyLines(lines);
-				const orgLine =  ' '.repeat(this.clmnsBytes) + this.rightCase('ORG ') + Format.fillDigits(addr.toString(), ' ', 5) + ' ; ' + Format.getConversionForAddress(addr);
+				const orgLine =  ' '.repeat(this.clmnsBytes) + this.rightCase('ORG ') + Format.getHexString(addr)+'h ; ' + Format.getConversionForAddress(addr);
 				lines.push(orgLine);
 			}
 

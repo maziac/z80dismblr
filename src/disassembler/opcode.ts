@@ -266,7 +266,7 @@ export class Opcode {
 		}
 		this.length += len;
 		// Substitute formatting
-		this.name += ',' + appendName.replace(/#nn?/g, "%s");
+		this.name += appendName.replace(/#nn?/g, "%s");
 
 		// Comment
 		this.comment = 'Custom opcode';
@@ -370,13 +370,8 @@ export class Opcode {
 		if(this.valueType == NumberType.CODE_LBL
 			|| this.valueType == NumberType.CODE_LOCAL_LBL
 			|| this.valueType == NumberType.CODE_LOCAL_LOOP
-			|| this.valueType == NumberType.CODE_SUB) {
-			const val = this.value;
-			valueName = Opcode.convertToLabel(val);
-			comment = Format.getConversionForAddress(val);
-		}
-		else if(this.valueType == NumberType.DATA_LBL) {
-			// TODO: can be moved to "if" above.
+			|| this.valueType == NumberType.CODE_SUB
+			|| this.valueType == NumberType.DATA_LBL) {
 			const val = this.value;
 			valueName = Opcode.convertToLabel(val);
 			comment = Format.getConversionForAddress(val);
@@ -389,7 +384,7 @@ export class Opcode {
 		}
 		else if(this.valueType == NumberType.CODE_RST) {
 			// Use value instead of label (looks better)
-			valueName = this.value.toString();
+			valueName = Format.getHexString(this.value,2)+'h';
 		}
 		else {
 			// Use direct value
