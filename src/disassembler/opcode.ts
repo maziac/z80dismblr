@@ -563,8 +563,9 @@ class Opcode_n_n extends OpcodeNext {
 	}
 
 	/// Disassemble the 2 values.
+	/// Both are #n (1 byte values)
 	public disassemble(): {mnemonic: string, comment: string} {
-		const opCodeString = util.format(this.name, this.value.toString(), this.value2.toString());
+		const opCodeString = util.format(this.name, Format.getHexString(this.value, 2)+'h', Format.getHexString(this.value2, 2)+'h');
 		return {mnemonic: opCodeString, comment: this.comment};
 	}
 }

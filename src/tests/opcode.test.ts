@@ -140,31 +140,34 @@ suite('Opcode', () => {
 		assert(Opcodes[0xCD].flags == (OpcodeFlag.CALL|OpcodeFlag.BRANCH_ADDRESS));
 
 		// CALL cc
-		assert(Opcodes[0xC4].flags == (OpcodeFlag.CALL|OpcodeFlag.BRANCH_ADDRESS));
+		assert(Opcodes[0xC4].flags == (OpcodeFlag.CALL|OpcodeFlag.BRANCH_ADDRESS|OpcodeFlag.CONDITIONAL));
 
 		// JP
 		assert(Opcodes[0xC3].flags == (OpcodeFlag.STOP|OpcodeFlag.BRANCH_ADDRESS));
 
 		// JP cc
-		assert(Opcodes[0xD2].flags == OpcodeFlag.BRANCH_ADDRESS);
+		assert(Opcodes[0xD2].flags == (OpcodeFlag.BRANCH_ADDRESS|OpcodeFlag.CONDITIONAL));
 
 		// JR
 		assert(Opcodes[0x18].flags == (OpcodeFlag.STOP|OpcodeFlag.BRANCH_ADDRESS));
 
 		// JR cc
-		assert(Opcodes[0x20].flags == OpcodeFlag.BRANCH_ADDRESS);
+		assert(Opcodes[0x20].flags == (OpcodeFlag.BRANCH_ADDRESS|OpcodeFlag.CONDITIONAL));
 
 		// DJNZ
-		assert(Opcodes[0x10].flags == OpcodeFlag.BRANCH_ADDRESS);
+		assert(Opcodes[0x10].flags == (OpcodeFlag.BRANCH_ADDRESS|OpcodeFlag.CONDITIONAL));
 
 		// RET
-		assert(Opcodes[0xC9].flags == OpcodeFlag.STOP);
+		assert(Opcodes[0xC9].flags == (OpcodeFlag.RET|OpcodeFlag.STOP));
 
 		// RET cc
-		assert(Opcodes[0xE0].flags == OpcodeFlag.NONE);
+		assert(Opcodes[0xE0].flags == (OpcodeFlag.RET|OpcodeFlag.CONDITIONAL));
 
 		// RETI
-		//assert(Opcodes[xx].flags == OpcodeFlags.STOP); TODO: Enable
+		assert(OpcodesED[0x4D].flags == (OpcodeFlag.RET|OpcodeFlag.STOP));
+
+		// RETN
+		assert(OpcodesED[0x45].flags == (OpcodeFlag.RET|OpcodeFlag.STOP));
 
 		// LD HL,nn
 		assert(Opcodes[0x21].flags == OpcodeFlag.NONE);

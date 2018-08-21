@@ -199,7 +199,7 @@ suite('Disassembler', () => {
 /*4024*/ 0x21, 0x03, 0x00,	//     ld hl,3
 /*4027*/ 0x32, 0x36, 0x40,	//     ld (DATA1),a
 /*402a*/ 0x3a, 0x00, 0x50,	//     ld a,(0x5000)
-/*402d*/ 0xca, 0x00, 0x51,	//     jp z,0x5100
+/*402d*/ 0xca, 0x00, 0x51,	//     jp z,0x5100 ; Jump to unassigned memory is treated as a CALL
 /*4030*/ 0xc9,				//     ret
 /*4031*/ 0x00,				//     nop
 /*4032*/					// LBL4:
@@ -263,7 +263,7 @@ suite('Disassembler', () => {
 
 			label = dasm.labels.get(0x5100);
 			assert(label != undefined);
-			assert(label.type == NumberType.CODE_LBL);
+			assert(label.type == NumberType.CODE_SUB);	// Jump to unassigned memory is treated as a CALL
 			assert(label.isEqu == true);
 		});
 
@@ -293,7 +293,7 @@ suite('Disassembler', () => {
 
 			label = dasm.labels.get(0x0000);
 			assert(label != undefined);
-			assert(label.type == NumberType.CODE_LBL);
+			assert(label.type == NumberType.CODE_SUB);
 			assert(label.isEqu == true);
 
 			label = dasm.labels.get(org);
@@ -399,14 +399,13 @@ suite('Disassembler', () => {
 		test('addParentReferences 2', () => {
 			const memory = [
 /*+0*/ 					// BSUB1:
-/*+0*/ 0xca, 0x09, 0x00,	// 	    jp z,BSUB2
+/*+0*/ 0xca, 0x07, 0x00,	// 	    jp z,BSUB2
 /*+3*/ 0x3E, 16,			// 		LD A,16
 /*+5*/ 0xC9,				// 		ret
 
-/*+6*/ 0x01, 0x02,		// 	    defb 1, 2
-/*+8*/ 					// BSUB2:
-/*+8*/ 0x3E, 16,			// 		LD A,16
-/*+A*/ 0xC9,				// 		ret
+/*+6*/ 					// BSUB2:
+/*+6*/ 0x3E, 16,			// 		LD A,16
+/*+8*/ 0xC9,				// 		ret
 
 			];
 
@@ -430,7 +429,7 @@ suite('Disassembler', () => {
 			assert(label1.name == 'BSUB1');
 			assert(label1.isEqu == false);
 
-			const label2 = dasm.labels.get(org+8);
+			const label2 = dasm.labels.get(org+6);
 			assert(label2.name == '.bsub1_lbl');
 			assert(label2.isEqu == false);
 			assert(label2.type == NumberType.CODE_LOCAL_LBL);
@@ -443,13 +442,10 @@ suite('Disassembler', () => {
 			assert(addrParents[org+4] == undefined);
 			assert(addrParents[org+5] == label1);
 
-			assert(addrParents[org+6] == undefined);
+			assert(addrParents[org+6] == label1);
 			assert(addrParents[org+7] == undefined);
-
 			assert(addrParents[org+8] == label1);
 			assert(addrParents[org+9] == undefined);
-			assert(addrParents[org+0xA] == label1);
-			assert(addrParents[org+0xB] == undefined);
 		});
 
 
@@ -644,9 +640,9 @@ suite('Disassembler', () => {
 			assert(lines[++i] == 'LD (IX-9),C')
 			assert(lines[++i] == 'LD (IX-8),B')
 			assert(lines[++i] == 'LD A,(IX-9)')
-			assert(lines[++i] == 'ADD A,255');
+			assert(lines[++i] == 'ADD A,FFh');
 
-			assert(lines[++i] == 'LD BC,4660')
+			assert(lines[++i] == 'LD BC,1234h')
 			assert(lines[++i] == 'INC B');
 			assert(lines[++i] == 'RLC L');
 			assert(lines[++i] == 'RLC (HL)');
@@ -780,8 +776,8 @@ suite('Disassembler', () => {
 
 				0xED, 0x8A,	0x11, 0x88,		// PUSH 0x1188 (big endian)
 
-				0xED, 0x91,	250, 9,	// NEXREG #n,#n
-				0xED, 0x92,	40,		// NEXREG #n,A
+				0xED, 0x91,	250, 9,	// NEXTREG #n,#n
+				0xED, 0x92,	40,		// NEXTREG #n,A
 
 				0xED, 0x93,		// PIXELDN
 				0xED, 0x94,		// PIXELAD
@@ -813,18 +809,18 @@ suite('Disassembler', () => {
 			assert(lines[++i] == 'ADD HL,A');
 			assert(lines[++i] == 'ADD DE,A')
 			assert(lines[++i] == 'ADD BC,A');
-			assert(lines[++i] == 'ADD HL,4660');		// 1234h
-			assert(lines[++i] == 'ADD DE,9029');		// 2345h
-			assert(lines[++i] == 'ADD BC,13398');	// 3456h
+			assert(lines[++i] == 'ADD HL,1234h');
+			assert(lines[++i] == 'ADD DE,2345h');
+			assert(lines[++i] == 'ADD BC,3456h');
 			assert(lines[++i] == 'SWAPNIB');
 			assert(lines[++i] == 'MIRROR');
-			assert(lines[++i] == 'PUSH 34833');	// 8811h
-			assert(lines[++i] == 'NEXTREG 250,9');
-			assert(lines[++i] == 'NEXTREG 40,A');
+			assert(lines[++i] == 'PUSH 8811h');
+			assert(lines[++i] == 'NEXTREG FAh,09h');	// 250, 9
+			assert(lines[++i] == 'NEXTREG 28h,A');		// 40
 			assert(lines[++i] == 'PIXELDN');
 			assert(lines[++i] == 'PIXELAD');
 			assert(lines[++i] == 'SETAE');
-			assert(lines[++i] == 'TEST 11');
+			assert(lines[++i] == 'TEST 0Bh');	// 11
 		});
 
 
@@ -847,8 +843,8 @@ suite('Disassembler', () => {
 
 			let i = -1;
 			assert(lines[++i] == 'ORG 0')
-			assert(lines[++i] == 'LD A,253');
-			assert(lines[++i] == 'LD HL,65244');
+			assert(lines[++i] == 'LD A,FDh');		// 253
+			assert(lines[++i] == 'LD HL,FEDCh');	// 65244
 			assert(lines[++i] == 'RET');
 		});
 
@@ -1420,7 +1416,7 @@ suite('Disassembler', () => {
 		});
 
 
-		test('addParentReferences - remove self references', () => {
+		test("addParentReferences - remove self references: don't remove call", () => {
 			const memory = [
 				//8000 SUB1:
 				/*8000*/ 0x3E, 0x22,		//   LD   A,34
@@ -1436,6 +1432,27 @@ suite('Disassembler', () => {
 
 			// Check label types
 			const labels = dasm.labels;
+			const labelSUB1 = labels.get(0x8000);
+			assert(labelSUB1.references.size == 1);
+		});
+
+		test('addParentReferences - remove self references: remove jump', () => {
+			const memory = [
+				//8000 SUB1:
+				/*8000*/ 0x3E, 0x22,		//   LD   A,34
+				/*8002*/ 0x10, 256-4,		//   DJNZ SUB1
+				/*8005*/ 0xC9,     			//	 RET
+			];
+
+			const org = 0x8000;
+			dasm.memory.setMemory(org, new Uint8Array(memory));
+			dasm.setFixedCodeLabel(org);
+			dasm.disassemble();
+			//const linesUntrimmed = dasm.disassembledLines;
+
+			// Check label types
+			const labels = dasm.labels;
+			assert(labels.size == 1);
 			const labelSUB1 = labels.get(0x8000);
 			assert(labelSUB1.references.size == 0);
 		});
