@@ -1,7 +1,6 @@
 import * as assert from 'assert';
 import { Opcodes, OpcodesCB, OpcodesDD, OpcodesED, OpcodesFD, OpcodesFDCB, OpcodeFlag, OpcodesDDCB } from '../disassembler/opcode';
 import { NumberType } from '../disassembler/numbertype';
-import { REGISTER } from '../disassembler/regs';
 
 
 
@@ -283,121 +282,6 @@ suite('Opcode', () => {
 		assert(Opcodes[0xFF].value == 0x38);	// rst 38
 
 		assert(!(Opcodes[0xC7].flags & OpcodeFlag.STOP));
-	});
-
-	test('input/output registers', () => {
-		let opc;
-
-		// NOP
-		opc = 0x00;
-		assert(Opcodes[opc].inputRegisters.size == 0);
-		assert(Opcodes[opc].outputRegisters.size == 0);
-
-		// LD BC,#nn
-		opc = 0x01;
-		assert(Opcodes[opc].inputRegisters.size == 0);
-		assert(Opcodes[opc].outputRegisters.size == 2);
-		assert(Opcodes[opc].outputRegisters.has(REGISTER.B));
-		assert(Opcodes[opc].outputRegisters.has(REGISTER.C));
-
-		// LD (BC),A
-		opc = 0x02;
-		assert(Opcodes[opc].inputRegisters.size == 3);
-		assert(Opcodes[opc].outputRegisters.size == 0);
-		assert(Opcodes[opc].inputRegisters.has(REGISTER.A));
-		assert(Opcodes[opc].inputRegisters.has(REGISTER.B));
-		assert(Opcodes[opc].inputRegisters.has(REGISTER.C));
-
-		// LD (#nn),HL
-		opc = 0x22;
-		assert(Opcodes[opc].inputRegisters.size == 2);
-		assert(Opcodes[opc].outputRegisters.size == 0);
-		assert(Opcodes[opc].inputRegisters.has(REGISTER.H));
-		assert(Opcodes[opc].inputRegisters.has(REGISTER.L));
-
-		// EX AF,AF'
-		opc = 0x08;
-		assert(Opcodes[opc].inputRegisters.size == 0);
-		assert(Opcodes[opc].outputRegisters.size == 0);
-
-		// RRCA
-		opc = 0x0F;
-		assert(Opcodes[opc].inputRegisters.size == 1);
-		assert(Opcodes[opc].outputRegisters.size == 1);
-		assert(Opcodes[opc].inputRegisters.has(REGISTER.A));
-		assert(Opcodes[opc].outputRegisters.has(REGISTER.A));
-
-		// DAA
-		opc = 0x27;
-		assert(Opcodes[opc].inputRegisters.size == 1);
-		assert(Opcodes[opc].outputRegisters.size == 1);
-		assert(Opcodes[opc].inputRegisters.has(REGISTER.A));
-		assert(Opcodes[opc].outputRegisters.has(REGISTER.A));
-
-		// LD B,H
-		opc = 0x44;
-		assert(Opcodes[opc].inputRegisters.size == 1);
-		assert(Opcodes[opc].outputRegisters.size == 1);
-		assert(Opcodes[opc].inputRegisters.has(REGISTER.H));
-		assert(Opcodes[opc].outputRegisters.has(REGISTER.B));
-
-		// EXX
-		opc = 0xD9;
-		assert(Opcodes[opc].inputRegisters.size == 0);
-		assert(Opcodes[opc].outputRegisters.size == 0);
-
-		// AND L
-		opc = 0xA5;
-		assert(Opcodes[opc].inputRegisters.size == 1);
-		assert(Opcodes[opc].outputRegisters.size == 2);
-		assert(Opcodes[opc].inputRegisters.has(REGISTER.L));
-		assert(Opcodes[opc].outputRegisters.has(REGISTER.A));
-		assert(Opcodes[opc].outputRegisters.has(REGISTER.F));
-
-		// AND (HL)
-		opc = 0xA6;
-		assert(Opcodes[opc].inputRegisters.size == 2);
-		assert(Opcodes[opc].outputRegisters.size == 2);
-		assert(Opcodes[opc].inputRegisters.has(REGISTER.H));
-		assert(Opcodes[opc].inputRegisters.has(REGISTER.L));
-		assert(Opcodes[opc].outputRegisters.has(REGISTER.A));
-		assert(Opcodes[opc].outputRegisters.has(REGISTER.F));
-
-		// ADD A,B
-		opc = 0x80;
-		assert(Opcodes[opc].inputRegisters.size == 1);
-		assert(Opcodes[opc].outputRegisters.size == 2);
-		assert(Opcodes[opc].inputRegisters.has(REGISTER.B));
-		assert(Opcodes[opc].outputRegisters.has(REGISTER.A));
-		assert(Opcodes[opc].outputRegisters.has(REGISTER.F));
-
-		// ADC A,E
-		opc = 0x8B;
-		assert(Opcodes[opc].inputRegisters.size == 2);
-		assert(Opcodes[opc].outputRegisters.size == 2);
-		assert(Opcodes[opc].inputRegisters.has(REGISTER.F));
-		assert(Opcodes[opc].inputRegisters.has(REGISTER.E));
-		assert(Opcodes[opc].outputRegisters.has(REGISTER.A));
-		assert(Opcodes[opc].outputRegisters.has(REGISTER.F));
-
-		// SUB A,D
-		opc = 0x80;
-		assert(Opcodes[opc].inputRegisters.size == 1);
-		assert(Opcodes[opc].outputRegisters.size == 2);
-		assert(Opcodes[opc].inputRegisters.has(REGISTER.D));
-		assert(Opcodes[opc].outputRegisters.has(REGISTER.A));
-		assert(Opcodes[opc].outputRegisters.has(REGISTER.F));
-
-		// SBC A,C
-		opc = 0x8B;
-		assert(Opcodes[opc].inputRegisters.size == 2);
-		assert(Opcodes[opc].outputRegisters.size == 2);
-		assert(Opcodes[opc].inputRegisters.has(REGISTER.F));
-		assert(Opcodes[opc].inputRegisters.has(REGISTER.C));
-		assert(Opcodes[opc].outputRegisters.has(REGISTER.A));
-		assert(Opcodes[opc].outputRegisters.has(REGISTER.F));
-
-
 	});
 
 });

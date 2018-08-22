@@ -11,7 +11,6 @@ import { SubroutineStatistics } from './statistics';
 import { EventEmitter } from 'events';
 import { Format } from './format';
 import { readFileSync } from 'fs';
-import { Regs } from './regs';
 
 
 
@@ -236,9 +235,6 @@ export class Disassembler extends EventEmitter {
 
 		// Add 'calls' list to subroutine labels
 		this.addCallsListToLabels();
-
-		// Colelcts the registers used by a subroutine (for the comments)
-		this.findUsedRegisters();
 
 		// Count statistics (size of subroutines, cyclomatic complexity)
 		this.countStatistics();
@@ -1400,100 +1396,6 @@ export class Disassembler extends EventEmitter {
 			}
 		}
 	}
-
-
-	/**
-	 * Searches the used registers of all sub routines.
-	 * Used to ptu them into the comment for the subroutine.
-	 */
-	public findUsedRegisters() {
-		return;
-		// Loop through all labels
-		for( let [address, label] of this.labels) {
-			if(label.isEqu)
-				continue;
-			if(label.usedRegisters)
-				continue;	// Skip if already assigned
-			switch(label.type) {
-				case NumberType.CODE_SUB:
-				case NumberType.CODE_RST:
-					// Only for the suroutines
-					const regs = new Regs();
-					this.getUsedRegister(address, regs);
-					break;
-			}
-		}
-	}
-
-
-
-	/**
-	 * Searches for used registers. Those are returned in the 'regs' parameter.
-	 * @param address The start address (at the beginning the start address of the subroutine).
-	 * @param regs The register representation at start of this branch. The
-	 * contents is changed.
-	 */
-	protected getUsedRegister(address: number, regs: Regs) {
-		let opcodeClone;
-
-		do {
-			// Check if memory exists
-			const memAttr = this.memory.getAttributeAt(address);
-			if(!(memAttr & MemAttribute.ASSIGNED)) {
-				break;
-			}
-			// It needs to be checked if address has been checked already
-			if(regs.usedAddresses.indexOf(address) >= 0) {
-				break;	// already checked
-			}
-
-			// Get opcode
-			const opcode = Opcode.getOpcodeAt(this.memory, address);
-			opcodeClone = {...opcode};
-
-			// Check for input and usage
-			opcode.useRegisters(regs);
-
-			// Branching
-			if(opcodeClone.flags & OpcodeFlag.BRANCH_ADDRESS) {
-				const branchAddress = opcodeClone.value;
-				if(opcodeClone.flags & OpcodeFlag.CALL) {
-					const label = this.labels.get(branchAddress);
-					assert(label);
-					if(label) { // calm the transpiler
-						if(!label.usedRegisters) {
-							// This subroutine has not been analyzed yet, let's do so.
-							const sRegs = new Regs();
-							this.getUsedRegister(branchAddress, sRegs);
-							// Assign registers
-							label.usedRegisters = sRegs.usedRegs();
-							label.inputRegisters = sRegs.inputRegs;
-						}
-						assert(label.usedRegisters);
-						assert(label.inputRegisters);
-						// Merge registers
-						regs.mergeRegs(label.usedRegisters, label.inputRegisters);
-					}
-				} // CALL
-				else {
-					// Jump
-					// Clone registers
-					const clonedRegs = regs.clone();
-					// Inspect next branch
-					this.getUsedRegister(branchAddress, clonedRegs);
-					// Merge registers
-					regs.merge(clonedRegs);
-				} // JUMP
-			}
-
-			// TODO: PUSH / POP
-
-			// Next
-			address += opcode.length;
-		} while(!(opcodeClone.flags & OpcodeFlag.STOP));
-
-	}
-
 
 
 	/**
