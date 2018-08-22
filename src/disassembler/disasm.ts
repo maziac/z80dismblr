@@ -301,7 +301,8 @@ export class Disassembler extends EventEmitter {
 		const bin = sna.slice(27);
 		// Read start address
 		const sp = header[23] + 256*header[24];	// Stackpointer
-		const start = bin[sp-0x4000] + 256*bin[sp-1-0x4000];	// Get start address from stack
+		const spIndex = sp-0x4000;
+		const start = bin[spIndex] + 256*bin[spIndex+1];	// Get start address from stack
 		this.setMemory(0x4000, bin);
 
 		/* In most cases (snapshot) this is a random address, so it does not make sense to use it as a label:
@@ -1406,6 +1407,7 @@ export class Disassembler extends EventEmitter {
 	 * Used to ptu them into the comment for the subroutine.
 	 */
 	public findUsedRegisters() {
+		return;
 		// Loop through all labels
 		for( let [address, label] of this.labels) {
 			if(label.isEqu)
@@ -1449,13 +1451,8 @@ export class Disassembler extends EventEmitter {
 			const opcode = Opcode.getOpcodeAt(this.memory, address);
 			opcodeClone = {...opcode};
 
-			// Check for input
-			for(const inpReg of opcodeClone.inputRegisters)
-				regs.inputRegs.add(inpReg);
-
-			// Check if used
-			for(const outpReg of opcodeClone.outputRegisters)
-				regs.use(outpReg);
+			// Check for input and usage
+			opcode.useRegisters(regs);
 
 			// Branching
 			if(opcodeClone.flags & OpcodeFlag.BRANCH_ADDRESS) {
