@@ -615,7 +615,7 @@ DEFB 3Eh
 LD HL,1234h
 ~~~
 
-In this example the "RST 8" will modif teh stack in such a way that it a) looks for the value following the "RST 8" instruction and b) return to the instruction after the additional byte, i.e. "LD HL,1234h".
+In this example the "RST 8" will modify the stack in such a way that it a) looks for the value following the "RST 8" instruction and b) return to the instruction after the additional byte, i.e. "LD HL,1234h".
 
 To modify opcode you need the '--opcode byte appendtext' argument.
 
