@@ -703,19 +703,17 @@ z80dismblr [options]
                 const arg = argsData.substr(k, l-k);
                 args.push(arg);
                 // next
-                l ++;
+                k = l+1;
             }
             else {
                 // search for next whitespace (== ending)
                 l = this.findWhiteSpace(argsData, k+1);
-             }
-
-             // get string
-             const arg = argsData.substr(k, l-k);
-             args.push(arg);
-
-             // next
-             k = l;
+                // get string
+                const arg = argsData.substr(k, l-k);
+                args.push(arg);
+                // next
+                k = l;
+            }
         }
         // Will never reach here.
     }
