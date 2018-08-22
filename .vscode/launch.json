@@ -26,7 +26,8 @@
 			"program": "${workspaceFolder}/out/z80dismblr.js",
 			"args": [
 				//"--args", "argsfile2",
-				"--args", "argsfile_esxdos",
+				//"--args", "argsfile_esxdos",
+				"--args", "argsfile3",
 				//"--sna", "src/tests/data/sw.sna",
 				"--out", "out/tests/out2.asm",
 				"--callgraphout", "out/tests/out2.dot",
@@ -46,7 +47,7 @@
 				//"--flowchartout", "out/tests/msc.dot",
 				//"--flowchartaddresses", "CD10h", //"7015h", "A3ABh"
 
-				"--opcode", "0xCF", "#n",	// RST 08
+				//"--opcode", "0xCF", "#n",	// RST 08
 
 			],
             "outFiles": [
