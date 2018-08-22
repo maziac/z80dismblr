@@ -4,7 +4,7 @@ import { BaseMemory } from './basememory';
 import { Memory, MemAttribute } from './memory';
 import { NumberType } from './numbertype'
 import { Format } from './format';
-import { REGISTER } from './regs';
+import { Regs, REGISTER } from './regs';
 
 
 /// Classifies opcodes.
@@ -16,6 +16,7 @@ export enum OpcodeFlag {
 	RET = 0x08,		///< is a RETURN from a subroutine
 	CONDITIONAL = 0x10,	///< is a conditional opcode, e.g. JP NZ, RET Z, CALL P etc.
 	LOAD_STACK_TOP = 0x20,	///< value is the stack top value.
+	COPY,	///< Is a copy instruction (used for "used registers")
 }
 
 
@@ -49,10 +50,10 @@ export class Opcode {
 	public appendValueTypes: Array<NumberType>;
 
 	/// Contains a list of registers (only byte registers) that are changed by the instruction. E.g. the "B" in "LD B,C"
-	public outputRegisters = new Array<REGISTER>();
+	public outputRegisters = new Set<REGISTER>();
 
 	/// Contains a list of registers (only byte registers) that are used by the instruction. E.g. the "C" in "LD B,C"
-	public inputRegisters = new Array<REGISTER>();
+	public inputRegisters = new Set<REGISTER>();
 
 	/**
 	 * Sets the handler to convert a number into a label string.
@@ -204,6 +205,35 @@ export class Opcode {
 
 		// Store
 		this.name = name;
+
+		// Set input and output registers
+		if(name.startsWith("AD")	// ADD or ADC
+			|| name.startsWith("LD ")) {	// LD
+			// the arguments are in the format "X,Y" where X is the output register and Y is the input register
+			const match = /^.*\s(\S+),(\S+)$/.exec(name);
+			if(match) {
+				const out = match[1];
+				const inp = match[2];
+				this.inputRegisters = Regs.getRegistersInString(inp);
+				const outRegs = Regs.getRegistersInString(out);
+				if(out.startsWith("(")){
+					// If in brackets, e.g. "(HL)", then "HL" is an input.
+					for(const r of outRegs)
+						this.inputRegisters.add(r);
+				}
+				else {
+					// normal case: registers are output
+					this.outputRegisters = outRegs;
+				}
+			}
+
+
+		}
+		if(name.startsWith("ADC")) {
+			// Also change the flags
+			this.outputRegisters.add(REGISTER.F);
+		}
+
 	}
 
 
@@ -467,6 +497,32 @@ export class Opcode {
 		return {mnemonic: opCodeString, comment: comment};
 	}
 
+
+	/**
+	 * Uses the given regs and performance the instruction action.
+	 * Mathematical operations and bit manipulation just mark the
+	 * used register as 'used'.
+	 * Copy operation really copy the registers.
+	 * Override if necessary.
+	 *
+	 * @param regs The current state of the registers. Is altered.
+	 */
+	public useRegisters(regs: Regs) {
+		// Mark as input
+		for(const inpReg of this.inputRegisters)
+			regs.inputRegs.add(inpReg);
+
+		// Copy or mark as used.
+		if(this.flags & OpcodeFlag.COPY) {
+			// Copy
+			regs.copyRegXtoY(this.inputRegisters, this.outputRegisters);
+		}
+		else {
+			// Just use
+			for(const outpReg of this.outputRegisters)
+				regs.use(outpReg);
+		}
+	}
 }
 
 
@@ -911,25 +967,25 @@ export const OpcodesED: Array<Opcode> = [
 	new Opcode(0x61, "OUT (C),H"),
 	new Opcode(0x62, "SBC HL,HL"),
 	new Opcode(0x63, "LD (#nn),HL"),
-	new Opcode(0x64, "[neg] "),
-	new Opcode(0x65, "[retn] "),
-	new Opcode(0x66, "[im0] "),
+	new Opcode(0x64, "[neg]"),
+	new Opcode(0x65, "[retn]"),
+	new Opcode(0x66, "[im0]"),
 	new Opcode(0x67, "RRD "),
 	new Opcode(0x68, "IN L,(C)"),
 	new Opcode(0x69, "OUT (C),L"),
 	new Opcode(0x6A, "ADC HL,HL"),
 	new Opcode(0x6B, "LD HL,(#nn)"),
-	new Opcode(0x6C, "[neg] "),
-	new Opcode(0x6D, "[reti] "),
-	new Opcode(0x6E, "[im0] "),
-	new Opcode(0x6F, "RLD "),
+	new Opcode(0x6C, "[neg]"),
+	new Opcode(0x6D, "[reti]"),
+	new Opcode(0x6E, "[im0]"),
+	new Opcode(0x6F, "RLD"),
 	new Opcode(0x70, "IN F,(C)"),
 	new Opcode(0x71, "OUT (C),F"),
 	new Opcode(0x72, "SBC HL,SP"),
 	new Opcode(0x73, "LD (#nn),SP"),
-	new Opcode(0x74, "[neg] "),
-	new Opcode(0x75, "[retn] "),
-	new Opcode(0x76, "[im1] "),
+	new Opcode(0x74, "[neg]"),
+	new Opcode(0x75, "[retn]"),
+	new Opcode(0x76, "[im1]"),
 	new Opcode(0x77, "[ld i,i?]"),
 	new Opcode(0x78, "IN A,(C)"),
 	new Opcode(0x79, "OUT (C),A"),

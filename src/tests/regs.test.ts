@@ -30,6 +30,24 @@ suite('Regs', () => {
 		assert(regs.isUsed(r));
 	});
 
+	test('copyRegXtoY', () => {
+		const regs = new Regs() as any;
+
+		// Set destination and src
+		const src = new Set([REGISTER.D, REGISTER.E]);
+		const dst = new Set([REGISTER.H, REGISTER.L]);
+
+		// Copy
+		regs.copyRegXtoY(src, dst);
+
+		// Test
+		assert(regs.regs[REGISTER.H] == REGISTER.D);
+		assert(regs.regs[REGISTER.L] == REGISTER.E);
+		assert(regs.regs[REGISTER.D] == REGISTER.D);
+		assert(regs.regs[REGISTER.E] == REGISTER.E);
+
+	});
+
 	test('exxAF', () => {
 		const regs = new Regs() as any;
 		// exchange
@@ -62,46 +80,112 @@ suite('Regs', () => {
 	});
 
 	test('getRegName', () => {
-		const regs = new Regs();
 		// test
-		assert(regs.getRegName(REGISTER.A) == "A");
-		assert(regs.getRegName(REGISTER.F) == "F");
-		assert(regs.getRegName(REGISTER.B) == "B");
-		assert(regs.getRegName(REGISTER.C) == "C");
-		assert(regs.getRegName(REGISTER.D) == "D");
-		assert(regs.getRegName(REGISTER.E) == "E");
-		assert(regs.getRegName(REGISTER.H) == "H");
-		assert(regs.getRegName(REGISTER.L) == "L");
+		assert(Regs.getRegName(REGISTER.A) == "A");
+		assert(Regs.getRegName(REGISTER.F) == "F");
+		assert(Regs.getRegName(REGISTER.B) == "B");
+		assert(Regs.getRegName(REGISTER.C) == "C");
+		assert(Regs.getRegName(REGISTER.D) == "D");
+		assert(Regs.getRegName(REGISTER.E) == "E");
+		assert(Regs.getRegName(REGISTER.H) == "H");
+		assert(Regs.getRegName(REGISTER.L) == "L");
 
-		assert(regs.getRegName(REGISTER.A2) == "A'");
-		assert(regs.getRegName(REGISTER.F2) == "F'");
-		assert(regs.getRegName(REGISTER.B2) == "B'");
-		assert(regs.getRegName(REGISTER.C2) == "C'");
-		assert(regs.getRegName(REGISTER.D2) == "D'");
-		assert(regs.getRegName(REGISTER.E2) == "E'");
-		assert(regs.getRegName(REGISTER.H2) == "H'");
-		assert(regs.getRegName(REGISTER.L2) == "L'");
+		assert(Regs.getRegName(REGISTER.A2) == "A'");
+		assert(Regs.getRegName(REGISTER.F2) == "F'");
+		assert(Regs.getRegName(REGISTER.B2) == "B'");
+		assert(Regs.getRegName(REGISTER.C2) == "C'");
+		assert(Regs.getRegName(REGISTER.D2) == "D'");
+		assert(Regs.getRegName(REGISTER.E2) == "E'");
+		assert(Regs.getRegName(REGISTER.H2) == "H'");
+		assert(Regs.getRegName(REGISTER.L2) == "L'");
 
-		assert(regs.getRegName(REGISTER.IXL) == "IXL");
-		assert(regs.getRegName(REGISTER.IXH) == "IXH");
-		assert(regs.getRegName(REGISTER.IYL) == "IYL");
-		assert(regs.getRegName(REGISTER.IYH) == "IYH");
+		assert(Regs.getRegName(REGISTER.IXL) == "IXL");
+		assert(Regs.getRegName(REGISTER.IXH) == "IXH");
+		assert(Regs.getRegName(REGISTER.IYL) == "IYL");
+		assert(Regs.getRegName(REGISTER.IYH) == "IYH");
 	});
 
 	test('getIndexForRegName', () => {
-		const regs = new Regs();
 		// test
-		assert(regs.getIndexForRegName("A") == REGISTER.A);
-		assert(regs.getIndexForRegName("B") == REGISTER.B);
-		assert(regs.getIndexForRegName("C") == REGISTER.C);
-		assert(regs.getIndexForRegName("D") == REGISTER.D);
-		assert(regs.getIndexForRegName("E") == REGISTER.E);
-		assert(regs.getIndexForRegName("H") == REGISTER.H);
-		assert(regs.getIndexForRegName("L") == REGISTER.L);
-		assert(regs.getIndexForRegName("IXL") == REGISTER.IXL);
-		assert(regs.getIndexForRegName("IXH") == REGISTER.IXH);
-		assert(regs.getIndexForRegName("IYL") == REGISTER.IYL);
-		assert(regs.getIndexForRegName("IYH") == REGISTER.IYH);
+		assert(Regs.getIndexForRegName("A") == REGISTER.A);
+		assert(Regs.getIndexForRegName("B") == REGISTER.B);
+		assert(Regs.getIndexForRegName("C") == REGISTER.C);
+		assert(Regs.getIndexForRegName("D") == REGISTER.D);
+		assert(Regs.getIndexForRegName("E") == REGISTER.E);
+		assert(Regs.getIndexForRegName("H") == REGISTER.H);
+		assert(Regs.getIndexForRegName("L") == REGISTER.L);
+		assert(Regs.getIndexForRegName("IXL") == REGISTER.IXL);
+		assert(Regs.getIndexForRegName("IXH") == REGISTER.IXH);
+		assert(Regs.getIndexForRegName("IYL") == REGISTER.IYL);
+		assert(Regs.getIndexForRegName("IYH") == REGISTER.IYH);
+	});
+
+	test('getRegistersInString', () => {
+		// test
+		let r = Regs.getRegistersInString("");
+		assert(r.size == 0);
+
+		r = Regs.getRegistersInString("A");
+		assert(r.size == 1);
+		assert(r.has(REGISTER.A));
+
+		r = Regs.getRegistersInString("ABCDE");
+		assert(r.size == 5);
+		assert(r.has(REGISTER.A));
+		assert(r.has(REGISTER.B));
+		assert(r.has(REGISTER.C));
+		assert(r.has(REGISTER.D));
+		assert(r.has(REGISTER.E));
+
+		r = Regs.getRegistersInString("IXL");
+		assert(r.size == 1);
+		assert(r.has(REGISTER.IXL));
+
+		r = Regs.getRegistersInString("IXH");
+		assert(r.size == 1);
+		assert(r.has(REGISTER.IXH));
+
+		r = Regs.getRegistersInString("IYL");
+		assert(r.size == 1);
+		assert(r.has(REGISTER.IYL));
+
+		r = Regs.getRegistersInString("IYH");
+		assert(r.size == 1);
+		assert(r.has(REGISTER.IYH));
+
+		r = Regs.getRegistersInString("IX");
+		assert(r.size == 2);
+		assert(r.has(REGISTER.IXL));
+		assert(r.has(REGISTER.IXH));
+
+		r = Regs.getRegistersInString("IY");
+		assert(r.size == 2);
+		assert(r.has(REGISTER.IYL));
+		assert(r.has(REGISTER.IYH));
+
+		r = Regs.getRegistersInString("#nn");
+		assert(r.size == 0);
+
+		r = Regs.getRegistersInString("%s");
+		assert(r.size == 0);
+
+		// Not a real use case, just to test the algorithm
+		r = Regs.getRegistersInString("IYLIX");
+		assert(r.size == 3);
+		assert(r.has(REGISTER.IYL));
+		assert(r.has(REGISTER.IXL));
+		assert(r.has(REGISTER.IXH));
+
+		// Not a real use case, just to test the algorithm
+		r = Regs.getRegistersInString("HLIXBCIYH");
+		assert(r.size == 7);
+		assert(r.has(REGISTER.H));
+		assert(r.has(REGISTER.L));
+		assert(r.has(REGISTER.IXL));
+		assert(r.has(REGISTER.IXH));
+		assert(r.has(REGISTER.B));
+		assert(r.has(REGISTER.C));
+		assert(r.has(REGISTER.IYH));
 	});
 
 	test('usedRegs', () => {
