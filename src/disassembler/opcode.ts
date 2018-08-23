@@ -560,7 +560,106 @@ class OpcodeNext extends Opcode {
 }
 
 
-class Opcode_n_n extends OpcodeNext {
+/**
+ * Special opcode to decode the next register
+ */
+class OpcodeNext_nextreg_n_a extends OpcodeNext {
+	/// Disassemble the next register.
+	/// (1 byte value)
+	public disassemble(): {mnemonic: string, comment: string} {
+		const regname = OpcodeNext_nextreg_n_a.getRegisterName(this.value);
+		const opCodeString = util.format(this.name, regname);
+		return {mnemonic: opCodeString, comment: this.comment};
+	}
+
+	/**
+	 * Returns the corresponding next feature register name.
+	 * @param regId The id of the register
+	 * @returns The register name, e.g. "REG_VIDEO_TIMING"
+	 */
+	protected static getRegisterName(regId: number): string {
+		let regname;
+		switch(regId) {
+			case 0:	regname = "REG_MACHINE_ID"; break;
+			case 1:	regname = "REG_VERSION"; break;
+			case 2:	regname = "REG_RESET"; break;
+			case 3:	regname = "REG_MACHINE_TYPE"; break;
+			case 4:	regname = "REG_RAM_PAGE"; break;
+			case 5:	regname = "REG_PERIPHERAL_1"; break;
+			case 6:	regname = "REG_PERIPHERAL_2"; break;
+			case 7:	regname = "REG_TURBO_MODE"; break;
+			case 8:	regname = "REG_PERIPHERAL_3"; break;
+
+			case 14:	regname = "REG_SUB_VERSION"; break;
+			case 15:	regname = "REG_VIDEO_PARAM"; break;
+			case 16:	regname = "REG_ANTI_BRICK"; break;
+			case 17:	regname = "REG_VIDEO_TIMING"; break;
+			case 18:	regname = "REG_LAYER_2_RAM_PAGE"; break;
+			case 19:	regname = "REG_LAYER_2_SHADOW_RAM_PAGE"; break;
+
+			case 20:	regname = "REG_GLOBAL_TRANSPARENCY_COLOR"; break;
+			case 21:	regname = "REG_SPRITE_LAYER_SYSTEM"; break;
+			case 22:	regname = "REG_LAYER_2_OFFSET_X"; break;
+			case 23:	regname = "REG_LAYER_2_OFFSET_Y"; break;
+			case 24:	regname = "REG_CLIP_WINDOW_LAYER_2"; break;
+			case 25:	regname = "REG_CLIP_WINDOW_SPRITES"; break;
+			case 26:	regname = "REG_CLIP_WINDOW_ULA"; break;
+
+			case 28:	regname = "REG_CLIP_WINDOW_CONTROL"; break;
+
+			case 30:	regname = "REG_ACTIVE_VIDEO_LINE_H"; break;
+			case 31:	regname = "REG_ACTIVE_VIDEO_LINE_L"; break;
+
+			case 34:	regname = "REG_LINE_INTERRUPT_CONTROL"; break;
+			case 35:	regname = "REG_LINE_INTERRUPT_VALUE_L"; break;
+
+			case 40:	regname = "REG_KEYMAP_ADDRESS_H"; break;
+			case 41:	regname = "REG_KEYMAP_ADDRESS_L"; break;
+			case 42:	regname = "REG_KEYMAP_DATA_H"; break;
+			case 43:	regname = "REG_KEYMAP_DATA_L"; break;
+
+			case 45:	regname = "REG_DAC_MONO"; break;
+
+			case 50:	regname = "REG_LORES_OFFSET_X"; break;
+			case 51:	regname = "REG_LORES_OFFSET_Y"; break;
+
+			case 64:	regname = "REG_PALETTE_INDEX"; break;
+			case 65:	regname = "REG_PALETTE_VALUE_8"; break;
+			case 66:	regname = "REG_ULANEXT_PALETTE_FORMAT"; break;
+			case 67:	regname = "REG_PALETTE_CONTROL"; break;
+			case 68:	regname = "REG_PALETTE_VALUE_16"; break;
+
+			case 74:	regname = "REG_FALLBACK_COLOR"; break;
+
+			case 80:	regname = "REG_MMU0"; break;
+			case 81:	regname = "REG_MMU1"; break;
+			case 82:	regname = "REG_MMU2"; break;
+			case 83:	regname = "REG_MMU3"; break;
+			case 84:	regname = "REG_MMU4"; break;
+			case 85:	regname = "REG_MMU5"; break;
+			case 86:	regname = "REG_MMU6"; break;
+			case 87:	regname = "REG_MMU7"; break;
+
+			case 96:	regname = "REG_COPPER_DATA"; break;
+			case 97:	regname = "REG_COPPER_CONTROL_L"; break;
+			case 98:	regname = "REG_COPPER_CONTROL_H"; break;
+
+			case 255:	regname = "REG_DEBUG"; break;
+
+			default:
+				// unknown
+				regname = Format.getHexString(regId, 2)+'h';
+				break;
+		}
+		return regname;
+	}
+}
+
+
+/**
+ * Special opcode to decode the 2 values.
+ */
+class OpcodeNext_nextreg_n_n extends OpcodeNext_nextreg_n_a {
 	// The 2nd value.
 	public value2: number;
 
@@ -581,8 +680,302 @@ class Opcode_n_n extends OpcodeNext {
 	/// Disassemble the 2 values.
 	/// Both are #n (1 byte values)
 	public disassemble(): {mnemonic: string, comment: string} {
-		const opCodeString = util.format(this.name, Format.getHexString(this.value, 2)+'h', Format.getHexString(this.value2, 2)+'h');
+		const regId = this.value;
+		const regValue = this.value2;
+		const regname = OpcodeNext_nextreg_n_a.getRegisterName(regId);
+		const valuename = OpcodeNext_nextreg_n_n.getRegisterValueName(regId, regValue);
+		const opCodeString = util.format(this.name, regname, valuename);
 		return {mnemonic: opCodeString, comment: this.comment};
+	}
+
+	/**
+	 * Returns the corresponding value name for a value for a next feature register name.
+	 * @param regId The id of the register. e.g. "REG_PERIPHERAL_1"
+	 * @param regValue The value for the register, e.g. 0x40
+	 * @returns E.g. "RP1_JOY1_KEMPSTON"
+	 */
+	protected static getRegisterValueName(regId: number, regValue: number): string {
+		let valuename;
+		let arr;
+		switch(regId) {
+			case 0:	// REG_MACHINE_ID
+				switch(regValue) {
+					case 0: valuename = "REG_MACHINE_ID"; break;
+					case 1: valuename = "RMI_DE1A"; break;
+					case 2: valuename = "RMI_DE2A"; break;
+					case 5: valuename = "RMI_FBLABS"; break;
+					case 6: valuename = "RMI_VTRUCCO"; break;
+					case 7: valuename = "RMI_WXEDA"; break;
+					case 8: valuename = "RMI_EMULATORS"; break;
+					case 10: valuename = "RMI_ZXNEXT"; break;      // ZX Spectrum Next
+					case 11: valuename = "RMI_MULTICORE"; break;
+					case 250: valuename = "RMI_ZXNEXT_AB"; break;  // ZX Spectrum Next Anti-brick
+				}
+				break;
+
+			case 1: // REG_VERSION
+				valuename = Format.getHexString(regValue,2) + 'h (v'; + (regValue>>4) + '.' + (regValue&0x0f) + ')';
+				break;
+
+			case 2: // REG_RESET
+				valuename = Format.getHexString(regValue,2) + 'h';
+				arr = new Array<string>();
+				if(regValue & 0x04)
+					arr.push("RR_POWER_ON_RESET");
+				if(regValue & 0x02)
+					arr.push("RR_HARD_RESET");
+				if(regValue & 0x01)
+					arr.push("RR_SOFT_RESET");
+				if(arr.length > 0)
+					valuename += ' (' + arr.join('|') + ')';
+				break;
+
+			case 3: // REG_MACHINE_TYPE
+				valuename = Format.getHexString(regValue,2) + 'h';
+				arr = new Array<string>();
+				if(regValue & 0x80)
+					arr.push("lock timing");
+				switch((regValue>>4) & 0x07) {
+					case 0b000:
+					case 0b001:	arr.push("Timing:ZX 48K"); break;
+					case 0b010: arr.push("Timing:ZX 128K"); break;
+					case 0b011: arr.push("Timing:ZX +2/+3e"); break;
+					case 0b100: arr.push("Timing:Pentagon 128K"); break;
+				}
+				switch(regValue & 0x07) {
+					case 0b000:	arr.push("Machine:Config mode"); break;
+					case 0b001:	arr.push("Machine:ZX 48K"); break;
+					case 0b010: arr.push("Machine:ZX 128K"); break;
+					case 0b011: arr.push("Machine:ZX +2/+3e"); break;
+					case 0b100: arr.push("Machine:Pentagon 128K"); break;
+				}
+				if(arr.length > 0)
+					valuename += ' (' + arr.join('|') + ')';
+			break;
+
+			case 4: // REG_RAM_PAGE
+				switch(regValue) {
+					case 0x08: valuename = "RRP_RAM_DIVMMC"; break;    // 0x00
+					case 0x04: valuename = "RRP_ROM_DIVMMC"; break;    // 0x18
+					case 0x05: valuename = "RRP_ROM_MF"; break;        // 0x19
+					case 0x00: valuename = "RRP_ROM_SPECTRUM"; break;  // 0x1c
+				}
+				break;
+
+			case 5: // REG_PERIPHERAL_1
+				switch(regValue) {
+					case 0x00: valuename = "RP1_JOY1_SINCLAIR"; break;
+					case 0x40: valuename = "RP1_JOY1_KEMPSTON"; break;
+					case 0x80: valuename = "RP1_JOY1_CURSOR"; break;
+					case 0x00: valuename = "RP1_JOY2_SINCLAIR"; break;
+					case 0x10: valuename = "RP1_JOY2_KEMPSTON"; break;
+					case 0x20: valuename = "RP1_JOY2_CURSOR"; break;
+					case 0x00: valuename = "RP1_RATE_50"; break;
+					case 0x04: valuename = "RP1_RATE_60"; break;
+					case 0x02: valuename = "RP1_ENABLE_SCANLINES"; break;
+					case 0x01: valuename = "RP1_ENABLE_SCANDOUBLER"; break;
+				}
+				break;
+
+			case 6: // REG_PERIPHERAL_2
+				break;
+
+			case 7: // REG_TURBO_MODE
+				switch(regValue) {
+					case 0x00: valuename = "RTM_3MHZ"; break;
+					case 0x01: valuename = "RTM_7MHZ"; break;
+					case 0x02: valuename = "RTM_14MHZ"; break;
+					case 0x03: valuename = "RTM_28MHZ"; break;
+				}
+				break;
+
+			case 8: // REG_PERIPHERAL_3
+				break;
+
+			case 14: // REG_SUB_VERSION
+				break;
+
+			case 15: // REG_VIDEO_PARAM
+				break;
+
+			case 16: // REG_ANTI_BRICK
+				break;
+
+			case 17: // REG_VIDEO_TIMING
+				break;
+
+			case 18: // REG_LAYER_2_RAM_PAGE
+				switch(regValue) {
+					case 0x3f: valuename = "RL2RP_MASK"; break;
+				}
+				break;
+
+			case 19: // REG_LAYER_2_SHADOW_RAM_PAGE
+				switch(regValue) {
+					case 0x3f: valuename = "RL2RP_MASK"; break;
+				}
+				break;
+
+			case 20: // REG_GLOBAL_TRANSPARENCY_COLOR
+				break;
+
+			case 21: // REG_SPRITE_LAYER_SYSTEM
+				switch(regValue) {
+					case 0x80: valuename = "RSLS_ENABLE_LORES"; break;
+					case 0x00: valuename = "RSLS_LAYER_PRIORITY_SLU"; break;
+					case 0x04: valuename = "RSLS_LAYER_PRIORITY_LSU"; break;
+					case 0x08: valuename = "RSLS_LAYER_PRIORITY_SUL"; break;
+					case 0x0c: valuename = "RSLS_LAYER_PRIORITY_LUS"; break;
+					case 0x10: valuename = "RSLS_LAYER_PRIORITY_USL"; break;
+					case 0x14: valuename = "RSLS_LAYER_PRIORITY_ULS"; break;
+					case 0x02: valuename = "RSLS_SPRITES_OVER_BORDER"; break;
+					case 0x01: valuename = "RSLS_SPRITES_VISIBLE"; break;
+				}
+				break;
+
+			case 22: // REG_LAYER_2_OFFSET_X
+				break;
+
+			case 23: // REG_LAYER_2_OFFSET_Y
+				break;
+
+			case 24: // REG_CLIP_WINDOW_LAYER_2
+				break;
+
+			case 25: // REG_CLIP_WINDOW_SPRITES
+				break;
+
+			case 26: // REG_CLIP_WINDOW_ULA
+				break;
+
+			case 28: // REG_CLIP_WINDOW_CONTROL
+				switch(regValue) {
+					case 0x04: valuename = "RCWC_RESET_ULA_CLIP_INDEX"; break;
+					case 0x02: valuename = "RCWC_RESET_SPRITE_CLIP_INDEX"; break;
+					case 0x01: valuename = "RCWC_RESET_LAYER_2_CLIP_INDEX"; break;
+				}
+				break;
+
+			case 30: // REG_ACTIVE_VIDEO_LINE_H
+				break;
+
+			case 31: // REG_ACTIVE_VIDEO_LINE_L
+				break;
+
+			case 34: // REG_LINE_INTERRUPT_CONTROL
+				switch(regValue) {
+					case 0x80: valuename = "RLIC_INTERRUPT_FLAG"; break;
+					case 0x04: valuename = "RLIC_DISABLE_ULA_INTERRUPT"; break;
+					case 0x02: valuename = "RLIC_ENABLE_LINE_INTERRUPT"; break;
+					case 0x01: valuename = "RLIC_LINE_INTERRUPT_VALUE_H"; break;
+				}
+				break;
+
+			case 35: // REG_LINE_INTERRUPT_VALUE_L
+				break;
+
+			case 40: // REG_KEYMAP_ADDRESS_H
+				break;
+
+			case 41: // REG_KEYMAP_ADDRESS_L
+				break;
+
+			case 42: // REG_KEYMAP_DATA_H
+				break;
+
+			case 43: // REG_KEYMAP_DATA_L
+				break;
+
+			case 45: // REG_DAC_MONO
+				break;
+
+			case 50: // REG_LORES_OFFSET_X
+				break;
+
+			case 51: // REG_LORES_OFFSET_Y
+				break;
+
+			case 64: // REG_PALETTE_INDEX
+				break;
+
+			case 65: // REG_PALETTE_VALUE_8
+				break;
+
+			case 66: // REG_ULANEXT_PALETTE_FORMAT
+				break;
+
+			case 67: // REG_PALETTE_CONTROL
+				switch(regValue) {
+					case 0x80: valuename = "RPC_DISABLE_AUTOINC"; break;
+					case 0x00: valuename = "RPC_SELECT_ULA_PALETTE_0"; break;
+					case 0x40: valuename = "RPC_SELECT_ULA_PALETTE_1"; break;
+					case 0x10: valuename = "RPC_SELECT_LAYER_2_PALETTE_0"; break;
+					case 0x50: valuename = "RPC_SELECT_LAYER_2_PALETTE_1"; break;
+					case 0x20: valuename = "RPC_SELECT_SPRITES_PALETTE_0"; break;
+					case 0x60: valuename = "RPC_SELECT_SPRITES_PALETTE_1"; break;
+					case 0x00: valuename = "RPC_ENABLE_SPRITES_PALETTE_0"; break;
+					case 0x08: valuename = "RPC_ENABLE_SPRITES_PALETTE_1"; break;
+					case 0x00: valuename = "RPC_ENABLE_LAYER_2_PALETTE_0"; break;
+					case 0x04: valuename = "RPC_ENABLE_LAYER_2_PALETTE_1"; break;
+					case 0x00: valuename = "RPC_ENABLE_ULA_PALETTE_0"; break;
+					case 0x02: valuename = "RPC_ENABLE_ULA_PALETTE_1"; break;
+					case 0x01: valuename = "RPC_ENABLE_ULANEXT"; break;
+				}
+				break;
+
+			case 68: // REG_PALETTE_VALUE_16
+				break;
+
+			case 74: // REG_FALLBACK_COLOR
+				break;
+
+			case 80: // REG_MMU0
+				break;
+
+			case 81: // REG_MMU1
+				break;
+
+			case 82: // REG_MMU2
+				break;
+
+			case 83: // REG_MMU3
+				break;
+
+			case 84: // REG_MMU4
+				break;
+
+			case 85: // REG_MMU5
+				break;
+
+			case 86: // REG_MMU6
+				break;
+
+			case 87: // REG_MMU7
+				break;
+
+			case 96: // REG_COPPER_DATA
+				break;
+
+			case 97: // REG_COPPER_CONTROL_L
+				break;
+
+			case 98: // REG_COPPER_CONTROL_H
+				switch(regValue) {
+					case 0x00: valuename = "RCCH_COPPER_STOP"; break;
+					case 0x40: valuename = "RCCH_COPPER_RUN_LOOP_RESET"; break;
+					case 0x80: valuename = "RCCH_COPPER_RUN_LOOP"; break;
+					case 0xc0: valuename = "RCCH_COPPER_RUN_VBI"; break;
+				}
+				break;
+
+			case 255: // REG_DEBUG
+				break;
+		}
+
+		// Check if undefined
+		if(!valuename)
+			valuename = Format.getHexString(regValue, 2)+'h';
+		return valuename;
 	}
 }
 
@@ -936,8 +1329,8 @@ export const OpcodesED: Array<Opcode> = [
 	new OpcodeNext(0x8A, "PUSH #nn"),     // ZX Spectrum Next
 	...Array<number>(0x06).fill(0).map((value, index) => new OpcodeInvalid(0x8B+index)),
 
-	new Opcode_n_n(0x91, "NEXTREG #n,#n"),     // ZX Spectrum Next
-	new OpcodeNext(0x92, "NEXTREG #n,A"),     // ZX Spectrum Next
+	new OpcodeNext_nextreg_n_n(0x91, "NEXTREG #n,#n"),     // ZX Spectrum Next
+	new OpcodeNext_nextreg_n_a(0x92, "NEXTREG #n,A"),     // ZX Spectrum Next
 	new OpcodeNext(0x93, "PIXELDN"),     // ZX Spectrum Next
 	new OpcodeNext(0x94, "PIXELAD"),     // ZX Spectrum Next
 	new OpcodeNext(0x95, "SETAE"),     // ZX Spectrum Next

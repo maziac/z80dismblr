@@ -777,8 +777,10 @@ suite('Disassembler', () => {
 
 				0xED, 0x8A,	0x11, 0x88,		// PUSH 0x1188 (big endian)
 
-				0xED, 0x91,	250, 9,	// NEXTREG #n,#n
-				0xED, 0x92,	40,		// NEXTREG #n,A
+				0xED, 0x91,	0, 10,	// NEXTREG #REG_MACHINE_ID,#RMI_ZXNEXT
+				0xED, 0x91,	3, 0b10010010,	// NEXTREG #REG_MACHINE_TYPE,#lock timing|Timing:ZX48K|Macnine:ZX128K
+				0xED, 0x92,	5,		// NEXTREG #REG_PERIPHERAL_1,A
+				0xED, 0x91,	250, 251,	// NEXTREG FAh,FBh
 
 				0xED, 0x93,		// PIXELDN
 				0xED, 0x94,		// PIXELAD
@@ -816,8 +818,10 @@ suite('Disassembler', () => {
 			assert(lines[++i] == 'SWAPNIB');
 			assert(lines[++i] == 'MIRROR');
 			assert(lines[++i] == 'PUSH 8811h');
-			assert(lines[++i] == 'NEXTREG FAh,09h');	// 250, 9
-			assert(lines[++i] == 'NEXTREG 28h,A');		// 40
+			assert(lines[++i] == 'NEXTREG REG_MACHINE_ID,RMI_ZXNEXT');	// 0, 10
+			assert(lines[++i] == 'NEXTREG REG_MACHINE_TYPE,92h (lock timing|Timing');	// 3, 3, 0b10010010
+			assert(lines[++i] == 'NEXTREG REG_PERIPHERAL_1,A');		// 5
+			assert(lines[++i] == 'NEXTREG FAh,FBh');	// 250, 251
 			assert(lines[++i] == 'PIXELDN');
 			assert(lines[++i] == 'PIXELAD');
 			assert(lines[++i] == 'SETAE');

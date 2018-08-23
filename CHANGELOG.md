@@ -1,3 +1,7 @@
+## 1.4.1
+- Improved decoding of 'NEXTREG'.
+
+
 ## 1.4.0
 - "--opcode": User opcode extensions
 - Branch labels that jump into the middle of an opcode adjusted. These use offsets now (e.g. "JP LBL1+1").
