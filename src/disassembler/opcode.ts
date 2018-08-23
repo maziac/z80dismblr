@@ -357,8 +357,9 @@ export class Opcode {
 	 * @returns A string that contains the disassembly, e.g. "LD A,(DATA_LBL1)"
 	 * or "JR Z,.sub1_lbl3".
  	 * @param memory The memory area. Use to distinguish if the access is maybe wrong.
+	 * If this is not required (comment) the parameter can be omitted.
 	 */
-	public disassemble(memory: Memory): {mnemonic: string, comment: string} {
+	public disassemble(memory?: Memory): {mnemonic: string, comment: string} {
 		// optional comment
 		let comment = '';
 
@@ -377,11 +378,13 @@ export class Opcode {
 			valueName = Opcode.convertToLabel(val);
 			comment = Format.getConversionForAddress(val);
 			// Check if branching into the middle of an opcode
-			const memAttr = memory.getAttributeAt(val);
-			if(memAttr & MemAttribute.ASSIGNED) {
-				if(!(memAttr & MemAttribute.CODE_FIRST)) {
-					// Yes, it jumps into the middle of an opcode.
-					comment += ', WARNING: Branches into the middle of an opcode!';
+			if(memory) {
+				const memAttr = memory.getAttributeAt(val);
+				if(memAttr & MemAttribute.ASSIGNED) {
+					if(!(memAttr & MemAttribute.CODE_FIRST)) {
+						// Yes, it jumps into the middle of an opcode.
+						comment += ', WARNING: Branches into the middle of an opcode!';
+					}
 				}
 			}
 		}
@@ -390,11 +393,13 @@ export class Opcode {
 			valueName = Opcode.convertToLabel(val);
 			comment = Format.getConversionForAddress(val);
 			// Check if accessing code area
-			const memAttr = memory.getAttributeAt(val);
-			if(memAttr & MemAttribute.ASSIGNED) {
-				if(memAttr & MemAttribute.CODE) {
-					// Yes, code is accessed
-					comment += ', WARNING: Instruction accesses code!';
+			if(memory) {
+				const memAttr = memory.getAttributeAt(val);
+				if(memAttr & MemAttribute.ASSIGNED) {
+					if(memAttr & MemAttribute.CODE) {
+						// Yes, code is accessed
+						comment += ', WARNING: Instruction accesses code!';
+					}
 				}
 			}
 		}
