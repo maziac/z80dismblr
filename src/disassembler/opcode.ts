@@ -69,8 +69,12 @@ export class Opcode {
 		let valueString;
 		if(Opcode.convertToLabelHandler)
 			valueString = Opcode.convertToLabelHandler(value);
-		if(!valueString)
-			valueString = value.toString();
+		if(!valueString) {
+			valueString = value.toString(16).toUpperCase();
+			const len = valueString.length;
+			if(len < 4)
+				valueString = "0".repeat(4-len) + valueString;
+		}
 		return valueString;
 	}
 
