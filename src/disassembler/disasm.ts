@@ -134,6 +134,7 @@ export class Disassembler extends EventEmitter {
 	 */
 	constructor() {
 		super();
+		this.initLabels();
 		Opcode.setConvertToLabelHandler(value => {
 			let valueName;
 			let label;
@@ -216,9 +217,6 @@ export class Disassembler extends EventEmitter {
 	 * An array of strings with the disassembly.
 	 */
 	public disassemble() {
-		// Clear all labels
-		this.initLabels();
-
         // Add address 0
 		this.addAutomaticAddresses();
 
