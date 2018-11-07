@@ -44,6 +44,8 @@ suite('Disassembler', () => {
 		dasm.clmnsAddress = 0;
 		dasm.addOpcodeBytes = false;
 		dasm.opcodesLowerCase = false;
+
+		dasm.initLabels();
 	});
 
 	//teardown();

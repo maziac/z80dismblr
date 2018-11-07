@@ -85,7 +85,7 @@ class Startup {
             // Output disassembly
             if(this.outPath) {
                 // disssembly to file
-                const text = this.dasm.getDisassembly();
+                const text = this.dasm.getDisassemblyText();
                 writeFileSync(this.outPath, text);
             }
 
@@ -169,7 +169,7 @@ z80dismblr [options]
         and start disassembly here. If this option is given this behaviour is suppressed.
     --jmptable address size: If it is known that a jump-table exists in memory
         then its address and size can be given here. 'size' is the number of addresses.
-    --clrlabels: Clears all albels collected so far. E.g. can be usd to overrule
+    --clrlabels: Clears all labels collected so far. E.g. can be usd to overrule
     the automatic label found in a sna file. Afterwards new labels can be
     defined.
     Can be useful if you want to list a dot file only for a specfic subroutine.
