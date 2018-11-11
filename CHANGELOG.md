@@ -1,12 +1,13 @@
 ## 1.4.1
 - Improved decoding of 'NEXTREG'.
+- Internal changes for z80-debug.
 
 
 ## 1.4.0
 - "--opcode": User opcode extensions
 - Branch labels that jump into the middle of an opcode adjusted. These use offsets now (e.g. "JP LBL1+1").
 - Warnings added for wrong branch labels.
-- Warnigns added for code that is accessed as data (self-modifying code).
+- Warnings added for code that is accessed as data (self-modifying code).
 - Corrected handling of apostrophes in argument files.
 
 
