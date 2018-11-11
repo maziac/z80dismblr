@@ -14,7 +14,7 @@ Please don't hesitate to report any problem that you find.
 - Graphical visualization via Graphivz .dot of
   - call graphs
   - flow-charts
-- Disassembles the given binary via Code-Flow-Grap analysis.
+- Disassembles the given binary via Code-Flow-Graph analysis.
 - Divides into data and code area.
 - Separates subroutines visually.
 - Creates labels from hex addresses.
