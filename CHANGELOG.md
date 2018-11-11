@@ -1,5 +1,5 @@
 ## 1.4.1
-- Improved decoding of 'NEXTREG'.
+- Improved decoding of 'NEXTREG': Register names are decoded.
 - Internal changes for z80-debug.
 
 
