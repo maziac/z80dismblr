@@ -1,3 +1,8 @@
+## 1.4.2
+- Corrected opcode "SUB A,s" to "SUB s".
+- Added new Z80N barrel shift and "JP (C)" opcodes.
+
+
 ## 1.4.1
 - Improved decoding of 'NEXTREG': Register names are decoded.
 - Internal changes for z80-debug.
