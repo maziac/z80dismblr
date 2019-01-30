@@ -789,7 +789,15 @@ suite('Disassembler', () => {
 
 				0xED, 0x95,		// SETAE
 
-				0xED, 0x27,	11	// TEST #n
+				0xED, 0x27,	11,	// TEST #n
+
+				0xED, 0x28,		// BSLA DE,B
+				0xED, 0x29,		// BSRA DE,B
+				0xED, 0x2A,		// BSRL DE,B
+				0xED, 0x2B,		// BSRF DE,B
+				0xED, 0x2C,		// BRLC DE,B
+
+				0xED, 0x98,		// JP (C)
 			];
 
 			const org = 0x0000;
@@ -828,6 +836,14 @@ suite('Disassembler', () => {
 			assert(lines[++i] == 'PIXELAD');
 			assert(lines[++i] == 'SETAE');
 			assert(lines[++i] == 'TEST 0Bh');	// 11
+
+			assert(lines[++i] == 'BSLA DE,B');
+			assert(lines[++i] == 'BSRA DE,B');
+			assert(lines[++i] == 'BSRL DE,B');
+			assert(lines[++i] == 'BSRF DE,B');
+			assert(lines[++i] == 'BRLC DE,B');
+
+			assert(lines[++i] == 'JP (C)');
 		});
 
 
