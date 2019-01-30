@@ -627,6 +627,10 @@ suite('Disassembler', () => {
 				0xFD, 0xCB, 1, 2,	// rlc (iy+1),d
 				0xDD, 0xCB, -5, 6,	// rlc (ix-5)
 				0xFD, 0xCB, -9, 6,	// rlc (iy-9)
+				0x28, 0x02,			// jr z,+2 : To reach both jumps.
+				0xDD, 0xE9,	// jp (ix)
+				0xFD, 0xE9,	// jp (iy)
+
 			];
 
 			const org = 0x0000;
@@ -656,6 +660,9 @@ suite('Disassembler', () => {
 			assert(lines[++i] == 'RLC (IY+1) -> D');
 			assert(lines[++i] == 'RLC (IX-5)');
 			assert(lines[++i] == 'RLC (IY-9)');
+			++i;
+			assert(lines[++i] == 'JP (IX)');
+			assert(lines[++i] == 'JP (IY)');
 		});
 
 
@@ -994,6 +1001,36 @@ suite('Disassembler', () => {
 			assert(linesUntrimmed[4] == 'LBL1:');
 			assert(lines[2] == 'JP LBL1+1');
 			assert(linesUntrimmed[6].indexOf("WARNING") >= 0);
+		});
+
+
+		test('jp (hl)', () => {
+			const memory = [
+/*5000*/ 					// START:
+/*5000*/ 0x21, 0x00, 0x60,	// 	    ld hl,0x6000
+/*5003*/ 0xE9,	//		jp (hl)
+/*5006*/ //0xC9, 				// 		ret
+0xDD, 0xE9,	// jp (ix)
+0xFD, 0xE9,	// jp (iy)
+0xED, 0xE9,	// jp (c)
+			];
+
+
+			const org = 0x5000;
+			dasm.memory.setMemory(org, new Uint8Array(memory));
+			dasm.setLabel(org);
+			dasm.disassemble();
+			const linesUntrimmed = dasm.disassembledLines;
+
+			const lines = trimAllLines(linesUntrimmed);
+
+			//dasm.printLabels();
+
+			/*
+			assert(linesUntrimmed[4] == 'LBL1:');
+			assert(lines[2] == 'JP LBL1+1');
+			assert(linesUntrimmed[6].indexOf("WARNING") >= 0);
+			*/
 		});
 
     });
