@@ -197,6 +197,11 @@ export class Opcode {
 			const jumpAddress = this.code & 0b00111000;
 			this.value = jumpAddress;
 		}
+		else if(name.startsWith("JP")) {	// "JP (HL)", "JP (IXY)" or "JP (C)"
+			// Note: we don't set a branch address because we don't know where it jumps to: this.flags |= OpcodeFlag.BRANCH_ADDRESS;
+			// But it is a stop code.
+			this.flags |= OpcodeFlag.STOP;
+		}
 
 		// Store
 		this.name = name;

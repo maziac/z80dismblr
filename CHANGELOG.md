@@ -1,7 +1,8 @@
 ## 1.4.2
 - Corrected opcode "SUB A,s" to "SUB s".
 - Added new Z80N barrel shift and "JP (C)" opcodes.
-
+- Corrected "JP (IX)" and "JP (IY)" disassembly.
+- Made "JP (HL)" etc. a stopping insruction.
 
 ## 1.4.1
 - Improved decoding of 'NEXTREG': Register names are decoded.

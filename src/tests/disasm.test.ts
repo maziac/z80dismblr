@@ -804,7 +804,7 @@ suite('Disassembler', () => {
 				0xED, 0x2B,		// BSRF DE,B
 				0xED, 0x2C,		// BRLC DE,B
 
-				0xED, 0x98,		// JP (C)
+				0xED, 0x98,		// JP (C). Should be last instruction to test.
 			];
 
 			const org = 0x0000;
@@ -1006,13 +1006,19 @@ suite('Disassembler', () => {
 
 		test('jp (hl)', () => {
 			const memory = [
-/*5000*/ 					// START:
-/*5000*/ 0x21, 0x00, 0x60,	// 	    ld hl,0x6000
-/*5003*/ 0xE9,	//		jp (hl)
-/*5006*/ //0xC9, 				// 		ret
-0xDD, 0xE9,	// jp (ix)
-0xFD, 0xE9,	// jp (iy)
-0xED, 0xE9,	// jp (c)
+/* 5000h */
+0x21, 0x00, 0x60,	// ld hl,0x6000
+0x28, 0x02,			// jr z,+2 to reach the next instruction
+0xE9,				// jp (hl)
+0x00,				// Is a 'DEFB 0' and not a 'NOP'
+0x28, 0x03,			// jr z,+3 to reach the next instruction
+0xDD, 0xE9,			// jp (ix)
+0x00,				// Is a 'DEFB 0' and not a 'NOP'
+0x28, 0x03,			// jr z,+3 to reach the next instruction
+0xFD, 0xE9,			// jp (iy)
+0x00,				// Is a 'DEFB 0' and not a 'NOP'
+0xED, 0x98,			// jp (c)
+0x00,				// Is a 'DEFB 0' and not a 'NOP'
 			];
 
 
@@ -1026,11 +1032,17 @@ suite('Disassembler', () => {
 
 			//dasm.printLabels();
 
-			/*
-			assert(linesUntrimmed[4] == 'LBL1:');
-			assert(lines[2] == 'JP LBL1+1');
-			assert(linesUntrimmed[6].indexOf("WARNING") >= 0);
-			*/
+			let i = 3;
+			assert(lines[i] == 'JP (HL)');
+			assert(lines[++i] == 'DEFB 00h');
+			i += 2
+			assert(lines[i] == 'JP (IX)');
+			assert(lines[++i] == 'DEFB 00h');
+			i += 2
+			assert(lines[i] == 'JP (IY)');
+			assert(lines[++i] == 'DEFB 00h');
+			assert(lines[++i] == 'JP (C)');
+			assert(lines[++i] == 'DEFB 00h');
 		});
 
     });
