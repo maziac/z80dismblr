@@ -151,8 +151,8 @@ z80dismblr [options]
         to provide the arguments in a file. There is no special format, just
         provide the arguments. May conatin newlines.
     --sna file: Read in a ZX Spectrum snapshot file (48k format only, i.e. no ROM bank support).
-    --bin start file: Read in a plain binary. 'start' is the address in memory for the read binary. You can use this
-        argument several times to read inseveral binary files.
+    --bin start file: Read in a plain binary. 'start' is the address in memory for the read binary.
+    You can use this argument several times to read inseveral binary files.
         --codelabel or --tr is mandatory to
         obtain any disassembly results.
     --out file: Output file. z80dismblr will write the disassembly here.
