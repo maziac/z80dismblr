@@ -27,7 +27,7 @@ class Startup {
     protected static lblsOutPath: string|undefined;
 
     /// The labels input path.
-    protected static lblsInPath: string|undefined;
+    protected static commentsPath: string|undefined;
 
     /// The out path for the flow-chart dot file.
     protected static flowChartOutPath: string|undefined;
@@ -75,9 +75,9 @@ class Startup {
             if(this.dasm.opcodesLowerCase)
                 Opcode.makeLowerCase();
 
-            // infile with commetns for the labels
-            if(this.lblsInPath)
-                this.dasm.setAddressComments(this.lblsInPath);
+            // infile with comments for the labels
+            if(this.commentsPath)
+                this.dasm.setAddressComments(this.commentsPath);
 
             // Execute
             this.dasm.disassemble();
@@ -161,8 +161,8 @@ z80dismblr [options]
         disassembly output.
     --codelabel address [labelname]: Known addresses (like the code start
         address) can be given here. If no sna file is given at least one
-        codelabel is required so  that disassembly can start from that address.
-        Please note that address 0000h is set automatically.You could of course
+        codelabel is required so that the disassembly can start from that address.
+        Please note that address 0000h is set automatically. You could of course
         set it e.g. to change the label name.
     --noautomaticaddr: The disassemble will automatically add addresss 0000h or
         (if a SNA file has been used) the SNA start address to the labels
@@ -213,7 +213,7 @@ z80dismblr [options]
         nodes in the dot file with a color.
 
     Labels options:
-        --lblsin file: Input a file with labels, addresses and comments.
+        --comments file: Input a file with labels, addresses and comments.
             If a label is specified here it will be used instead of the internally generated
             label.
             Also the comments will be used instead of the generated ones.
@@ -592,10 +592,10 @@ z80dismblr [options]
                     }
                     break;
 
-                // Labels in file
-                case '--lblsin':
-                    this.lblsInPath = args.shift();
-                    if(!this.lblsInPath) {
+                // Comments/labels in file
+                case '--comments':
+                    this.commentsPath = args.shift();
+                    if(!this.commentsPath) {
                         throw arg + ': No path given.';
                     }
                     break;

@@ -25,13 +25,17 @@
             "name": "Launch Program",
 			"program": "${workspaceFolder}/out/z80dismblr.js",
 			"args": [
+				"--bin", "0", "src/tests/data/zxngfw.bin",
+				"--callgraphout", "out/tests/zxngfw.dot",
+				//"--labels", "src/tests/data/zxngfw.labels",
+
 				//"--args", "argsfile2",
 				//"--args", "argsfile_esxdos",
-				"--args", "argsfile3",
+				//"--args", "argsfile3",
 				//"--sna", "src/tests/data/sw.sna",
-				"--out", "out/tests/out2.asm",
-				"--callgraphout", "out/tests/out2.dot",
-				"--addbytes",
+				//"--out", "out/tests/out2.asm",
+				//"--callgraphout", "out/tests/out2.dot",
+				//"--addbytes",
 				//"--tr", "src/tests/data/sw_short.tr",
 				//"--tr", "src/tests/data/sw.tr",
 
@@ -42,7 +46,7 @@
 				//"--callgraphhighlight", "0x7015=red",
 
 				//"--lblsout", "out/tests/out2.lbls",
-				//"--lblsin",  "out/tests/in2.lbls",
+				//"--comments",  "out/tests/in2.lbls",
 
 				//"--flowchartout", "out/tests/msc.dot",
 				//"--flowchartaddresses", "CD10h", //"7015h", "A3ABh"
