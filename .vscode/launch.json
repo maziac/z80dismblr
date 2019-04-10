@@ -26,8 +26,7 @@
 			"program": "${workspaceFolder}/out/z80dismblr.js",
 			"args": [
 				"--bin", "0", "src/tests/data/zxngfw.bin",
-				"--callgraphout", "out/tests/zxngfw.dot",
-				//"--labels", "src/tests/data/zxngfw.labels",
+				"--args", "src/tests/data/zxngfw.dargs","--callgraphout", "out/tests/zxngfw.dot",
 
 				//"--args", "argsfile2",
 				//"--args", "argsfile_esxdos",

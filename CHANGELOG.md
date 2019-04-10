@@ -1,3 +1,9 @@
+## 1.4.3
+- Renamed '--lblsin' to '--comments'.
+- Fix: Labels in dot file now support dot-notation.
+- New parameter '--rstend address' to stop the disassembler diving into the RST subroutine. Use e.g. '--rstend 8' to get correct disassembly results if ESXDOS file handling is used.
+
+
 ## 1.4.2
 - Corrected opcode "SUB A,s" to "SUB s".
 - Added new Z80N barrel shift and "JP (C)" opcodes.

@@ -169,10 +169,14 @@ z80dismblr [options]
         and start disassembly here. If this option is given this behaviour is suppressed.
     --jmptable address size: If it is known that a jump-table exists in memory
         then its address and size can be given here. 'size' is the number of addresses.
-    --clrlabels: Clears all labels collected so far. E.g. can be usd to overrule
-    the automatic label found in a sna file. Afterwards new labels can be
-    defined.
-    Can be useful if you want to list a dot file only for a specfic subroutine.
+    --clrlabels: Clears all labels collected so far. E.g. can be used to overrule
+        the automatic label found in a sna file. Afterwards new labels can be
+        defined.
+        Can be useful if you want to list a dot file only for a specfic subroutine.
+    --rstend addr: Don't follow 'RST's. I.e. the disassembler will not analyze the
+        code called by a RST command of the givven address. You can use this
+        argument several times with different addresses. Example, use:
+        "--rstend 8" if you use ESXDOS file handling.
 
     Prefixes: It is possible to customize the label naming. There are different
     types of labels. For each label type you can define its prefix.
@@ -369,6 +373,18 @@ z80dismblr [options]
                         }
                     // Set label
                     this.dasm.setFixedCodeLabel(addr, labelName);
+                    break;
+
+                // Dont' follow restart address (for disassembly)
+                case '--rstend':
+                    // parse address
+                    addressString = args.shift();
+                    addr = this.parseValue(addressString);
+                    if(isNaN(addr)) {
+                        throw arg + ": Not a number: " + addressString;
+                    }
+                    // Set label
+                    this.dasm.rstDontFollowAddresses.push(addr);
                     break;
 
                 // turn off automatic addresses

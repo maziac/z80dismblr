@@ -106,6 +106,12 @@ export class Disassembler extends EventEmitter {
 	public dotFormat = "${label}\\n0x${address}\\nSize=${size}\\n";
 	//public dotFormat = "${label}\\nID=${id}\\n0x${address}\\nSize=${size}\\nInstr=${instructions}\\nCC=${CC}\\n";
 
+	/// RST addresses that shouldn't be followed on a disassembly.
+	/// Note: It can happen that code around ORG 0000h has to be disassembled.
+	/// But at the same time the ESXDOS RST 8 is used for file handling.
+	/// This is a hardwired RST. It does not exist in ROM.
+	/// RST addresses that appear in this list will not be followed/disassembled.
+	public rstDontFollowAddresses = new Array<number>();
 
 	/// The disassembled lines.
 	protected disassembledLines: Array<string>;
@@ -797,7 +803,7 @@ export class Disassembler extends EventEmitter {
 	 */
 	protected disassembleForLabel(opcodeAddress: number, opcode: Opcode): boolean {
 
-		// Check for branching etc. (CALL, JP, JR)
+		// Check for branching etc. (CALL, RST, JP, JR)
 		if(opcode.flags & OpcodeFlag.BRANCH_ADDRESS) {
 			// It is a label.
 
@@ -826,7 +832,10 @@ export class Disassembler extends EventEmitter {
 				// It has not been disassembled yet
 				if(attr & MemAttribute.ASSIGNED) {
 					// memory location exists, so queue it for disassembly
-					this.addressQueue.push(branchAddress);
+					if(vType != NumberType.CODE_RST || this.rstDontFollowAddresses.indexOf(branchAddress) < 0) {
+						// But only if it is not a RST address which was banned by the user.
+						this.addressQueue.push(branchAddress);
+					}
 				}
 			}
 		}
@@ -2309,10 +2318,10 @@ export class Disassembler extends EventEmitter {
 				const fontSize = fontSizeMin + fontSizeFactor*(stats.CyclomaticComplexity-min);
 
 				// Output
-				text += label.name + ' [fontsize="' + Math.round(fontSize) + '"];\n';
+				text += '"' + label.name + '" [fontsize="' + Math.round(fontSize) + '"];\n';
 				const nodeName = this.nodeFormat(label.name, label.id, address, stats.CyclomaticComplexity, stats.sizeInBytes, stats.countOfInstructions);
-				text += label.name + ' [label="' + nodeName + '"];\n';
-				//text += label.name + ' [label="' + label.name + '\\nID=' + label.id + '\\nCC=' + stats.CyclomaticComplexity + '\\n"];\n';
+				text += '"' + label.name + '" [label="' + nodeName + '"];\n';
+				//text += '"' + label.name + '" [label="' + label.name + '\\nID=' + label.id + '\\nCC=' + stats.CyclomaticComplexity + '\\n"];\n';
 
 				// List each callee only once
 				const callees = new Set<DisLabel>();
@@ -2331,18 +2340,18 @@ export class Disassembler extends EventEmitter {
 				}
 
 				if(callees.size > 0)
-					text += label.name + ' -> { ' + Array.from(callees).map(refLabel => refLabel.name).join(' ') + ' };\n';
+					text += '"' + label.name + '" -> { ' + Array.from(callees).map(refLabel => '"'+refLabel.name+'"').join(' ') + ' };\n';
 			}
 
 			// Color
 			if(colorString)
-				text += label.name + ' [fillcolor=' + colorString + ', style=filled];\n';
+				text += '"' + label.name + '" [fillcolor=' + colorString + ', style=filled];\n';
 		}
 
 		// Do some ranking.
 		// All labels without callers are ranked at the same level.
-		text += '\n{ rank=same; ' + rankSame1.join(', ') + ' };\n\n';
-		text += '\n{ rank=same; ' + rankSame2.join(', ') + ' };\n\n';
+		text += '\n{ rank=same; "' + rankSame1.join('", "') + '" };\n\n';
+		text += '\n{ rank=same; "' + rankSame2.join('", "') + '" };\n\n';
 
 		// ending
 		text += '}\n';
