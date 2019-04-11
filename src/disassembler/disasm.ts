@@ -29,6 +29,9 @@ export class Disassembler extends EventEmitter {
 	/// The labels.
 	protected labels: Map<number,DisLabel>;
 
+	/// The reverted labels map. Created when a callgraph is output.
+	protected revertedLabelMap: Map<string, number>;
+
 	/// Temporarily offset labels. Just an offset number of the address of the real label.
 	protected offsetLabels: Map<number,number>;
 
@@ -101,10 +104,11 @@ export class Disassembler extends EventEmitter {
 	public clmsnOpcodeTotal = 5 + 6 + 1;		///< Total length of the opcodes. After this an optional comment may start.
 
 
-	// Dot format options. E.g. "${label}\n${address}\nCC=${CC}\nSize=${size}\ninstr=${instructions}\n"
-	//public dotFormat = "${label}\\n0x${address}\\nCC=${CC}\\nInstr=${instructions}\\n";
-	public dotFormat = "${label}\\n0x${address}\\nSize=${size}\\n";
-	//public dotFormat = "${label}\\nID=${id}\\n0x${address}\\nSize=${size}\\nInstr=${instructions}\\nCC=${CC}\\n";
+	// Dot format options for the node. E.g. "${label}\n${address}\nCC=${CC}\nSize=${size}\ninstr=${instructions}\n"
+	public dotFormatString = "rankdir=TB;";	// Graph direction
+
+	// Dot format options for the node. E.g. "${label}\n${address}\nCC=${CC}\nSize=${size}\ninstr=${instructions}\n"
+	public nodeFormatString = "${label}\\n0x${address}\\nSize=${size}\\n";
 
 	/// RST addresses that shouldn't be followed on a disassembly.
 	/// Note: It can happen that code around ORG 0000h has to be disassembled.
@@ -112,6 +116,11 @@ export class Disassembler extends EventEmitter {
 	/// This is a hardwired RST. It does not exist in ROM.
 	/// RST addresses that appear in this list will not be followed/disassembled.
 	public rstDontFollowAddresses = new Array<number>();
+
+	/// An array that either contains label names or addresses,
+	/// but both as string. If defined only the labels inside this
+	/// list are used for the dot graphics.
+	public graphLabels = new Array<string|number>();
 
 	/// The disassembled lines.
 	protected disassembledLines: Array<string>;
@@ -127,7 +136,6 @@ export class Disassembler extends EventEmitter {
 
 	/// Add decimal conversion to addresses (at beginning of line)
 	protected DBG_ADD_DEC_ADDRESS = false; //true;
-
 
 	// Warnings
 
@@ -564,7 +572,9 @@ export class Disassembler extends EventEmitter {
 		while((address = this.addressQueue.shift()) != undefined) {
 			//console.log('address=0x' + address.toString(16));
 			// disassemble until stop-code
+			//console.log('===');
 			do {
+				//console.log('addr=' + address.toString(16));
 				// Check if memory has already been disassembled
 				let attr = this.memory.getAttributeAt(address);
 				if(attr & MemAttribute.CODE)
@@ -2263,6 +2273,65 @@ export class Disassembler extends EventEmitter {
 
 
 	/**
+	 * Creates a reverted map from the this.labels map (<address, DisLabel>).
+	 * The created map consists of key-value pairs <name,address>
+	 * and is stored in this.revertedLabelMap.
+	 */
+	protected createRevertedLabelMap() {
+		this.revertedLabelMap = new Map<string, number>();
+		for(const [address, label] of this.labels) {
+			this.revertedLabelMap.set(label.getName(), address);
+		}
+	}
+
+
+	/**
+	 * Returns a map of chosen addresses, labels for creating the
+	 * dot graph.
+	 */
+	protected getGraphLabels() {
+		// Create list of to be printed labels.
+		let chosenLabels = this.labels;
+		if(this.graphLabels.length > 0) {
+			// Select only certain labels
+			chosenLabels = new Map<number, DisLabel>();
+			// Loop over all labels the user wanted
+			for(const addrString of this.graphLabels) {
+				// Convert to number
+				let addr;
+				if(typeof(addrString) == 'string') {
+					addr = this.revertedLabelMap.get(addrString);
+					if(!addr)
+						throw Error('Could not find "' + addrString + '" while creating graph.');
+				}
+				else {
+					// Number
+					addr = addrString;
+				}
+				// Now get label
+				const label = this.labels.get(addr);
+				if(!label)
+					throw Error('Could not find address for "' + addrString + '" while creating graph.');
+				// Save in new map
+				chosenLabels.set(addr, label);
+
+				// Allso add the called sub routines
+				for(const called of label.calls) {
+					const calledName = called.getName();
+					const addr = this.revertedLabelMap.get(calledName) as number;
+					assert(addr != undefined);
+					// Save
+					chosenLabels.set(addr, called);
+				}
+			}
+		}
+
+		// Return
+		return chosenLabels;
+	}
+
+
+	/**
 	 * Returns the labels call graph in dot syntax.
 	 * Every main labels represents a bubble.
 	 * Arrows from one bubble to the other represents
@@ -2273,8 +2342,12 @@ export class Disassembler extends EventEmitter {
 		const rankSame1 = new Array<string>();
 		const rankSame2 = new Array<string>();
 
+		// Needed e.g. for highlighting or choosing a certain label
+		this.createRevertedLabelMap();
+
 		// header
 		let text = 'digraph ' + name + '\n{\n';
+		text += this.dotFormatString + '\n';
 
 		// Calculate size (font size) max and min
 		const fontSizeMin = 13;
@@ -2284,11 +2357,13 @@ export class Disassembler extends EventEmitter {
 		const min = this.statisticsMin.CyclomaticComplexity;
 		const fontSizeFactor = (fontSizeMax-fontSizeMin) / (this.statisticsMax.CyclomaticComplexity-min);
 
-		// Iterate through all subroutine labels to assign the text and size
+		// Iterate through all (selected) subroutine labels to assign the text and size
 		// (fontsize) to the nodes (bubbles), also the coloring.
 		// And connect the nodes with arrows.
-		for(let [address, label] of this.labels) {
+		const chosenLabels = this.getGraphLabels();
 
+		// Loop
+		for(const [address, label] of chosenLabels) {
 			const type = label.type;
 			if(type != NumberType.CODE_SUB
 				&& type != NumberType.CODE_LBL
@@ -2350,8 +2425,10 @@ export class Disassembler extends EventEmitter {
 
 		// Do some ranking.
 		// All labels without callers are ranked at the same level.
-		text += '\n{ rank=same; "' + rankSame1.join('", "') + '" };\n\n';
-		text += '\n{ rank=same; "' + rankSame2.join('", "') + '" };\n\n';
+		if(rankSame1.length > 0)
+			text += '\n{ rank=same; "' + rankSame1.join('", "') + '" };\n\n';
+		if(rankSame2.length > 0)
+			text += '\n{ rank=same; "' + rankSame2.join('", "') + '" };\n\n';
 
 		// ending
 		text += '}\n';
@@ -2372,7 +2449,7 @@ export class Disassembler extends EventEmitter {
 	 */
 	protected nodeFormat(labelName: string, labelId: number, address: number, cc?: number, size?: number, instructions?: number): string {
 		// Check if formatting is correct
-		let text = this.dotFormat;
+		let text = this.nodeFormatString;
 		try {
 			text = text.replace(/\${label}/g, labelName);
 			text = text.replace(/\${id}/g, labelId.toString());

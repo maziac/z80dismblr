@@ -203,7 +203,7 @@ z80dismblr [options]
         --callgraphout file: Output a dot file. This file can be used for visualization
             with graphviz. Each bubble is a function and is connected to other
             functions that it calls. Only main labels are written (i.e. no local labels.)
-        --callgraphformat formatstring: You can format the text in the dot nodes.
+        --callgraphnodeformat formatstring: You can format the text in the dot nodes.
             E.g. use \'--callgraphformat "\${label}\\n\${address}\\nCC=\${CC}\\nSize=\${size}\\ninstr=\${instructions}\\n"
             will show the label name, it's address, the cyclomatic complexity, the size
             in bytes and the number of instructions. Possible labels are:
@@ -213,8 +213,17 @@ z80dismblr [options]
             - \${size}: The size of the subroutine in bytes.
             - \${instructions}: The number of instructions of the subroutine.
             You can use '\\n' for centered text, and '\\l', '\\r' for left- rightaligned text.
+        --callgraphformat formatstring: You can add additional fromatting
+            for the dot file. The string you enter here is directly
+            put after the "digraph ... {" bracket.
+            E.g. use \'--callgraphformat rankdir=LR\' to change direction
+            of the graph from left to right.
         --callgraphhighlight addr1[=red|green|...] addr2 ... addrN: Highlight the associated
         nodes in the dot file with a color.
+        --callgraphnode addr|label: Use (only) the given address or label
+            as root for output. Other labels are suppressed. Useful
+            if you want to print only one subroutine.
+            E.g. use \'--callgraphnode 0x8000\' or \'--callgraphnode my_label\'
 
     Labels options:
         --comments file: Input a file with labels, addresses and comments.
@@ -553,12 +562,21 @@ z80dismblr [options]
                     break;
 
                 // Format string for the dot nodes
+                case '--callgraphnodeformat':
+                    const nodeformat = args.shift();
+                    if(!nodeformat) {
+                        throw arg + ': No format string given.';
+                    }
+                    this.dasm.nodeFormatString = nodeformat;
+                    break;
+
+                // Format string for the dot nodes
                 case '--callgraphformat':
                     const dotformat = args.shift();
                     if(!dotformat) {
                         throw arg + ': No format string given.';
                     }
-                    this.dasm.dotFormat = dotformat;
+                    this.dasm.dotFormatString = dotformat;
                     break;
 
                 // Highlight certain addressed in dot file
@@ -597,6 +615,20 @@ z80dismblr [options]
                     }
                     break;
 
+                case '--callgraphnode':
+                    {
+                        const node = args.shift();
+                        if(!node) {
+                            throw arg + ': No node given.';
+                        }
+                        // Node can be number or label. Try to convert  to number first
+                        const addr = this.parseValue(node);
+                        if(isNaN(addr))
+                            this.dasm.graphLabels.push(node);
+                        else
+                            this.dasm.graphLabels.push(addr);
+                    }
+                    break;
 
                 // Labels in/out:
 
