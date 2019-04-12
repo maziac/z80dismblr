@@ -2309,34 +2309,31 @@ export class Disassembler extends EventEmitter {
 	public getGraphLabels(addrString: number|string): Map<number, DisLabel> {
 		// Select only certain labels
 		const chosenLabels = new Map<number, DisLabel>();
-		// Loop over all labels the user wanted
-		for(const addrString of this.graphLabels) {
-			// Convert to number
-			let addr;
-			if(typeof(addrString) == 'string') {
-				addr = this.revertedLabelMap.get(addrString);
-				if(!addr)
-					throw Error('Could not find "' + addrString + '" while creating graph.');
-			}
-			else {
-				// Number
-				addr = addrString;
-			}
-			// Now get label
-			const label = this.labels.get(addr);
-			if(!label)
-				throw Error('Could not find address for "' + addrString + '" while creating graph.');
-			// Save in new map
-			chosenLabels.set(addr, label);
+		// Convert to number
+		let addr;
+		if(typeof(addrString) == 'string') {
+			addr = this.revertedLabelMap.get(addrString);
+			if(!addr)
+				throw Error('Could not find "' + addrString + '" while creating graph.');
+		}
+		else {
+			// Number
+			addr = addrString;
+		}
+		// Now get label
+		const label = this.labels.get(addr);
+		if(!label)
+			throw Error('Could not find address for "' + addrString + '" while creating graph.');
+		// Save in new map
+		chosenLabels.set(addr, label);
 
-			// Allso add the called sub routines
-			for(const called of label.calls) {
-				const calledName = called.getName();
-				const addr = this.revertedLabelMap.get(calledName) as number;
-				assert(addr != undefined);
-				// Save
-				chosenLabels.set(addr, called);
-			}
+		// Allso add the called sub routines
+		for(const called of label.calls) {
+			const calledName = called.getName();
+			const addr = this.revertedLabelMap.get(calledName) as number;
+			assert(addr != undefined);
+			// Save
+			chosenLabels.set(addr, called);
 		}
 
 		// Return
@@ -2355,9 +2352,6 @@ export class Disassembler extends EventEmitter {
 	public getCallGraph(labels: Map<number,DisLabel>, name: string): string {
 		const rankSame1 = new Array<string>();
 		const rankSame2 = new Array<string>();
-
-		// Needed e.g. for highlighting or choosing a certain label
-		this.createRevertedLabelMap();
 
 		// header
 		let text = 'digraph "' + name + '"\n{\n';

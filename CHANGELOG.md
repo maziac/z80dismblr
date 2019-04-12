@@ -2,7 +2,10 @@
 - Renamed '--lblsin' to '--comments'.
 - Fix: Labels in dot file now support dot-notation.
 - New parameter '--rstend address' to stop the disassembler diving into the RST subroutine. Use e.g. '--rstend 8' to get correct disassembly results if ESXDOS file handling is used.
-
+- Added parameter '--callgraphnode addr|label' to output only a certain label in the dot graph.
+- Added parameter '--callgraphformat format' to offer more format options for dot.
+- Renamed old parameter '--callgraphformat format' to '--callgraphnodeformat format'.
+- '--callgraphhighlight' now also allows labels as input.
 
 ## 1.4.2
 - Corrected opcode "SUB A,s" to "SUB s".
