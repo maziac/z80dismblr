@@ -2306,9 +2306,11 @@ export class Disassembler extends EventEmitter {
 	 * Returns a map of chosen addresses, labels for creating the
 	 * dot graph.
 	 */
-	public getGraphLabels(addrString: number|string): Map<number, DisLabel> {
-		// Select only certain labels
-		const chosenLabels = new Map<number, DisLabel>();
+	public getGraphLabels(addrString: number|string, chosenLabels?: Map<number, DisLabel>): Map<number, DisLabel> {
+		// Crete new map
+		if(!chosenLabels)
+			 chosenLabels = new Map<number, DisLabel>();
+
 		// Convert to number
 		let addr;
 		if(typeof(addrString) == 'string') {
@@ -2329,11 +2331,9 @@ export class Disassembler extends EventEmitter {
 
 		// Allso add the called sub routines
 		for(const called of label.calls) {
-			const calledName = called.getName();
-			const addr = this.revertedLabelMap.get(calledName) as number;
-			assert(addr != undefined);
-			// Save
-			chosenLabels.set(addr, called);
+			// Recursive
+			const callee = called.getName();
+			this.getGraphLabels(callee, chosenLabels);
 		}
 
 		// Return
@@ -2347,7 +2347,9 @@ export class Disassembler extends EventEmitter {
 	 * Arrows from one bubble to the other represents
 	 * calling the function.
 	 * Call 'createRevertedLabelMap' before calling this function.
+	 * @param labels The labels to print.
 	 * @param name The name of the graph.
+	 * @returns The dot graphic as text.
 	 */
 	public getCallGraph(labels: Map<number,DisLabel>, name: string): string {
 		const rankSame1 = new Array<string>();
