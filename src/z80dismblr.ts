@@ -668,8 +668,12 @@ z80dismblr [options]
                         const addr = this.parseValue(node);
                         if(isNaN(addr))
                             this.dasm.graphLabels.push(node);
-                        else
+                        else {
+                            // Number
                             this.dasm.graphLabels.push(addr);
+                            // Also use number as fixed label
+                            this.dasm.setFixedCodeLabel(addr);
+                        }
                     }
                     break;
 

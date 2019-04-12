@@ -376,7 +376,7 @@ export class Disassembler extends EventEmitter {
 	 * @param type of the label. Default is CODE_LBL.
 	 */
 	public setLabel(address: number, name?: string, type = NumberType.CODE_LBL) {
-		// Check if data type already set.
+		// Check if label already set.
 		let label = this.labels.get(address);
 		if(label) {
 			// Exists already, just overwrite the name
@@ -415,9 +415,17 @@ export class Disassembler extends EventEmitter {
 	 * @param name
 	 */
 	public setFixedCodeLabel(address: number, name?: string) {
-		const label = new DisLabel(NumberType.CODE_LBL);
-		this.labels.set(address, label);
-		(label.name as any) = name;	// allow undefined
+		// Check if label already set.
+		let label = this.labels.get(address);
+		if(!label) {
+			// Create new label
+			label = new DisLabel(NumberType.CODE_LBL);
+			this.labels.set(address, label);
+		}
+
+		// Set name
+		if(name)
+			(label.name as any) = name;
 		// Check if out of range
 		const attr = this.memory.getAttributeAt(address);
 		if(attr & MemAttribute.ASSIGNED)
