@@ -3,6 +3,8 @@ import { readFileSync, writeFileSync } from 'fs';
 import { Opcode, Opcodes } from './disassembler/opcode';
 import * as Path from 'path';
 //import * as assert from 'assert';
+//import { DisLabel } from './disassembler/dislabel';
+//import { type } from 'os';
 
 
 
@@ -96,9 +98,45 @@ class Startup {
                 const k = name.indexOf('.');
                 if(k > 0)
                     name = name.substr(0, k);
-                const text = this.dasm.getCallGraph(name);
-                writeFileSync(this.callGraphOutPath, text);
-            }
+                // Calculate reverted map.
+                this.dasm.createRevertedLabelMap();
+                let chosenLabels = this.dasm.graphLabels;
+                if(chosenLabels.length) {
+                    // Print just a few callgraphs, one dot file for each.
+                    // Get path and extension.
+                    let mainPath = this.callGraphOutPath;
+                    const ext = Path.extname(mainPath);
+                    let k = mainPath.lastIndexOf('.');
+                    if(k >= 0)
+                        mainPath = mainPath.substr(0,k);
+                    mainPath += '_';
+                    // Loop over all labels the user wanted
+                    for(const addrString of this.dasm.graphLabels) {
+                        // Name
+                        let name = addrString;
+                        if(typeof(name) == 'number') {
+                            // convert to label
+                            const label = this.dasm.labels.get(name);
+                            if(label && label.name)
+                                name = label.name;
+                            else
+                                name = '0x' + name.toString(16);
+                        }
+                        // Get all labels that are necessary
+                        const labelMap = this.dasm.getGraphLabels(addrString);
+                        // Create dot
+                        const text = this.dasm.getCallGraph(labelMap, name);
+                        // Create file
+                        const filename = mainPath + name + ext;
+                        writeFileSync(filename, text);
+                    }
+                }
+                else {
+                    // Print all call graphs
+                    const text = this.dasm.getCallGraph(this.dasm.labels, name);
+                    writeFileSync(this.callGraphOutPath, text);
+                }
+             }
 
             // Output flow-chart file
             if(this.flowChartOutPath) {

@@ -27,7 +27,7 @@ export class Disassembler extends EventEmitter {
 	public memory = new Memory();
 
 	/// The labels.
-	protected labels: Map<number,DisLabel>;
+	public labels: Map<number,DisLabel>;
 
 	/// The reverted labels map. Created when a callgraph is output.
 	protected revertedLabelMap: Map<string, number>;
@@ -2294,7 +2294,7 @@ export class Disassembler extends EventEmitter {
 	 * The created map consists of key-value pairs <name,address>
 	 * and is stored in this.revertedLabelMap.
 	 */
-	protected createRevertedLabelMap() {
+	public createRevertedLabelMap() {
 		this.revertedLabelMap = new Map<string, number>();
 		for(const [address, label] of this.labels) {
 			this.revertedLabelMap.set(label.getName(), address);
@@ -2306,40 +2306,36 @@ export class Disassembler extends EventEmitter {
 	 * Returns a map of chosen addresses, labels for creating the
 	 * dot graph.
 	 */
-	protected getGraphLabels() {
-		// Create list of to be printed labels.
-		let chosenLabels = this.labels;
-		if(this.graphLabels.length > 0) {
-			// Select only certain labels
-			chosenLabels = new Map<number, DisLabel>();
-			// Loop over all labels the user wanted
-			for(const addrString of this.graphLabels) {
-				// Convert to number
-				let addr;
-				if(typeof(addrString) == 'string') {
-					addr = this.revertedLabelMap.get(addrString);
-					if(!addr)
-						throw Error('Could not find "' + addrString + '" while creating graph.');
-				}
-				else {
-					// Number
-					addr = addrString;
-				}
-				// Now get label
-				const label = this.labels.get(addr);
-				if(!label)
-					throw Error('Could not find address for "' + addrString + '" while creating graph.');
-				// Save in new map
-				chosenLabels.set(addr, label);
+	public getGraphLabels(addrString: number|string): Map<number, DisLabel> {
+		// Select only certain labels
+		const chosenLabels = new Map<number, DisLabel>();
+		// Loop over all labels the user wanted
+		for(const addrString of this.graphLabels) {
+			// Convert to number
+			let addr;
+			if(typeof(addrString) == 'string') {
+				addr = this.revertedLabelMap.get(addrString);
+				if(!addr)
+					throw Error('Could not find "' + addrString + '" while creating graph.');
+			}
+			else {
+				// Number
+				addr = addrString;
+			}
+			// Now get label
+			const label = this.labels.get(addr);
+			if(!label)
+				throw Error('Could not find address for "' + addrString + '" while creating graph.');
+			// Save in new map
+			chosenLabels.set(addr, label);
 
-				// Allso add the called sub routines
-				for(const called of label.calls) {
-					const calledName = called.getName();
-					const addr = this.revertedLabelMap.get(calledName) as number;
-					assert(addr != undefined);
-					// Save
-					chosenLabels.set(addr, called);
-				}
+			// Allso add the called sub routines
+			for(const called of label.calls) {
+				const calledName = called.getName();
+				const addr = this.revertedLabelMap.get(calledName) as number;
+				assert(addr != undefined);
+				// Save
+				chosenLabels.set(addr, called);
 			}
 		}
 
@@ -2353,9 +2349,10 @@ export class Disassembler extends EventEmitter {
 	 * Every main labels represents a bubble.
 	 * Arrows from one bubble to the other represents
 	 * calling the function.
+	 * Call 'createRevertedLabelMap' before calling this function.
 	 * @param name The name of the graph.
 	 */
-	public getCallGraph(name: string): string {
+	public getCallGraph(labels: Map<number,DisLabel>, name: string): string {
 		const rankSame1 = new Array<string>();
 		const rankSame2 = new Array<string>();
 
@@ -2363,7 +2360,7 @@ export class Disassembler extends EventEmitter {
 		this.createRevertedLabelMap();
 
 		// header
-		let text = 'digraph ' + name + '\n{\n';
+		let text = 'digraph "' + name + '"\n{\n';
 		text += this.dotFormatString + '\n';
 
 		// Calculate size (font size) max and min
@@ -2374,13 +2371,8 @@ export class Disassembler extends EventEmitter {
 		const min = this.statisticsMin.CyclomaticComplexity;
 		const fontSizeFactor = (fontSizeMax-fontSizeMin) / (this.statisticsMax.CyclomaticComplexity-min);
 
-		// Iterate through all (selected) subroutine labels to assign the text and size
-		// (fontsize) to the nodes (bubbles), also the coloring.
-		// And connect the nodes with arrows.
-		const chosenLabels = this.getGraphLabels();
-
 		// Loop
-		for(const [address, label] of chosenLabels) {
+		for(const [address, label] of labels) {
 			const type = label.type;
 			if(type != NumberType.CODE_SUB
 				&& type != NumberType.CODE_LBL
