@@ -2365,7 +2365,8 @@ export class Disassembler extends EventEmitter {
 		//const min = this.statisticsMin.sizeInBytes;
 		//const fontSizeFactor = (fontSizeMax-fontSizeMin) / (this.statisticsMax.sizeInBytes-min);
 		const min = this.statisticsMin.CyclomaticComplexity;
-		const fontSizeFactor = (fontSizeMax-fontSizeMin) / (this.statisticsMax.CyclomaticComplexity-min);
+		const complDiff = this.statisticsMax.CyclomaticComplexity-min
+		const fontSizeFactor = (fontSizeMax-fontSizeMin) / ((complDiff < 8) ? 8 : complDiff);
 
 		// Loop
 		for(const [address, label] of labels) {
