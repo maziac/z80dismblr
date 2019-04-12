@@ -55,7 +55,7 @@ export class Disassembler extends EventEmitter {
 	protected statisticsMin: SubroutineStatistics = { sizeInBytes:Number.MAX_SAFE_INTEGER, countOfInstructions: Number.MAX_SAFE_INTEGER, CyclomaticComplexity: Number.MAX_SAFE_INTEGER };
 
 	/// Labels that should be marked (with a color) are put here. String contains the color of the label for the dot graphic.
-	protected dotMarkedLabels = new Map<number, string>();
+	protected dotMarkedLabels = new Map<number|string, string>();
 
 	// dot-color for warning-marks for labels.
 	protected dotWarningMark = 'lightblue';
@@ -376,7 +376,16 @@ export class Disassembler extends EventEmitter {
 	 * @param type of the label. Default is CODE_LBL.
 	 */
 	public setLabel(address: number, name?: string, type = NumberType.CODE_LBL) {
-		const label = new DisLabel(type);
+		// Check if data type already set.
+		let label = this.labels.get(address);
+		if(label) {
+			// Exists already, just overwrite the name
+			(label.name as any) = name;
+			return;
+		}
+
+		// Create a new label
+		label = new DisLabel(type);
 		this.labels.set(address, label);
 		(label.name as any) = name;	// allow undefined
 		// Check if out of range
@@ -1473,8 +1482,16 @@ export class Disassembler extends EventEmitter {
 			if(label.isEqu)
 				continue;
 			switch(label.type) {
-				case NumberType.CODE_SUB:
 				case NumberType.CODE_RST:
+					// Check if rst is turned off
+					if(this.rstDontFollowAddresses.indexOf(address) >= 0) {
+						const statistics = {sizeInBytes:0, countOfInstructions:0, CyclomaticComplexity:0};
+						this.subroutineStatistics.set(label, statistics);
+						break;	// Dount count statistics.
+					}
+
+					// Otherwise flow through.
+				case NumberType.CODE_SUB:
 				case NumberType.CODE_LBL:
 					// Get all addresses belonging to the subroutine
 					const addresses = new Array<number>();
@@ -1990,11 +2007,11 @@ export class Disassembler extends EventEmitter {
 				case State.lineOn:
 					comment.inlineComment = commentPart;
 					// Determine address and label
-					const match2 = /^([0-9a-f]+)(\s+([a-z][a-z_0-9]*))?/i.exec(addressPart);
+					const match2 = /^(0x)?([0-9a-f]+)(\s+([\w\.]+))?/i.exec(addressPart);
 					if(match2) {
-						const addrString = match2[1];
+						const addrString = match2[2];
 						commentAddr = parseInt(addrString,16);
-						commentLabelName = match2[3];
+						commentLabelName = match2[4];
 						// Next state
 						state = State.LinesAfter;
 					}
@@ -2373,6 +2390,10 @@ export class Disassembler extends EventEmitter {
 
 			// Handle fill color (highlights)
 			let colorString = this.dotMarkedLabels.get(address);
+			if(!colorString) {
+				// Now try also the label name
+				colorString = this.dotMarkedLabels.get(label.getName());
+			}
 
 			// Skip other labels
 			if(label.isEqu) {
@@ -2470,7 +2491,7 @@ export class Disassembler extends EventEmitter {
 	 * @param addr The address (node) to highlight.
 	 * @param colorString The color used for highlighting. E.g. "yellow".
 	 */
-	public setDotHighlightAddress(addr: number, colorString: string) {
+	public setDotHighlightAddress(addr: number|string, colorString: string) {
 		this.dotMarkedLabels.set(addr, colorString);
 	}
 

@@ -216,10 +216,11 @@ z80dismblr [options]
         --callgraphformat formatstring: You can add additional fromatting
             for the dot file. The string you enter here is directly
             put after the "digraph ... {" bracket.
-            E.g. use \'--callgraphformat rankdir=LR\' to change direction
+            E.g. use \'--callgraphformat "rankdir=LR;"\' to change direction
             of the graph from left to right.
         --callgraphhighlight addr1[=red|green|...] addr2 ... addrN: Highlight the associated
         nodes in the dot file with a color.
+        'addrN' could also be a label name.
         --callgraphnode addr|label: Use (only) the given address or label
             as root for output. Other labels are suppressed. Useful
             if you want to print only one subroutine.
@@ -608,10 +609,14 @@ z80dismblr [options]
                         }
                         addr = this.parseValue(addressString);
                         if(isNaN(addr)) {
-                            throw arg + ": Not a number: " + addressString;
+                            // Not a number, so it's a label string
+                            // Add label/color pair to map
+                            this.dasm.setDotHighlightAddress(addressString, colorString);
                         }
-                        // Add pair to map
-                        this.dasm.setDotHighlightAddress(addr, colorString);
+                        else {
+                            // Add address/color pair to map
+                            this.dasm.setDotHighlightAddress(addr, colorString);
+                        }
                     }
                     break;
 
