@@ -69,7 +69,7 @@ class Startup {
             this.processArgs(args);
 
             // Check if any output is given
-            if(!this.outPath && !this.callGraphOutPath) {
+            if(!this.outPath && !this.callGraphOutPath && !this.flowChartOutPath) {
                 throw "You need to set an output path via '--out' or '--callgraphout'.";
             }
 
@@ -93,11 +93,6 @@ class Startup {
 
             // Output dot (graphviz)
             if(this.callGraphOutPath) {
-                // labels/references to dot file
-                let name = Path.basename(this.callGraphOutPath);
-                const k = name.indexOf('.');
-                if(k > 0)
-                    name = name.substr(0, k);
                 // Calculate reverted map.
                 this.dasm.createRevertedLabelMap();
                 let chosenLabels = this.dasm.graphLabels;
@@ -143,8 +138,25 @@ class Startup {
                 // Check if start address given
                 if(this.flowChartStartAddresses.length == 0)
                     throw "You need to set at least one start address for a flow chart with '--flowchartaddresses'";
-                const text = this.dasm.getFlowChart(this.flowChartStartAddresses);
-                writeFileSync(this.flowChartOutPath, text);
+                // Print flowcharts, one dot file for each.
+                // Get path and extension.
+                let mainPath = this.flowChartOutPath;
+                const ext = Path.extname(mainPath);
+                let k = mainPath.lastIndexOf('.');
+                if(k >= 0)
+                    mainPath = mainPath.substr(0,k);
+                mainPath += '_';
+                // Loop over all labels the user wanted
+                for(const address of this.flowChartStartAddresses) {
+                    // Name
+                    const label = this.dasm.labels.get(address);
+                    const name = (label) ? label.name : "0x" + address.toString(16);
+                    // Create dot
+                    const text = this.dasm.getFlowChart([address]);
+                    // Create file
+                    const filename = mainPath + name + ext;
+                    writeFileSync(filename, text);
+                }
             }
 
             // Output labels

@@ -2586,7 +2586,7 @@ export class Disassembler extends EventEmitter {
 			// Check if outside
 			if(addrsArray.indexOf(branchAddress) >= 0) {
 				// Inside
-				text += branch + ' -> b' + Format.getHexString(branchAddress,4) + ' [headport="n", tailport="r"];\n';
+				text += branch + ' -> b' + Format.getHexString(branchAddress,4) + ' [headport="n", tailport="e"];\n';
 				// Check if already disassembled
 				if(processedAddrsArray.indexOf(branchAddress) < 0) {
 					// No, so disassemble
