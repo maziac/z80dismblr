@@ -2363,12 +2363,12 @@ export class Disassembler extends EventEmitter {
 	 * @param name The name of the graph.
 	 * @returns The dot graphic as text.
 	 */
-	public getCallGraph(labels: Map<number,DisLabel>, name: string): string {
+	public getCallGraph(labels: Map<number,DisLabel>): string {
 		const rankSame1 = new Array<string>();
 		const rankSame2 = new Array<string>();
 
 		// header
-		let text = 'digraph "' + name + '"\n{\n';
+		let text = 'digraph Callgraph {\n\n';
 		text += this.dotFormatString + '\n';
 
 		// Calculate size (font size) max and min
@@ -2512,9 +2512,12 @@ export class Disassembler extends EventEmitter {
 		for(const startAddress of startAddresses) {
 			// Start
 			const label = this.labels.get(startAddress);
-			let name = (label) ? label.name+'\\l' : '';
 			const addressString = Format.getHexString(startAddress,4);
-			name += (label) ? '[0x' + addressString + ']' + '\\l' : '0x' + addressString + '\\l' ;
+			let name;
+			if(label)
+				name = label.name;
+			if(!name)
+				name += '0x' + addressString;
 			const start = 'b' + addressString + 'start';
 			text += start + ' [label="' + name + '", fillcolor=lightgray, style=filled, shape=tab];\n';
 			text += start + ' -> b' + Format.getHexString(startAddress,4) + ';\n';
