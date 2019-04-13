@@ -254,7 +254,7 @@ z80dismblr [options]
             with graphviz. Each bubble is a function and is connected to other
             functions that it calls. Only main labels are written (i.e. no local labels.)
         --callgraphnodeformat formatstring: You can format the text in the dot nodes.
-            E.g. use \'--callgraphformat "\${label}\\n\${address}\\nCC=\${CC}\\nSize=\${size}\\ninstr=\${instructions}\\n"
+            E.g. use \'--callgraphnodeformat "\${label}\\n\${address}\\nCC=\${CC}\\nSize=\${size}\\ninstr=\${instructions}\\n"
             will show the label name, it's address, the cyclomatic complexity, the size
             in bytes and the number of instructions. Possible labels are:
             - \${label}: The label name.

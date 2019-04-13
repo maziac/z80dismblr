@@ -26,11 +26,11 @@
     "url": "https://github.com/maziac/z80dismblr"
   },
   "devDependencies": {
-    "@types/node": "7.0.55",
     "@types/mocha": "2.2.48",
+    "@types/node": "7.0.55",
     "mocha": "5.0.1",
-    "vscode": "1.1.10",
     "tslint": "5.9.1",
-    "vsce": "1.37.5"
+    "vsce": "^1.59.0",
+    "vscode": "^1.1.33"
   }
 }

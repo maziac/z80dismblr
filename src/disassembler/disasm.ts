@@ -748,7 +748,7 @@ export class Disassembler extends EventEmitter {
 	 * Note: Another strategy to find interrupts would be to examine the trace from the
 	 * tr file. If an address change happens that is bigger than +/-128 it must be
 	 * at least a JP/CALL label or an interrupt call. The label can be added here.
-	 * Later teh JP/CALL labels would be found anyway (most probably).
+	 * Later the JP/CALL labels would be found anyway (most probably).
 	 */
 	protected findInterruptLabels() {
 		const foundInterrupts = new Array<number>();
