@@ -24,9 +24,12 @@
             "request": "launch",
             "name": "Launch Program",
 			"program": "${workspaceFolder}/out/z80dismblr.js",
+			"cwd": "${workspaceFolder}/../../asm/zxnext_game_framework",
 			"args": [
-				"--bin", "0", "src/tests/data/zxngfw.bin",
-				"--args", "src/tests/data/zxngfw.dargs","--callgraphout", "out/tests/zxngfw.dot",
+				"--args", "out/zxngfw.dargs"
+				//"--bin", "0", "src/tests/data/zxngfw.bin",
+				//"--args", "src/tests/data/zxngfw.dargs",
+				//"--callgraphout", "out/tests/zxngfw.dot",
 
 				//"--args", "argsfile2",
 				//"--args", "argsfile_esxdos",

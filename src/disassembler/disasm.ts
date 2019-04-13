@@ -380,7 +380,8 @@ export class Disassembler extends EventEmitter {
 		let label = this.labels.get(address);
 		if(label) {
 			// Exists already, just overwrite the name
-			(label.name as any) = name;
+			if(!label.name || !label.isFixed)	// Don't overweite names given for fixed addresses.
+				(label.name as any) = name;
 			return;
 		}
 
@@ -2334,14 +2335,17 @@ export class Disassembler extends EventEmitter {
 		const label = this.labels.get(addr);
 		if(!label)
 			throw Error('Could not find address for "' + addrString + '" while creating graph.');
-		// Save in new map
-		chosenLabels.set(addr, label);
 
-		// Allso add the called sub routines
-		for(const called of label.calls) {
-			// Recursive
-			const callee = called.getName();
-			this.getGraphLabels(callee, chosenLabels);
+        // Check if already in map
+        if(!chosenLabels.get(addr)) {
+			// Save in new map
+			chosenLabels.set(addr, label);
+			// Also add the called sub routines
+			for(const called of label.calls) {
+				// Recursive
+				const callee = called.getName();
+				this.getGraphLabels(callee, chosenLabels);
+			}
 		}
 
 		// Return
