@@ -834,7 +834,7 @@ suite('Disassembler', () => {
 			assert(lines[++i] == 'ADD BC,3456h');
 			assert(lines[++i] == 'SWAPNIB');
 			assert(lines[++i] == 'MIRROR');
-			assert(lines[++i] == 'PUSH 8811h');
+			assert(lines[++i] == 'PUSH 1188h');
 			assert(lines[++i] == 'NEXTREG REG_MACHINE_ID,RMI_ZXNEXT');	// 0, 10
 			assert(lines[++i] == 'NEXTREG REG_MACHINE_TYPE,92h (lock timing|Timing');	// 3, 3, 0b10010010
 			assert(lines[++i] == 'NEXTREG REG_PERIPHERAL_1,A');		// 5

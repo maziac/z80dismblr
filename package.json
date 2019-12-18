@@ -1,6 +1,6 @@
 {
   "name": "z80dismblr",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "publisher": "maziac",
   "description": "A Z80 disassembler.",
   "main": "./out/main.js",
@@ -19,18 +19,18 @@
   },
   "license": "MIT",
   "dependencies": {
-    "typescript": "^2.6.2"
+    "typescript": "^3.7.3"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/maziac/z80dismblr"
   },
   "devDependencies": {
-    "@types/mocha": "2.2.48",
-    "@types/node": "7.0.55",
-    "mocha": "5.0.1",
-    "tslint": "5.9.1",
-    "vsce": "^1.59.0",
-    "vscode": "^1.1.33"
+    "@types/mocha": "5.2.7",
+    "@types/node": "12.12.20",
+    "mocha": "6.2.2",
+    "tslint": "5.20.1",
+    "vsce": "^1.71.0",
+    "vscode": "^1.1.36"
   }
 }

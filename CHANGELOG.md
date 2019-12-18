@@ -1,3 +1,8 @@
+## 1.5.1
+- Fixed disassmebly of 'PUSH nn'.
+- Updated libraries.
+
+
 ## 1.5.0
 - Renamed '--lblsin' to '--comments'.
 - Fix: Labels in dot file now support dot-notation.
