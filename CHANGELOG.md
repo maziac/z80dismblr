@@ -1,5 +1,5 @@
 ## 1.5.1
-- Fixed disassmebly of 'PUSH nn'.
+- Fixed disassembly of ZX Next opcode 'PUSH nn'.
 - Updated libraries.
 
 
