@@ -2,6 +2,10 @@
 
 ## Binaries
 
+Use "Run Task...->Build Executables".
+This creates thebinaries and zip files for uploading a release.
+
+Manually:
 Binaries erzeugen für Linux, Windows und macos:
 ~~~
 $ pkg out/z80dismblr.js

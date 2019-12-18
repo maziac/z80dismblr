@@ -5,7 +5,6 @@
     "tasks": [
         {
             "type": "npm",
-            "identifier": "npm",
             "script": "watch",
             "problemMatcher": [
                 "$tsc-watch"
@@ -21,6 +20,18 @@
             "script": "build-docs",
             "problemMatcher": [
                 "$gcc"
+            ]
+        },
+
+        {
+            "label": "Build Executables",
+            "type": "shell",
+            "command": "zsh",
+            "args": [
+                "-c",
+                "rm *.zip && pkg out/z80dismblr.js && zip z80dismblr-linux.zip z80dismblr-linux && zip z80dismblr-macos.zip z80dismblr-macos && zip z80dismblr-win.zip z80dismblr-win.exe"
+            ],
+            "problemMatcher": [
             ]
         }
     ]
