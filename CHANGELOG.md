@@ -1,3 +1,6 @@
+## 1.5.2
+- Changed >> to >>>.
+
 ## 1.5.1
 - Fixed disassembly of ZX Next opcode 'PUSH nn'.
 - Updated libraries.
