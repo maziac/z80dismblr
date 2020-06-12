@@ -10,6 +10,7 @@
     "tslint": "tslint ./src/**/*.ts",
     "watch": "tsc -w -p ./src",
     "test": "mocha -u tdd ./out/tests/",
+    "preinstall": "npx npm-force-resolutions",
     "package": "vsce package",
     "publish": "vsce publish",
     "build-docs": "typedoc --out ./out/typedoc --target ES6 --module commonjs --exclude \"**/tests/**/*\" ./src"
@@ -28,9 +29,13 @@
   "devDependencies": {
     "@types/mocha": "5.2.7",
     "@types/node": "12.12.20",
-    "mocha": "6.2.2",
+    "minimist": "^1.2.5",
+    "mocha": "^8.0.1",
     "tslint": "5.20.1",
     "vsce": "^1.71.0",
     "vscode": "^1.1.36"
+  },
+  "resolutions": {
+    "minimist": "^1.2.5"
   }
 }
