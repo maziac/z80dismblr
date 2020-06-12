@@ -1,7 +1,5 @@
-## 1.5.3
-- REG_VERSION string  conversion fixed.
-
 ## 1.5.2
+- REG_VERSION string conversion fixed.
 - Changed >> to >>>.
 - Merged with DeZog.
 
