@@ -188,7 +188,7 @@ Example usages:
 $ z80dismblr --sna myfile.sna --out myfile.list
 This will write the disassembly of the snapshot file 'myfile.sna' to file 'myfile.list'.
 
-$ z80dismblr --bin 0x8000 myfile.obj --codelable 0x9000 --out myfile.list
+$ z80dismblr --bin 0x8000 myfile.obj --codelabel 0x9000 --out myfile.list
 This will write the disassembly of the binary file file 'myfile.obj' to file 'myfile.list'.
 The binary file starts at address 0x8000 and the code entry point start at
 0x9000 (i.e. here begins the code area).
