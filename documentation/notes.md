@@ -3,7 +3,7 @@
 ## Binaries
 
 Use "Run Task...->Build Executables".
-This creates thebinaries and zip files for uploading a release.
+This creates the binaries and zip files for uploading a release.
 
 Manually:
 Binaries erzeugen für Linux, Windows und macos:
