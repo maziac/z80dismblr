@@ -3,7 +3,7 @@
   "version": "1.5.2",
   "publisher": "maziac",
   "description": "A Z80 disassembler.",
-  "main": "./out/main.js",
+  "main": "./out/z80dismblr.js",
   "scripts": {
     "prepublish": "tsc -p ./src",
     "compile": "tsc -p ./src",
