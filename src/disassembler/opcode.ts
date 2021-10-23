@@ -484,10 +484,54 @@ class OpcodePrevIndex extends Opcode {
 	 */
 	public getOpcodeAt(memory: BaseMemory, address: number): Opcode {
 		assert(this.valueType == NumberType.RELATIVE_INDEX);
-		this.value = memory.getValueAt(address-1);
-		if(this.value >= 0x80)
+		this.value = memory.getValueAt(address - 1);
+		if (this.value >= 0x80)
 			this.value -= 0x100;
 		return this;
+	}
+}
+
+/// Opcode that has a number index and an immediate value.
+/// E.g. 0xDD 0x36 0x03 0x08 = ld (ix+3),8
+class OpcodePrevIndexImmediate extends Opcode {
+	// The second value (the immediate value, i.e. 8 in the example above.
+	protected secondValue: number;
+
+	constructor(code?: number, name = '') {
+		super(code, name);
+		this.length = 4;
+		this.valueType = NumberType.RELATIVE_INDEX;
+	}
+
+
+	/**
+	 * Gets the value from the byte which is PREVIOUS to the opcode.
+	 * @param memory
+	 * @param address
+	 * @returns this
+	 */
+	public getOpcodeAt(memory: BaseMemory, address: number): Opcode {
+		this.value = memory.getValueAt(address+1);
+		if (this.value >= 0x80)
+			this.value -= 0x100;
+		this.secondValue = memory.getValueAt(address+2);
+		return this;
+	}
+
+
+	/**
+	 * Disassembles the opcode.
+	 * @returns A string that contains the disassembly, e.g. "LD (IX+6),4"
+	 * @param memory The memory area. Used to distinguish if the access is maybe wrong.
+	 * If this is not required (comment) the parameter can be omitted.
+	 */
+	public disassemble(memory?: Memory): {mnemonic: string, comment: string} {
+		const dasm = super.disassemble(memory);
+		// Results e.g. in "LD (IX+6),%s"
+
+		const valueName = this.secondValue.toString();
+		const dasm2 = util.format(dasm.mnemonic, valueName);
+		return {mnemonic: dasm2, comment: dasm.comment};
 	}
 }
 
@@ -552,7 +596,7 @@ class OpcodeNOP extends Opcode {
 }
 
 
-/// Special opcode for an invladi instruction.
+/// Special opcode for an invalid instruction.
 /// E.g. 2 0xDD after each other: Then the first 0xDD is like a nop.
 class OpcodeInvalid extends Opcode {
 	constructor(code: number) {
@@ -1458,14 +1502,14 @@ export const OpcodesCB: Array<Opcode> = [
 	new Opcode(0x2D, "SRA L"),
 	new Opcode(0x2E, "SRA (HL)"),
 	new Opcode(0x2F, "SRA A"),
-	new Opcode(0x30, "SLS B"),
-	new Opcode(0x31, "SLS C"),
-	new Opcode(0x32, "SLS D"),
-	new Opcode(0x33, "SLS E"),
-	new Opcode(0x34, "SLS H"),
-	new Opcode(0x35, "SLS L"),
-	new Opcode(0x36, "SLS (HL)"),
-	new Opcode(0x37, "SLS A"),
+	new Opcode(0x30, "SLL B"),
+	new Opcode(0x31, "SLL C"),
+	new Opcode(0x32, "SLL D"),
+	new Opcode(0x33, "SLL E"),
+	new Opcode(0x34, "SLL H"),
+	new Opcode(0x35, "SLL L"),
+	new Opcode(0x36, "SLL (HL)"),
+	new Opcode(0x37, "SLL A"),
 	new Opcode(0x38, "SRL B"),
 	new Opcode(0x39, "SRL C"),
 	new Opcode(0x3A, "SRL D"),
@@ -1538,13 +1582,278 @@ export const OpcodesCB: Array<Opcode> = [
 	new Opcode(0x7D, "BIT 7,L"),
 	new Opcode(0x7E, "BIT 7,(HL)"),
 	new Opcode(0x7F, "BIT 7,A"),
+	new Opcode(0x80, "RES 0,(IX#n),B"),
+	new Opcode(0x81, "RES 0,(IX#n),C"),
+	new Opcode(0x82, "RES 0,(IX#n),D"),
+	new Opcode(0x83, "RES 0,(IX#n),E"),
+	new Opcode(0x84, "RES 0,(IX#n),H"),
+	new Opcode(0x85, "RES 0,(IX#n),L"),
+	new Opcode(0x86, "RES 0,(HL)"),
+	new Opcode(0x87, "RES 0,(IX#n),A"),
+	new Opcode(0x88, "RES 1,(IX#n),B"),
+	new Opcode(0x89, "RES 1,(IX#n),C"),
+	new Opcode(0x8A, "RES 1,(IX#n),D"),
+	new Opcode(0x8B, "RES 1,(IX#n),E"),
+	new Opcode(0x8C, "RES 1,(IX#n),H"),
+	new Opcode(0x8D, "RES 1,(IX#n),L"),
+	new Opcode(0x8E, "RES 1,(HL)"),
+	new Opcode(0x8F, "RES 1,(IX#n),A"),
+	new Opcode(0x90, "RES 2,(IX#n),B"),
+	new Opcode(0x91, "RES 2,(IX#n),C"),
+	new Opcode(0x92, "RES 2,(IX#n),D"),
+	new Opcode(0x93, "RES 2,(IX#n),E"),
+	new Opcode(0x94, "RES 2,(IX#n),H"),
+	new Opcode(0x95, "RES 2,(IX#n),L"),
+	new Opcode(0x96, "RES 2,(HL)"),
+	new Opcode(0x97, "RES 2,(IX#n),A"),
+	new Opcode(0x98, "RES 3,(IX#n),B"),
+	new Opcode(0x99, "RES 3,(IX#n),C"),
+	new Opcode(0x9A, "RES 3,(IX#n),D"),
+	new Opcode(0x9B, "RES 3,(IX#n),E"),
+	new Opcode(0x9C, "RES 3,(IX#n),H"),
+	new Opcode(0x9D, "RES 3,(IX#n),L"),
+	new Opcode(0x9E, "RES 3,(HL)"),
+	new Opcode(0x9F, "RES 3,(IX#n),A"),
+	new Opcode(0xA0, "RES 4,(IX#n),B"),
+	new Opcode(0xA1, "RES 4,(IX#n),C"),
+	new Opcode(0xA2, "RES 4,(IX#n),D"),
+	new Opcode(0xA3, "RES 4,(IX#n),E"),
+	new Opcode(0xA4, "RES 4,(IX#n),H"),
+	new Opcode(0xA5, "RES 4,(IX#n),L"),
+	new Opcode(0xA6, "RES 4,(HL)"),
+	new Opcode(0xA7, "RES 4,(IX#n),A"),
+	new Opcode(0xA8, "RES 5,(IX#n),B"),
+	new Opcode(0xA9, "RES 5,(IX#n),C"),
+	new Opcode(0xAA, "RES 5,(IX#n),D"),
+	new Opcode(0xAB, "RES 5,(IX#n),E"),
+	new Opcode(0xAC, "RES 5,(IX#n),H"),
+	new Opcode(0xAD, "RES 5,(IX#n),L"),
+	new Opcode(0xAE, "RES 5,(HL)"),
+	new Opcode(0xAF, "RES 5,(IX#n),A"),
+	new Opcode(0xB0, "RES 6,(IX#n),B"),
+	new Opcode(0xB1, "RES 6,(IX#n),C"),
+	new Opcode(0xB2, "RES 6,(IX#n),D"),
+	new Opcode(0xB3, "RES 6,(IX#n),E"),
+	new Opcode(0xB4, "RES 6,(IX#n),H"),
+	new Opcode(0xB5, "RES 6,(IX#n),L"),
+	new Opcode(0xB6, "RES 6,(HL)"),
+	new Opcode(0xB7, "RES 6,(IX#n),A"),
+	new Opcode(0xB8, "RES 7,(IX#n),B"),
+	new Opcode(0xB9, "RES 7,(IX#n),C"),
+	new Opcode(0xBA, "RES 7,(IX#n),D"),
+	new Opcode(0xBB, "RES 7,(IX#n),E"),
+	new Opcode(0xBC, "RES 7,(IX#n),H"),
+	new Opcode(0xBD, "RES 7,(IX#n),L"),
+	new Opcode(0xBE, "RES 7,(HL)"),
+	new Opcode(0xBF, "RES 7,(IX#n),A"),
+	new Opcode(0xC0, "SET 0,(IX#n),B"),
+	new Opcode(0xC1, "SET 0,(IX#n),C"),
+	new Opcode(0xC2, "SET 0,(IX#n),D"),
+	new Opcode(0xC3, "SET 0,(IX#n),E"),
+	new Opcode(0xC4, "SET 0,(IX#n),H"),
+	new Opcode(0xC5, "SET 0,(IX#n),L"),
+	new Opcode(0xC6, "SET 0,(HL)"),
+	new Opcode(0xC7, "SET 0,(IX#n),A"),
+	new Opcode(0xC8, "SET 1,(IX#n),B"),
+	new Opcode(0xC9, "SET 1,(IX#n),C"),
+	new Opcode(0xCA, "SET 1,(IX#n),D"),
+	new Opcode(0xCB, "SET 1,(IX#n),E"),
+	new Opcode(0xCC, "SET 1,(IX#n),H"),
+	new Opcode(0xCD, "SET 1,(IX#n),L"),
+	new Opcode(0xCE, "SET 1,(HL)"),
+	new Opcode(0xCF, "SET 1,(IX#n),A"),
+	new Opcode(0xD0, "SET 2,(IX#n),B"),
+	new Opcode(0xD1, "SET 2,(IX#n),C"),
+	new Opcode(0xD2, "SET 2,(IX#n),D"),
+	new Opcode(0xD3, "SET 2,(IX#n),E"),
+	new Opcode(0xD4, "SET 2,(IX#n),H"),
+	new Opcode(0xD5, "SET 2,(IX#n),L"),
+	new Opcode(0xD6, "SET 2,(HL)"),
+	new Opcode(0xD7, "SET 2,(IX#n),A"),
+	new Opcode(0xD8, "SET 3,(IX#n),B"),
+	new Opcode(0xD9, "SET 3,(IX#n),C"),
+	new Opcode(0xDA, "SET 3,(IX#n),D"),
+	new Opcode(0xDB, "SET 3,(IX#n),E"),
+	new Opcode(0xDC, "SET 3,(IX#n),H"),
+	new Opcode(0xDD, "SET 3,(IX#n),L"),
+	new Opcode(0xDE, "SET 3,(HL)"),
+	new Opcode(0xDF, "SET 3,(IX#n),A"),
+	new Opcode(0xE0, "SET 4,(IX#n),B"),
+	new Opcode(0xE1, "SET 4,(IX#n),C"),
+	new Opcode(0xE2, "SET 4,(IX#n),D"),
+	new Opcode(0xE3, "SET 4,(IX#n),E"),
+	new Opcode(0xE4, "SET 4,(IX#n),H"),
+	new Opcode(0xE5, "SET 4,(IX#n),L"),
+	new Opcode(0xE6, "SET 4,(HL)"),
+	new Opcode(0xE7, "SET 4,(IX#n),A"),
+	new Opcode(0xE8, "SET 5,(IX#n),B"),
+	new Opcode(0xE9, "SET 5,(IX#n),C"),
+	new Opcode(0xEA, "SET 5,(IX#n),D"),
+	new Opcode(0xEB, "SET 5,(IX#n),E"),
+	new Opcode(0xEC, "SET 5,(IX#n),H"),
+	new Opcode(0xED, "SET 5,(IX#n),L"),
+	new Opcode(0xEE, "SET 5,(HL)"),
+	new Opcode(0xEF, "SET 5,(IX#n),A"),
+	new Opcode(0xF0, "SET 6,(IX#n),B"),
+	new Opcode(0xF1, "SET 6,(IX#n),C"),
+	new Opcode(0xF2, "SET 6,(IX#n),D"),
+	new Opcode(0xF3, "SET 6,(IX#n),E"),
+	new Opcode(0xF4, "SET 6,(IX#n),H"),
+	new Opcode(0xF5, "SET 6,(IX#n),L"),
+	new Opcode(0xF6, "SET 6,(HL)"),
+	new Opcode(0xF7, "SET 6,(IX#n),A"),
+	new Opcode(0xF8, "SET 7,(IX#n),B"),
+	new Opcode(0xF9, "SET 7,(IX#n),C"),
+	new Opcode(0xFA, "SET 7,(IX#n),D"),
+	new Opcode(0xFB, "SET 7,(IX#n),E"),
+	new Opcode(0xFC, "SET 7,(IX#n),H"),
+	new Opcode(0xFD, "SET 7,(IX#n),L"),
+	new Opcode(0xFE, "SET 7,(HL)"),
+	new Opcode(0xFF, "SET 7,(IX#n),A")
+];
+// Fix length (2)
+OpcodesCB.forEach(opcode => {
+	opcode.length ++;
+});
+
+
+/// Opcodes that start with 0xDDCB.
+export const OpcodesDDCB: Array<Opcode> = [
+	new Opcode(0x00, "RLC (IX#n),B)"),
+	new Opcode(0x01, "RLC (IX#n),C"),
+	new Opcode(0x02, "RLC (IX#n),D"),
+	new Opcode(0x03, "RLC (IX#n),E"),
+	new Opcode(0x04, "RLC (IX#n),H"),
+	new Opcode(0x05, "RLC (IX#n),L"),
+	new Opcode(0x06, "RLC (IX#n)"),
+	new Opcode(0x07, "RLC (IX#n),A"),
+	new Opcode(0x08, "RRC (IX#n),B"),
+	new Opcode(0x09, "RRC (IX#n),C"),
+	new Opcode(0x0A, "RRC (IX#n),D"),
+	new Opcode(0x0B, "RRC (IX#n),E"),
+	new Opcode(0x0C, "RRC (IX#n),H"),
+	new Opcode(0x0D, "RRC (IX#n),L"),
+	new Opcode(0x0E, "RRC (IX#n)"),
+	new Opcode(0x0F, "RRC (IX#n),A"),
+	new Opcode(0x10, "RL (IX#n),B"),
+	new Opcode(0x11, "RL (IX#n),C"),
+	new Opcode(0x12, "RL (IX#n),D"),
+	new Opcode(0x13, "RL (IX#n),E"),
+	new Opcode(0x14, "RL (IX#n),H"),
+	new Opcode(0x15, "RL (IX#n),L"),
+	new Opcode(0x16, "RL (IX#n)"),
+	new Opcode(0x17, "RL (IX#n),A"),
+	new Opcode(0x18, "RR (IX#n),B"),
+	new Opcode(0x19, "RR (IX#n),C"),
+	new Opcode(0x1A, "RR (IX#n),D"),
+	new Opcode(0x1B, "RR (IX#n),E"),
+	new Opcode(0x1C, "RR (IX#n),H"),
+	new Opcode(0x1D, "RR (IX#n),L"),
+	new Opcode(0x1E, "RR (IX#n)"),
+	new Opcode(0x1F, "RR (IX#n),A"),
+	new Opcode(0x20, "SLA (IX#n),B"),
+	new Opcode(0x21, "SLA (IX#n),C"),
+	new Opcode(0x22, "SLA (IX#n),D"),
+	new Opcode(0x23, "SLA (IX#n),E"),
+	new Opcode(0x24, "SLA (IX#n),H"),
+	new Opcode(0x25, "SLA (IX#n),L"),
+	new Opcode(0x26, "SLA (IX#n)"),
+	new Opcode(0x27, "SLA (IX#n),A"),
+	new Opcode(0x28, "SRA (IX#n),B"),
+	new Opcode(0x29, "SRA (IX#n),C"),
+	new Opcode(0x2A, "SRA (IX#n),D"),
+	new Opcode(0x2B, "SRA (IX#n),E"),
+	new Opcode(0x2C, "SRA (IX#n),H"),
+	new Opcode(0x2D, "SRA (IX#n),L"),
+	new Opcode(0x2E, "SRA (IX#n)"),
+	new Opcode(0x2F, "SRA (IX#n),A"),
+	new Opcode(0x30, "SLL (IX#n),B"),
+	new Opcode(0x31, "SLL (IX#n),C"),
+	new Opcode(0x32, "SLL (IX#n),D"),
+	new Opcode(0x33, "SLL (IX#n),E"),
+	new Opcode(0x34, "SLL (IX#n),H"),
+	new Opcode(0x35, "SLL (IX#n),L"),
+	new Opcode(0x36, "SLL (IX#n)"),
+	new Opcode(0x37, "SLL (IX#n),A"),
+	new Opcode(0x38, "SRL (IX#n),B"),
+	new Opcode(0x39, "SRL (IX#n),C"),
+	new Opcode(0x3A, "SRL (IX#n),D"),
+	new Opcode(0x3B, "SRL (IX#n),E"),
+	new Opcode(0x3C, "SRL (IX#n),H"),
+	new Opcode(0x3D, "SRL (IX#n),L"),
+	new Opcode(0x3E, "SRL (IX#n)"),
+	new Opcode(0x3F, "SRL (IX#n),A"),
+	new Opcode(0x40, "BIT 0,(IX#n)"),
+	new Opcode(0x41, "BIT 0,(IX#n)"),
+	new Opcode(0x42, "BIT 0,(IX#n)"),
+	new Opcode(0x43, "BIT 0,(IX#n)"),
+	new Opcode(0x44, "BIT 0,(IX#n)"),
+	new Opcode(0x45, "BIT 0,(IX#n)"),
+	new Opcode(0x46, "BIT 0,(IX#n)"),
+	new Opcode(0x47, "BIT 0,(IX#n)"),
+	new Opcode(0x48, "BIT 1,(IX#n)"),
+	new Opcode(0x49, "BIT 1,(IX#n)"),
+	new Opcode(0x4A, "BIT 1,(IX#n)"),
+	new Opcode(0x4B, "BIT 1,(IX#n)"),
+	new Opcode(0x4C, "BIT 1,(IX#n)"),
+	new Opcode(0x4D, "BIT 1,(IX#n)"),
+	new Opcode(0x4E, "BIT 1,(IX#n)"),
+	new Opcode(0x4F, "BIT 1,(IX#n)"),
+	new Opcode(0x50, "BIT 2,(IX#n)"),
+	new Opcode(0x51, "BIT 2,(IX#n)"),
+	new Opcode(0x52, "BIT 2,(IX#n)"),
+	new Opcode(0x53, "BIT 2,(IX#n)"),
+	new Opcode(0x54, "BIT 2,(IX#n)"),
+	new Opcode(0x55, "BIT 2,(IX#n)"),
+	new Opcode(0x56, "BIT 2,(IX#n)"),
+	new Opcode(0x57, "BIT 2,(IX#n)"),
+	new Opcode(0x58, "BIT 3,(IX#n)"),
+	new Opcode(0x59, "BIT 3,(IX#n)"),
+	new Opcode(0x5A, "BIT 3,(IX#n)"),
+	new Opcode(0x5B, "BIT 3,(IX#n)"),
+	new Opcode(0x5C, "BIT 3,(IX#n)"),
+	new Opcode(0x5D, "BIT 3,(IX#n)"),
+	new Opcode(0x5E, "BIT 3,(IX#n)"),
+	new Opcode(0x5F, "BIT 3,(IX#n)"),
+	new Opcode(0x60, "BIT 4,(IX#n)"),
+	new Opcode(0x61, "BIT 4,(IX#n)"),
+	new Opcode(0x62, "BIT 4,(IX#n)"),
+	new Opcode(0x63, "BIT 4,(IX#n)"),
+	new Opcode(0x64, "BIT 4,(IX#n)"),
+	new Opcode(0x65, "BIT 4,(IX#n)"),
+	new Opcode(0x66, "BIT 4,(IX#n)"),
+	new Opcode(0x67, "BIT 4,(IX#n)"),
+	new Opcode(0x68, "BIT 5,(IX#n)"),
+	new Opcode(0x69, "BIT 5,(IX#n)"),
+	new Opcode(0x6A, "BIT 5,(IX#n)"),
+	new Opcode(0x6B, "BIT 5,(IX#n)"),
+	new Opcode(0x6C, "BIT 5,(IX#n)"),
+	new Opcode(0x6D, "BIT 5,(IX#n)"),
+	new Opcode(0x6E, "BIT 5,(IX#n)"),
+	new Opcode(0x6F, "BIT 5,(IX#n)"),
+	new Opcode(0x70, "BIT 6,(IX#n)"),
+	new Opcode(0x71, "BIT 6,(IX#n)"),
+	new Opcode(0x72, "BIT 6,(IX#n)"),
+	new Opcode(0x73, "BIT 6,(IX#n)"),
+	new Opcode(0x74, "BIT 6,(IX#n)"),
+	new Opcode(0x75, "BIT 6,(IX#n)"),
+	new Opcode(0x76, "BIT 6,(IX#n)"),
+	new Opcode(0x77, "BIT 6,(IX#n)"),
+	new Opcode(0x78, "BIT 7,(IX#n)"),
+	new Opcode(0x79, "BIT 7,(IX#n)"),
+	new Opcode(0x7A, "BIT 7,(IX#n)"),
+	new Opcode(0x7B, "BIT 7,(IX#n)"),
+	new Opcode(0x7C, "BIT 7,(IX#n)"),
+	new Opcode(0x7D, "BIT 7,(IX#n)"),
+	new Opcode(0x7E, "BIT 7,(IX#n)"),
+	new Opcode(0x7F, "BIT 7,(IX#n)"),
 	new Opcode(0x80, "RES 0,B"),
 	new Opcode(0x81, "RES 0,C"),
 	new Opcode(0x82, "RES 0,D"),
 	new Opcode(0x83, "RES 0,E"),
 	new Opcode(0x84, "RES 0,H"),
 	new Opcode(0x85, "RES 0,L"),
-	new Opcode(0x86, "RES 0,(HL)"),
+	new Opcode(0x86, "RES 0,(IX#n)"),
 	new Opcode(0x87, "RES 0,A"),
 	new Opcode(0x88, "RES 1,B"),
 	new Opcode(0x89, "RES 1,C"),
@@ -1552,7 +1861,7 @@ export const OpcodesCB: Array<Opcode> = [
 	new Opcode(0x8B, "RES 1,E"),
 	new Opcode(0x8C, "RES 1,H"),
 	new Opcode(0x8D, "RES 1,L"),
-	new Opcode(0x8E, "RES 1,(HL)"),
+	new Opcode(0x8E, "RES 1,(IX#n)"),
 	new Opcode(0x8F, "RES 1,A"),
 	new Opcode(0x90, "RES 2,B"),
 	new Opcode(0x91, "RES 2,C"),
@@ -1560,7 +1869,7 @@ export const OpcodesCB: Array<Opcode> = [
 	new Opcode(0x93, "RES 2,E"),
 	new Opcode(0x94, "RES 2,H"),
 	new Opcode(0x95, "RES 2,L"),
-	new Opcode(0x96, "RES 2,(HL)"),
+	new Opcode(0x96, "RES 2,(IX#n)"),
 	new Opcode(0x97, "RES 2,A"),
 	new Opcode(0x98, "RES 3,B"),
 	new Opcode(0x99, "RES 3,C"),
@@ -1568,7 +1877,7 @@ export const OpcodesCB: Array<Opcode> = [
 	new Opcode(0x9B, "RES 3,E"),
 	new Opcode(0x9C, "RES 3,H"),
 	new Opcode(0x9D, "RES 3,L"),
-	new Opcode(0x9E, "RES 3,(HL)"),
+	new Opcode(0x9E, "RES 3,(IX#n)"),
 	new Opcode(0x9F, "RES 3,A"),
 	new Opcode(0xA0, "RES 4,B"),
 	new Opcode(0xA1, "RES 4,C"),
@@ -1576,7 +1885,7 @@ export const OpcodesCB: Array<Opcode> = [
 	new Opcode(0xA3, "RES 4,E"),
 	new Opcode(0xA4, "RES 4,H"),
 	new Opcode(0xA5, "RES 4,L"),
-	new Opcode(0xA6, "RES 4,(HL)"),
+	new Opcode(0xA6, "RES 4,(IX#n)"),
 	new Opcode(0xA7, "RES 4,A"),
 	new Opcode(0xA8, "RES 5,B"),
 	new Opcode(0xA9, "RES 5,C"),
@@ -1584,7 +1893,7 @@ export const OpcodesCB: Array<Opcode> = [
 	new Opcode(0xAB, "RES 5,E"),
 	new Opcode(0xAC, "RES 5,H"),
 	new Opcode(0xAD, "RES 5,L"),
-	new Opcode(0xAE, "RES 5,(HL)"),
+	new Opcode(0xAE, "RES 5,(IX#n)"),
 	new Opcode(0xAF, "RES 5,A"),
 	new Opcode(0xB0, "RES 6,B"),
 	new Opcode(0xB1, "RES 6,C"),
@@ -1592,7 +1901,7 @@ export const OpcodesCB: Array<Opcode> = [
 	new Opcode(0xB3, "RES 6,E"),
 	new Opcode(0xB4, "RES 6,H"),
 	new Opcode(0xB5, "RES 6,L"),
-	new Opcode(0xB6, "RES 6,(HL)"),
+	new Opcode(0xB6, "RES 6,(IX#n)"),
 	new Opcode(0xB7, "RES 6,A"),
 	new Opcode(0xB8, "RES 7,B"),
 	new Opcode(0xB9, "RES 7,C"),
@@ -1600,7 +1909,7 @@ export const OpcodesCB: Array<Opcode> = [
 	new Opcode(0xBB, "RES 7,E"),
 	new Opcode(0xBC, "RES 7,H"),
 	new Opcode(0xBD, "RES 7,L"),
-	new Opcode(0xBE, "RES 7,(HL)"),
+	new Opcode(0xBE, "RES 7,(IX#n)"),
 	new Opcode(0xBF, "RES 7,A"),
 	new Opcode(0xC0, "SET 0,B"),
 	new Opcode(0xC1, "SET 0,C"),
@@ -1608,7 +1917,7 @@ export const OpcodesCB: Array<Opcode> = [
 	new Opcode(0xC3, "SET 0,E"),
 	new Opcode(0xC4, "SET 0,H"),
 	new Opcode(0xC5, "SET 0,L"),
-	new Opcode(0xC6, "SET 0,(HL)"),
+	new Opcode(0xC6, "SET 0,(IX#n)"),
 	new Opcode(0xC7, "SET 0,A"),
 	new Opcode(0xC8, "SET 1,B"),
 	new Opcode(0xC9, "SET 1,C"),
@@ -1616,7 +1925,7 @@ export const OpcodesCB: Array<Opcode> = [
 	new Opcode(0xCB, "SET 1,E"),
 	new Opcode(0xCC, "SET 1,H"),
 	new Opcode(0xCD, "SET 1,L"),
-	new Opcode(0xCE, "SET 1,(HL)"),
+	new Opcode(0xCE, "SET 1,(IX#n)"),
 	new Opcode(0xCF, "SET 1,A"),
 	new Opcode(0xD0, "SET 2,B"),
 	new Opcode(0xD1, "SET 2,C"),
@@ -1624,7 +1933,7 @@ export const OpcodesCB: Array<Opcode> = [
 	new Opcode(0xD3, "SET 2,E"),
 	new Opcode(0xD4, "SET 2,H"),
 	new Opcode(0xD5, "SET 2,L"),
-	new Opcode(0xD6, "SET 2,(HL)"),
+	new Opcode(0xD6, "SET 2,(IX#n)"),
 	new Opcode(0xD7, "SET 2,A"),
 	new Opcode(0xD8, "SET 3,B"),
 	new Opcode(0xD9, "SET 3,C"),
@@ -1632,7 +1941,7 @@ export const OpcodesCB: Array<Opcode> = [
 	new Opcode(0xDB, "SET 3,E"),
 	new Opcode(0xDC, "SET 3,H"),
 	new Opcode(0xDD, "SET 3,L"),
-	new Opcode(0xDE, "SET 3,(HL)"),
+	new Opcode(0xDE, "SET 3,(IX#n)"),
 	new Opcode(0xDF, "SET 3,A"),
 	new Opcode(0xE0, "SET 4,B"),
 	new Opcode(0xE1, "SET 4,C"),
@@ -1640,7 +1949,7 @@ export const OpcodesCB: Array<Opcode> = [
 	new Opcode(0xE3, "SET 4,E"),
 	new Opcode(0xE4, "SET 4,H"),
 	new Opcode(0xE5, "SET 4,L"),
-	new Opcode(0xE6, "SET 4,(HL)"),
+	new Opcode(0xE6, "SET 4,(IX#n)"),
 	new Opcode(0xE7, "SET 4,A"),
 	new Opcode(0xE8, "SET 5,B"),
 	new Opcode(0xE9, "SET 5,C"),
@@ -1648,7 +1957,7 @@ export const OpcodesCB: Array<Opcode> = [
 	new Opcode(0xEB, "SET 5,E"),
 	new Opcode(0xEC, "SET 5,H"),
 	new Opcode(0xED, "SET 5,L"),
-	new Opcode(0xEE, "SET 5,(HL)"),
+	new Opcode(0xEE, "SET 5,(IX#n)"),
 	new Opcode(0xEF, "SET 5,A"),
 	new Opcode(0xF0, "SET 6,B"),
 	new Opcode(0xF1, "SET 6,C"),
@@ -1656,7 +1965,7 @@ export const OpcodesCB: Array<Opcode> = [
 	new Opcode(0xF3, "SET 6,E"),
 	new Opcode(0xF4, "SET 6,H"),
 	new Opcode(0xF5, "SET 6,L"),
-	new Opcode(0xF6, "SET 6,(HL)"),
+	new Opcode(0xF6, "SET 6,(IX#n)"),
 	new Opcode(0xF7, "SET 6,A"),
 	new Opcode(0xF8, "SET 7,B"),
 	new Opcode(0xF9, "SET 7,C"),
@@ -1664,60 +1973,284 @@ export const OpcodesCB: Array<Opcode> = [
 	new Opcode(0xFB, "SET 7,E"),
 	new Opcode(0xFC, "SET 7,H"),
 	new Opcode(0xFD, "SET 7,L"),
-	new Opcode(0xFE, "SET 7,(HL)"),
+	new Opcode(0xFE, "SET 7,(IX#n)"),
 	new Opcode(0xFF, "SET 7,A")
 ];
-// Fix length (2)
-OpcodesCB.forEach(opcode => {
-	opcode.length ++;
+// Fix length (4)
+OpcodesDDCB.forEach(opcode => {
+	opcode.length+=2;
 });
+
+/// Opcodes that start with 0xFDCB.
+/// Create FDCB (use IY instead of IX)
+export const OpcodesFDCB = OpcodesDDCB.map(opcode => {
+	const opcodeFDCB = new OpcodePrevIndex();
+	opcodeFDCB.copy(opcode);
+	const name = opcode.name.replace('IX', 'IY');
+	opcodeFDCB.name = name;
+	return opcodeFDCB;
+});
+
 
 /// Opcodes that start with 0xDD.
-/// Same as normal opcodes but exchanges HL with IX.
-export const OpcodesDD = Opcodes.map((opcode, index) => {
-//	console.log(index.toString(16))
-//	console.log(opcode.name);
-	const opcodeDD = new Opcode();
-	opcodeDD.copy(opcode);
-	opcodeDD.length ++;
-	let name = opcode.name;
-	const nameArray = name.split(' ');
-	if(nameArray.length > 1) {
-		const last = nameArray.length-1;
-		let name2 = nameArray[last];
-		const nameFirst = nameArray[0];
-		let match;
-		if(nameFirst != "JP")
-			match = /\(HL\)/.exec(name2);
-		if(match) {
-			// something like "LD A,(HL)" becomes "LD A,(IX+n)",
-			// But not "JP (HL)"
-			name2 = name2.replace('HL', 'IX%s');
-			opcodeDD.valueType = NumberType.RELATIVE_INDEX;
-			opcodeDD.length ++;
-		}
-		else {
-			// Exchange HL/IX, L/IXL, H/IXH
-			name2 = name2.replace('HL', 'IX');
-			name2 = name2.replace('HL', 'IX');	// at most there are 2 occurences
-			// Now the single register
-			name2 = name2.replace('L,L', 'L,IXL');
-			name2 = name2.replace('H,H', 'H,IXH');
-			name2 = name2.replace('L', 'IXL');
-			name2 = name2.replace('H', 'IXH');
-		}
-		// combine name
-		nameArray[last] = name2;
-		name = nameArray.join(' ');
-	}
-	opcodeDD.name = name;
-	return opcodeDD;
+export const OpcodesDD: Array<Opcode> = [
+	new OpcodeInvalid(0x00),
+	new OpcodeInvalid(0x01),
+	new OpcodeInvalid(0x02),
+	new OpcodeInvalid(0x03),
+	new OpcodeInvalid(0x04),
+	new OpcodeInvalid(0x05),
+	new OpcodeInvalid(0x06),
+	new OpcodeInvalid(0x07),
+	new OpcodeInvalid(0x08),
+	new Opcode(0x09, "ADD IX,BC"),
+	new OpcodeInvalid(0x0A),
+	new OpcodeInvalid(0x0B),
+	new OpcodeInvalid(0x0C),
+	new OpcodeInvalid(0x0D),
+	new OpcodeInvalid(0x0E),
+	new OpcodeInvalid(0x0F),
+	new OpcodeInvalid(0x10),
+	new OpcodeInvalid(0x11),
+	new OpcodeInvalid(0x12),
+	new OpcodeInvalid(0x13),
+	new OpcodeInvalid(0x14),
+	new OpcodeInvalid(0x15),
+	new OpcodeInvalid(0x16),
+	new OpcodeInvalid(0x17),
+	new OpcodeInvalid(0x18),
+	new Opcode(0x19, "ADD IX,DE"),
+	new OpcodeInvalid(0x20),
+	new Opcode(0x21, "LD IX,#nn"),
+	new Opcode(0x22, "LD (#nn),IX"),
+	new Opcode(0x23, "INC IX"),
+	new Opcode(0x24, "INC IXH"),
+	new Opcode(0x25, "DEC IXH"),
+	new Opcode(0x26, "LD IXH,#n"),
+	new Opcode(0x29, "ADD IX,IX"),
+	new Opcode(0x2A, "LD IX,(#nn)"),
+	new Opcode(0x2B, "DEC IX"),
+	new Opcode(0x2C, "INC IXL"),
+	new Opcode(0x2D, "DEC IXL"),
+	new Opcode(0x2E, "LD IXL,#n"),
+	new OpcodeInvalid(0x2F),
+	new OpcodeInvalid(0x30),
+	new OpcodeInvalid(0x31),
+	new OpcodeInvalid(0x32),
+	new OpcodeInvalid(0x33),
+	new Opcode(0x34, "INC (IX)"),
+	new Opcode(0x35, "DEC (IX)"),
+	new OpcodePrevIndexImmediate(0x36, 'LD (IX#n),%s'),
+	new OpcodeInvalid(0x37),
+	new OpcodeInvalid(0x38),
+	new Opcode(0x39, "ADD IX,SP"),
+	new OpcodeInvalid(0x3A),
+	new OpcodeInvalid(0x3B),
+	new OpcodeInvalid(0x3C),
+	new OpcodeInvalid(0x3D),
+	new OpcodeInvalid(0x3E),
+	new OpcodeInvalid(0x3F),
+	new OpcodeInvalid(0x40),
+	new OpcodeInvalid(0x41),
+	new OpcodeInvalid(0x42),
+	new OpcodeInvalid(0x43),
+	new Opcode(0x44, "LD B,IXH"),
+	new Opcode(0x45, "LD B,IXL"),
+	new Opcode(0x46, "LD B,(IX)"),
+	new OpcodeInvalid(0x47),
+	new OpcodeInvalid(0x48),
+	new OpcodeInvalid(0x49),
+	new OpcodeInvalid(0x4A),
+	new OpcodeInvalid(0x4B),
+	new Opcode(0x4C, "LD C,IXH"),
+	new Opcode(0x4D, "LD C,IXL"),
+	new Opcode(0x4E, "LD C,(IX)"),
+	new OpcodeInvalid(0x4F),
+	new OpcodeInvalid(0x50),
+	new OpcodeInvalid(0x51),
+	new OpcodeInvalid(0x52),
+	new OpcodeInvalid(0x53),
+	new Opcode(0x54, "LD D,IXH"),
+	new Opcode(0x55, "LD D,IXL"),
+	new Opcode(0x56, "LD D,(IX)"),
+	new OpcodeInvalid(0x57),
+	new OpcodeInvalid(0x58),
+	new OpcodeInvalid(0x59),
+	new OpcodeInvalid(0x5A),
+	new OpcodeInvalid(0x5B),
+	new Opcode(0x5C, "LD E,IXH"),
+	new Opcode(0x5D, "LD E,IXL"),
+	new Opcode(0x5E, "LD E,(IX)"),
+	new OpcodeInvalid(0x5F),
+	new Opcode(0x60, "LD IXH,B"),
+	new Opcode(0x61, "LD IXH,C"),
+	new Opcode(0x62, "LD IXH,D"),
+	new Opcode(0x63, "LD IXH,E"),
+	new Opcode(0x64, "LD IXH,IXH"),
+	new Opcode(0x65, "LD IXH,IXL"),
+	new Opcode(0x66, "LD H,(IX#n)"),
+	new Opcode(0x67, "LD IXH,A"),
+	new Opcode(0x68, "LD IXL,B"),
+	new Opcode(0x69, "LD IXL,C"),
+	new Opcode(0x6A, "LD IXL,D"),
+	new Opcode(0x6B, "LD IXL,E"),
+	new Opcode(0x6C, "LD IXL,IXH"),
+	new Opcode(0x6D, "LD IXL,IXL"),
+	new Opcode(0x6E, "LD L,(IX#n)"),
+	new Opcode(0x6F, "LD IXL,A"),
+	new Opcode(0x70, "LD (IX#n),B"),
+	new Opcode(0x71, "LD (IX#n),C"),
+	new Opcode(0x72, "LD (IX#n),D"),
+	new Opcode(0x73, "LD (IX#n),E"),
+	new Opcode(0x74, "LD (IX#n),H"),
+	new Opcode(0x75, "LD (IX#n),L"),
+	new OpcodeInvalid(0x76),
+	new Opcode(0x77, "LD (IX#n),A"),
+	new OpcodeInvalid(0x78),
+	new OpcodeInvalid(0x79),
+	new OpcodeInvalid(0x7A),
+	new OpcodeInvalid(0x7B),
+	new Opcode(0x7C, "LD A,IXH"),
+	new Opcode(0x7D, "LD A,IXL"),
+	new Opcode(0x7E, "LD A,(IX#n)"),
+	new OpcodeInvalid(0x7F),
+	new OpcodeInvalid(0x80),
+	new OpcodeInvalid(0x81),
+	new OpcodeInvalid(0x82),
+	new OpcodeInvalid(0x83),
+	new Opcode(0x84, "ADD A,IXH"),
+	new Opcode(0x85, "ADD A,IXL"),
+	new Opcode(0x86, "ADD A,(IX#n)"),
+	new OpcodeInvalid(0x87),
+	new OpcodeInvalid(0x88),
+	new OpcodeInvalid(0x89),
+	new OpcodeInvalid(0x8A),
+	new OpcodeInvalid(0x8B),
+	new Opcode(0x8C, "ADC A,IXH"),
+	new Opcode(0x8D, "ADC A,IXL"),
+	new Opcode(0x8E, "ADC A,(IX#n)"),
+	new OpcodeInvalid(0x8F),
+	new OpcodeInvalid(0x90),
+	new OpcodeInvalid(0x91),
+	new OpcodeInvalid(0x92),
+	new OpcodeInvalid(0x93),
+	new Opcode(0x94, "SUB IXH"),
+	new Opcode(0x95, "SUB IXL"),
+	new Opcode(0x96, "SUB (IX#n)"),
+	new OpcodeInvalid(0x97),
+	new OpcodeInvalid(0x98),
+	new OpcodeInvalid(0x99),
+	new OpcodeInvalid(0x9A),
+	new OpcodeInvalid(0x9B),
+	new Opcode(0x9C, "SBC A,IXH"),
+	new Opcode(0x9D, "SBC A,IXL"),
+	new Opcode(0x9E, "SBC A,(IX#n)"),
+	new OpcodeInvalid(0x9F),
+	new OpcodeInvalid(0xA0),
+	new OpcodeInvalid(0xA1),
+	new OpcodeInvalid(0xA2),
+	new OpcodeInvalid(0xA3),
+	new Opcode(0xA4, "AND IXH"),
+	new Opcode(0xA5, "AND IXL"),
+	new Opcode(0xA6, "AND (IX#n)"),
+	new OpcodeInvalid(0xA7),
+	new OpcodeInvalid(0xA8),
+	new OpcodeInvalid(0xA9),
+	new OpcodeInvalid(0xAA),
+	new OpcodeInvalid(0xAB),
+	new Opcode(0xAC, "XOR IXH"),
+	new Opcode(0xAD, "XOR IXL"),
+	new Opcode(0xAE, "XOR (IX#n)"),
+	new OpcodeInvalid(0xAF),
+	new OpcodeInvalid(0xB0),
+	new OpcodeInvalid(0xB1),
+	new OpcodeInvalid(0xB2),
+	new OpcodeInvalid(0xB3),
+	new Opcode(0xB4, "OR IXH"),
+	new Opcode(0xB5, "OR IXL"),
+	new Opcode(0xB6, "OR (IX#n)"),
+	new OpcodeInvalid(0xB7),
+	new OpcodeInvalid(0xB8),
+	new OpcodeInvalid(0xB9),
+	new OpcodeInvalid(0xBA),
+	new OpcodeInvalid(0xBB),
+	new Opcode(0xBC, "CP IXH"),
+	new Opcode(0xBD, "CP IXL"),
+	new Opcode(0xBE, "CP (IX#n)"),
+	new OpcodeInvalid(0xBF),
+	new OpcodeInvalid(0xC0),
+	new OpcodeInvalid(0xC1),
+	new OpcodeInvalid(0xC2),
+	new OpcodeInvalid(0xC3),
+	new OpcodeInvalid(0xC4),
+	new OpcodeInvalid(0xC5),
+	new OpcodeInvalid(0xC6),
+	new OpcodeInvalid(0xC7),
+	new OpcodeInvalid(0xC8),
+	new OpcodeInvalid(0xC9),
+	new OpcodeInvalid(0xCA),
+	new OpcodeExtended2(0xCB, OpcodesDDCB),
+	new OpcodeInvalid(0xCC),
+	new OpcodeInvalid(0xCD),
+	new OpcodeInvalid(0xCE),
+	new OpcodeInvalid(0xCF),
+	new OpcodeInvalid(0xD0),
+	new OpcodeInvalid(0xD1),
+	new OpcodeInvalid(0xD2),
+	new OpcodeInvalid(0xD3),
+	new OpcodeInvalid(0xD4),
+	new OpcodeInvalid(0xD5),
+	new OpcodeInvalid(0xD6),
+	new OpcodeInvalid(0xD7),
+	new OpcodeInvalid(0xD8),
+	new OpcodeInvalid(0xD9),
+	new OpcodeInvalid(0xDA),
+	new OpcodeInvalid(0xDB),
+	new OpcodeInvalid(0xDC),
+	new OpcodeInvalid(0xDD),
+	new OpcodeInvalid(0xDE),
+	new OpcodeInvalid(0xDF),
+	new OpcodeInvalid(0xE0),
+	new Opcode(0xE1, "POP IX"),
+	new OpcodeInvalid(0xE2),
+	new Opcode(0xE3, "EX (SP),IX"),
+	new OpcodeInvalid(0xE4),
+	new Opcode(0xE5, "PUSH IX"),
+	new OpcodeInvalid(0xE6),
+	new OpcodeInvalid(0xE7),
+	new OpcodeInvalid(0xE8),
+	new Opcode(0xE9, "JP (IX)"),
+	new OpcodeInvalid(0xEA),
+	new OpcodeInvalid(0xEB),
+	new OpcodeInvalid(0xEC),
+	new OpcodeInvalid(0xED),
+	new OpcodeInvalid(0xEE),
+	new OpcodeInvalid(0xEF),
+	new OpcodeInvalid(0xF0),
+	new OpcodeInvalid(0xF1),
+	new OpcodeInvalid(0xF2),
+	new OpcodeInvalid(0xF3),
+	new OpcodeInvalid(0xF4),
+	new OpcodeInvalid(0xF5),
+	new OpcodeInvalid(0xF6),
+	new OpcodeInvalid(0xF7),
+	new OpcodeInvalid(0xF8),
+	new Opcode(0xF9, "LD SP,IX"),
+	new OpcodeInvalid(0xFA),
+	new OpcodeInvalid(0xFB),
+	new OpcodeInvalid(0xFC),
+	new OpcodeInvalid(0xFD),
+	new OpcodeInvalid(0xFE),
+	new OpcodeInvalid(0xFF),
+];
+// Fix length (2)
+OpcodesDD.forEach(opcode => {
+	opcode.length++;
 });
-
 
 /// Opcodes that start with 0xFD.
 /// Create FD (use IY instead of IX)
-export const OpcodesFD = OpcodesDD.map((opcode, index) => {
+export const OpcodesFD = OpcodesDD.map(opcode => {
 	const opcodeFD = new Opcode();
 	opcodeFD.copy(opcode);
 	let name = opcode.name.replace('IX', 'IY');
@@ -1727,41 +2260,8 @@ export const OpcodesFD = OpcodesDD.map((opcode, index) => {
 });
 
 
-/// Opcodes that start with 0xDDCB.
-/// Create DDCB (use IX+n instead of or plus register)
-export const OpcodesDDCB = OpcodesCB.map((opcode, index) => {
-	const opcodeDDCB = new OpcodePrevIndex();
-	opcodeDDCB.copy(opcode);
-	opcodeDDCB.length += 2;	// 0xDD and n
-	// Check if opcodes ends with '(HL)'
-	let name = opcode.name;
-	if(name.endsWith('(HL)')) {
-		// Just exchange (HL) with IX
-		name = name.replace('HL', 'IX%s');	// e.g. "(IX+6)"
-	}
-	else {
-		// Add '(IX+d)' before register name.
-		// E.g. 'RLC B' -> 'RLC (IX+d)->B'
-		const len = name.length;
-		name = name.substr(0,len-1) + '(IX%s) -> ' + name.substr(len-1);
-	}
-	opcodeDDCB.valueType = NumberType.RELATIVE_INDEX;
-	opcodeDDCB.name = name;
-	return opcodeDDCB;
-});
 
-
-/// Opcodes that start with 0xFDCB.
-/// Create FDCB (use IY instead of IX)
-export const OpcodesFDCB = OpcodesDDCB.map((opcode, index) => {
-	const opcodeFDCB = new OpcodePrevIndex();
-	opcodeFDCB.copy(opcode);
-	const name = opcode.name.replace('IX', 'IY');
-	opcodeFDCB.name = name;
-	return opcodeFDCB;
-});
-
-
+// TODO: Remove
 // Additional set combined opcodes.
 (Opcodes[0xCB] as OpcodeExtended).opcodes = OpcodesCB;
 (Opcodes[0xDD] as OpcodeExtended).opcodes = OpcodesDD;
