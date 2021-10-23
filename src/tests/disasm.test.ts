@@ -2,7 +2,9 @@ import * as assert from 'assert';
 import { Disassembler } from '../disassembler/disasm';
 import { NumberType } from '../disassembler/numbertype';
 import { writeFileSync } from 'fs';
-import { Opcodes } from '../disassembler/opcode';
+import {Format} from '../disassembler/format';
+import {Opcodes} from '../disassembler/opcode';
+
 
 
 var dasm: any;
@@ -13,16 +15,16 @@ suite('Disassembler', () => {
 	/// Strip all labels, comments from the assembly.
 	function trimAllLines(lines: Array<string>): Array<string> {
 		const lines2 = new Array<string>();
-		for(let line of lines) {
+		for (let line of lines) {
 			// remove comment
 			const match = /(^\S*:|^([0-9a-f]{4})?\s+([^;:]*).*|^[^\s].*)/.exec(line);
-			if(match)
+			if (match)
 				line = match[3] || '';
 			line = line.trim();
 			// compress multiple spaces into one
 			line = line.replace(/\s\s+/g, ' ');
 			// Remove empty lines (labels)
-			if(line.length > 0)
+			if (line.length > 0)
 				lines2.push(line);
 		}
 		return lines2;
@@ -150,7 +152,7 @@ suite('Disassembler', () => {
 		test('2 labels ASSIGNED', () => {
 			const memory = [
 				0x3e, 0x01,			// LD a,1
-			// L1002:
+				// L1002:
 				0xc3, 0x02, 0x10,	// JP 0x1002
 			];
 
@@ -210,7 +212,7 @@ suite('Disassembler', () => {
 /*4033*/ 0xc3, 0x32, 0x40,	//     jp LBL4
 /*4036*/					// DATA1:
 /*4036*/ 0x00				//     defb 0
-];
+			];
 
 			const org = 0x4000;
 			dasm.memory.setMemory(org, new Uint8Array(memory));
@@ -287,7 +289,7 @@ suite('Disassembler', () => {
 			const org = 0x5000;
 			dasm.memory.setMemory(org, new Uint8Array(memory));
 			dasm.setLabel(org);
-			dasm.setLabel(org+3);
+			dasm.setLabel(org + 3);
 			dasm.collectLabels();
 
 			assert(dasm.labels.size == 4);
@@ -304,19 +306,19 @@ suite('Disassembler', () => {
 			assert(label.type == NumberType.CODE_LBL);
 			assert(label.isEqu == false);
 
-			label = dasm.labels.get(org+3);
+			label = dasm.labels.get(org + 3);
 			assert(label != undefined);
 			assert(label.type == NumberType.CODE_LBL);
 			assert(label.isEqu == false);
 
 			// self.modifying label
-			label = dasm.labels.get(org+1);
+			label = dasm.labels.get(org + 1);
 			assert(label != undefined);
 			assert(label.type == NumberType.DATA_LBL);
 			assert(label.isEqu == false);
 		});
 
-    });
+	});
 
 
 	suite('references', () => {
@@ -391,11 +393,11 @@ suite('Disassembler', () => {
 			assert(label.isEqu == false);
 
 			const addrParents = dasm.addressParents;
-			assert(addrParents[org-1] == undefined);
+			assert(addrParents[org - 1] == undefined);
 			assert(addrParents[org] == label);
-			assert(addrParents[org+1] == undefined);
-			assert(addrParents[org+2] == label);
-			assert(addrParents[org+3] == undefined);
+			assert(addrParents[org + 1] == undefined);
+			assert(addrParents[org + 2] == label);
+			assert(addrParents[org + 3] == undefined);
 		});
 
 
@@ -432,23 +434,23 @@ suite('Disassembler', () => {
 			assert(label1.name == 'BSUB1');
 			assert(label1.isEqu == false);
 
-			const label2 = dasm.labels.get(org+6);
+			const label2 = dasm.labels.get(org + 6);
 			assert(label2.name == '.bsub1_lbl');
 			assert(label2.isEqu == false);
 			assert(label2.type == NumberType.CODE_LOCAL_LBL);
 
 			const addrParents = dasm.addressParents;
 			assert(addrParents[org] == label1);
-			assert(addrParents[org+1] == undefined);
-			assert(addrParents[org+2] == undefined);
-			assert(addrParents[org+3] == label1);
-			assert(addrParents[org+4] == undefined);
-			assert(addrParents[org+5] == label1);
+			assert(addrParents[org + 1] == undefined);
+			assert(addrParents[org + 2] == undefined);
+			assert(addrParents[org + 3] == label1);
+			assert(addrParents[org + 4] == undefined);
+			assert(addrParents[org + 5] == label1);
 
-			assert(addrParents[org+6] == label1);
-			assert(addrParents[org+7] == undefined);
-			assert(addrParents[org+8] == label1);
-			assert(addrParents[org+9] == undefined);
+			assert(addrParents[org + 6] == label1);
+			assert(addrParents[org + 7] == undefined);
+			assert(addrParents[org + 8] == label1);
+			assert(addrParents[org + 9] == undefined);
 		});
 
 
@@ -604,36 +606,34 @@ suite('Disassembler', () => {
 			label = dasm.labels.get(0x7015);
 			assert(label.name == 'CCODE1');
 		});
-    });
+	});
 
 
 	suite('disassemble', () => {
 
-		test('combined opcodes', () => {
-			const memory = [
-				0xdd, 0x71, 0xf7,  // ld   (ix-9),c
-				0xdd, 0x70, 0xf8,  // ld   (ix-8),b
-				0xdd, 0x7e, 0xf7,  // ld   a,(ix-9)
-				0xc6, 0xff,        // add a,0xff
+		/**
+		 * Function to test disassembly of a memory area.
+		 * Convenience function used by other tests.
+		 * @param combined: An array of numbers (opcodes) and strings
+		 * (the mnemonics).
+		 * @param org The origin. Defaults to 0000h.
+		 * @returns The disassembly is compared against the mnemonics.
+		 * On a mismatch an error string is returned.
+		 * On success undefined is returned.
+		 */
+		function checkDisassembly(combined: Array<number|string>, org = 0): string|undefined {
+			// Convert into memory and expected strings
+			const memory: number[] = [];
+			const expected: string[] = [];
+			for (const value of combined) {
+				switch (typeof value) {
+					case 'number': memory.push(value); break;
+					case 'string': expected.push(value); break;
+					default: assert(false, 'Cannot convert type into number or string.');
+				}
+			}
 
-				0x01, 0x34, 0x12,	// ld bc,1234h
-				0x04,				// inc b
-				0xCB, 0x05,			// rlc l
-				0xCB, 0x06,			// rlc (hl)
-				0xDD, 0x09,			// add ix,bc
-				0xED, 0x40,			// in b,(c)
-				0xFD, 0x19,			// add iy,de
-				0xDD, 0xCB, 3, 4,	// rlc (ix+3),h
-				0xFD, 0xCB, 1, 2,	// rlc (iy+1),d
-				0xDD, 0xCB, -5, 6,	// rlc (ix-5)
-				0xFD, 0xCB, -9, 6,	// rlc (iy-9)
-				0x28, 0x02,			// jr z,+2 : To reach both jumps.
-				0xDD, 0xE9,	// jp (ix)
-				0xFD, 0xE9,	// jp (iy)
-
-			];
-
-			const org = 0x0000;
+			// Disassemble
 			dasm.memory.setMemory(org, new Uint8Array(memory));
 			dasm.setLabel(org);
 			dasm.disassemble();
@@ -642,264 +642,208 @@ suite('Disassembler', () => {
 			const lines = trimAllLines(linesUntrimmed);
 			//console.log(lines.join('\n'));
 
-			let i = -1;
-			assert(lines[++i] == 'ORG 0000h')
-			assert(lines[++i] == 'LD (IX-9),C')
-			assert(lines[++i] == 'LD (IX-8),B')
-			assert(lines[++i] == 'LD A,(IX-9)')
-			assert(lines[++i] == 'ADD A,FFh');
+			const orgString = 'ORG ' + Format.getConversionForAddress(org);
+			if (lines[0] != orgString)
+				return "Origin wrong: '" + lines[0] + "'";
+			lines.shift();
+			const len = expected.length;
+			for (let i = 0; i < len; i++) {
+				if (lines[i] != expected[i])
+					return lines[i] + ' != ' + expected[i];
+			}
+			if (lines.length != len)
+				return 'Disassembled length does not match expected length.';
 
-			assert(lines[++i] == 'LD BC,1234h')
-			assert(lines[++i] == 'INC B');
-			assert(lines[++i] == 'RLC L');
-			assert(lines[++i] == 'RLC (HL)');
-			assert(lines[++i] == 'ADD IX,BC');
-			assert(lines[++i] == 'IN B,(C)');
-			assert(lines[++i] == 'ADD IY,DE');
-			assert(lines[++i] == 'RLC (IX+3) -> H');
-			assert(lines[++i] == 'RLC (IY+1) -> D');
-			assert(lines[++i] == 'RLC (IX-5)');
-			assert(lines[++i] == 'RLC (IY-9)');
-			++i;
-			assert(lines[++i] == 'JP (IX)');
-			assert(lines[++i] == 'JP (IY)');
+			// Everything fine
+			return undefined;
+		}
+
+
+		test('main instructions', () => {
+			const combined = [
+				0x00, 'NOP',
+				0xC6, 0xff, 'ADD A,FFh',
+				0x01, 0x34, 0x12, 'LD BC,1234h',
+				0x04, 'INC B',
+				0xDD, 0x09, 'ADD IX,BC',
+				0xED, 0x40, 'IN B,(C)',
+				0xFD, 0x19, 'ADD IY,DE',
+				0x28, 0x02, 'JR Z,.lbl1_lbl',
+				0x28, 0x02, 'JR Z,undefined',	// TODO: is this correct?
+				0x00, 'NOP'	// Required to define label .lbl1_lblspec
+
+			];
+			const error = checkDisassembly(combined);
+			assert(error == undefined, error);
 		});
 
 
+		test('ED (extended instructions)', () => {
+			const combined = [
+				0xED, 0x40, 'IN B,(C)',
+			];
+			const error = checkDisassembly(combined);
+			assert(error == undefined, error);
+		});
+
+
+		test('CB (bit instructions)', () => {
+			const combined = [
+				0xCB, 0x05, 'RLC L',
+				0xCB, 0x06, 'RLC (HL)'
+			];
+			const error = checkDisassembly(combined);
+			assert(error == undefined, error);
+		});
+
+
+		test('DD (IX instructions)', () => {
+			const combined = [
+				0xdd, 0x71, 0xf7, 'LD (IX-9),C',
+				0xdd, 0x70, 0xf8, 'LD (IX-8),B',
+				0xdd, 0x7e, 0xf7, 'LD A,(IX-9)',
+				0xdd, 0x36, 0xf7, 0x05, 'LD (IX-9),5',
+				0xfd, 0x36, 0x09, 0x07, 'LD (IY+9),7',
+				0xDD, 0xE9, 'JP (IX)'
+			];
+			const error = checkDisassembly(combined);
+			assert(error == undefined, error);
+		});
+
+
+		test('DDCB (IX bit instructions)', () => {
+			const combined = [
+				0xDD, 0xCB, 10, 0x48, 'BIT 1,(IX+10)',
+				0xDD, 0xCB, 3, 4, 'RLC (IX+3),H',
+				0xDD, 0xCB, -5, 6, 'RLC (IX-5)'
+			];
+			const error = checkDisassembly(combined);
+			assert(error == undefined, error);
+		});
+
+		// TODO: IY
+
 		test('invalid opcodes', () => {
-			const memory = [
+			const combined = [
 				// invalid instruction
-				0xED, 0xCB,
-				0xED, 0x10,
+				0xED, 0xCB, 'INVALID INSTRUCTION',
+				0xED, 0x10, 'INVALID INSTRUCTION',
 				// etc.
 			];
-
-			const org = 0x0000;
-			dasm.memory.setMemory(org, new Uint8Array(memory));
-			dasm.setLabel(org);
-			dasm.disassemble();
-			const linesUntrimmed = dasm.disassembledLines;
-
-			const lines = trimAllLines(linesUntrimmed);
-			//console.log(lines.join('\n'));
-
-			for(let i=1; i<lines.length; i++ )
-				assert(lines[i] == 'INVALID INSTRUCTION');
+			const error = checkDisassembly(combined);
+			assert(error == undefined, error);
 		});
 
 
 		test('nop opcodes', () => {
-			const memory = [
-				0xDD, 0xDD, 0x09,	// nop; add ix,bc
-				0xDD, 0xED, 0x40,	// nop; in b,(c)
-				0xDD, 0xFD, 0x19,	// nop; add iy,de
-
-				0xFD, 0xDD, 0x09,	// nop; add ix,bc
-				0xFD, 0xED, 0x40,	// nop; in b,(c)
-				0xFD, 0xFD, 0x19,	// nop; add iy,de
+			const combined = [
+				0xDD, '[NOP]',
+				0xDD, 0x09, 'ADD IX,BC',
+				0xDD, '[NOP]',
+				0xED, 0x40, 'IN B,(C)',
+				0xDD, '[NOP]',
+				0xFD, 0x19, 'ADD IY,DE',
+				0xFD, '[NOP]',
+				0xDD, 0x09, 'ADD IX,BC',
+				0xFD, '[NOP]',
+				0xED, 0x40, 'IN B,(C)',
+				0xFD, '[NOP]',
+				0xFD, 0x19, 'ADD IY,DE',
 			];
-
-			const org = 0x0000;
-			dasm.memory.setMemory(org, new Uint8Array(memory));
-			dasm.setLabel(org);
-			dasm.clmnsAddress = 0;
-			dasm.opcodesLowerCase = false;
-			dasm.disassemble();
-			const linesUntrimmed = dasm.disassembledLines;
-
-			const lines = trimAllLines(linesUntrimmed);
-			//console.log(lines.join('\n'));
-
-			let i = -1;
-			assert(lines[++i] == 'ORG 0000h')
-			assert(lines[++i] == '[NOP]')
-			assert(lines[++i] == 'ADD IX,BC');
-			assert(lines[++i] == '[NOP]')
-			assert(lines[++i] == 'IN B,(C)');
-			assert(lines[++i] == '[NOP]')
-			assert(lines[++i] == 'ADD IY,DE');
-			assert(lines[++i] == '[NOP]')
-			assert(lines[++i] == 'ADD IX,BC');
-			assert(lines[++i] == '[NOP]')
-			assert(lines[++i] == 'IN B,(C)');
-			assert(lines[++i] == '[NOP]')
-			assert(lines[++i] == 'ADD IY,DE');
+			const error = checkDisassembly(combined);
+			assert(error == undefined, error);
 		});
 
 
 		test('RST n', () => {
-			const memory = [
-				0xC7,	// RST 0
-				0xCF,	// RST 8
-				0xD7,	// RST 16
-				0xDF,	// RST 24
-				0xE7,	// RST 32
-				0xEF,	// RST 40
-				0xF7,	// RST 48
-				0xFF,	// RST 56
+			const combined = [
+				0xC7, 'RST 00h',
+				0xCF, 'RST 08h',
+				0xD7, 'RST 10h',
+				0xDF, 'RST 18h',
+				0xE7, 'RST 20h',
+				0xEF, 'RST 28h',
+				0xF7, 'RST 30h',
+				0xFF, 'RST 38h',
 			];
-
 			const org = 0x1000;
-			dasm.setMemory(org, new Uint8Array(memory));
-			dasm.setLabel(org);
-			dasm.disassemble();
-			const linesUntrimmed = dasm.disassembledLines;
-
-			const lines = trimAllLines(linesUntrimmed);
-			//console.log(lines.join('\n'));
-
-			let i = -1;
-			assert(lines[++i] == 'ORG 1000h')
-			assert(lines[++i] == 'RST 00h')
-			assert(lines[++i] == 'RST 08h');
-			assert(lines[++i] == 'RST 10h')
-			assert(lines[++i] == 'RST 18h');
-			assert(lines[++i] == 'RST 20h')
-			assert(lines[++i] == 'RST 28h');
-			assert(lines[++i] == 'RST 30h');
-			assert(lines[++i] == 'RST 38h')
+			const error = checkDisassembly(combined, org);
+			assert(error == undefined, error);
 		});
 
 
 		test('ZX Next opcodes', () => {
-			const memory = [
-				0xED, 0xA4,		// LDIX
-				0xED, 0xA5,		// LDWS
-				0xED, 0xB4,		// LDIRX
-				0xED, 0xAC,		// LDDX
-				0xED, 0xBC,		// LDDRX
-				0xED, 0xB6,		// LDIRSCALE
-				0xED, 0xB7,		// LDPIRX
+			const combined = [
+				0xED, 0xA4, 'LDIX',
+				0xED, 0xA5, 'LDWS',
+				0xED, 0xB4, 'LDIRX',
+				0xED, 0xAC, 'LDDX',
+				0xED, 0xBC, 'LDDRX',
+				0xED, 0xB6, 'LDIRSCALE',
+				0xED, 0xB7, 'LDPIRX',
 
-				0xED, 0x30,		// MUL D,E
+				0xED, 0x30, 'MUL D,E',
 
-				0xED, 0x31,		// ADD HL,A
-				0xED, 0x32,		// ADD DE,A
-				0xED, 0x33,		// ADD BC,A
-				0xED, 0x34,	0x34, 0x12,	// ADD HL,#nn
-				0xED, 0x35,	0x45, 0x23,		// ADD DE,#nn
-				0xED, 0x36,	0x56, 0x34,		// ADD BC,#nn
+				0xED, 0x31, 'ADD HL,A',
+				0xED, 0x32, 'ADD DE,A',
+				0xED, 0x33, 'ADD BC,A',
+				0xED, 0x34, 0x34, 0x12, 'ADD HL,1234h',
+				0xED, 0x35, 0x45, 0x23, 'ADD DE,2345h',
+				0xED, 0x36, 0x56, 0x34, 'ADD BC,3456h',
 
-				0xED, 0x23,		// SWAPNIB
+				0xED, 0x23, 'SWAPNIB',
 
-				0xED, 0x24,		// MIRROR
+				0xED, 0x24, 'MIRROR',
 
-				0xED, 0x8A,	0x11, 0x88,		// PUSH 0x1188 (big endian)
+				0xED, 0x8A, 0x11, 0x88, 'PUSH 1188h', // (big endian)
 
-				0xED, 0x91,	0, 10,	// NEXTREG #REG_MACHINE_ID,#RMI_ZXNEXT
-				0xED, 0x91,	3, 0b10010010,	// NEXTREG #REG_MACHINE_TYPE,#lock timing|Timing:ZX48K|Macnine:ZX128K
-				0xED, 0x92,	5,		// NEXTREG #REG_PERIPHERAL_1,A
-				0xED, 0x91,	250, 251,	// NEXTREG FAh,FBh
+				0xED, 0x91, 0, 10, 'NEXTREG REG_MACHINE_ID,RMI_ZXNEXT',
+				0xED, 0x91, 3, 0b10010010, 'NEXTREG REG_MACHINE_TYPE,92h (lock timing|Timing',
+				0xED, 0x92, 5, 'NEXTREG REG_PERIPHERAL_1,A',
+				0xED, 0x91, 250, 251, 'NEXTREG FAh,FBh',
 
-				0xED, 0x93,		// PIXELDN
-				0xED, 0x94,		// PIXELAD
+				0xED, 0x93, 'PIXELDN',
+				0xED, 0x94, 'PIXELAD',
 
-				0xED, 0x95,		// SETAE
+				0xED, 0x95, 'SETAE',
 
-				0xED, 0x27,	11,	// TEST #n
+				0xED, 0x27, 11, 'TEST 0Bh',
 
-				0xED, 0x28,		// BSLA DE,B
-				0xED, 0x29,		// BSRA DE,B
-				0xED, 0x2A,		// BSRL DE,B
-				0xED, 0x2B,		// BSRF DE,B
-				0xED, 0x2C,		// BRLC DE,B
+				0xED, 0x28, 'BSLA DE,B',
+				0xED, 0x29, 'BSRA DE,B',
+				0xED, 0x2A, 'BSRL DE,B',
+				0xED, 0x2B, 'BSRF DE,B',
+				0xED, 0x2C, 'BRLC DE,B',
 
-				0xED, 0x98,		// JP (C). Should be last instruction to test.
+				0xED, 0x98, 'JP (C)' // Should be last instruction to test.
 			];
-
-			const org = 0x0000;
-			dasm.memory.setMemory(org, new Uint8Array(memory));
-			dasm.setLabel(org);
-			dasm.disassemble();
-			const linesUntrimmed = dasm.disassembledLines;
-
-			const lines = trimAllLines(linesUntrimmed);
-			//console.log(lines.join('\n'));
-
-			let i = -1;
-			assert(lines[++i] == 'ORG 0000h');
-			assert(lines[++i] == 'LDIX');
-			assert(lines[++i] == 'LDWS');
-			assert(lines[++i] == 'LDIRX');
-			assert(lines[++i] == 'LDDX');
-			assert(lines[++i] == 'LDDRX');
-			assert(lines[++i] == 'LDIRSCALE');
-			assert(lines[++i] == 'LDPIRX');
-			assert(lines[++i] == 'MUL D,E')
-			assert(lines[++i] == 'ADD HL,A');
-			assert(lines[++i] == 'ADD DE,A')
-			assert(lines[++i] == 'ADD BC,A');
-			assert(lines[++i] == 'ADD HL,1234h');
-			assert(lines[++i] == 'ADD DE,2345h');
-			assert(lines[++i] == 'ADD BC,3456h');
-			assert(lines[++i] == 'SWAPNIB');
-			assert(lines[++i] == 'MIRROR');
-			assert(lines[++i] == 'PUSH 1188h');
-			assert(lines[++i] == 'NEXTREG REG_MACHINE_ID,RMI_ZXNEXT');	// 0, 10
-			assert(lines[++i] == 'NEXTREG REG_MACHINE_TYPE,92h (lock timing|Timing');	// 3, 3, 0b10010010
-			assert(lines[++i] == 'NEXTREG REG_PERIPHERAL_1,A');		// 5
-			assert(lines[++i] == 'NEXTREG FAh,FBh');	// 250, 251
-			assert(lines[++i] == 'PIXELDN');
-			assert(lines[++i] == 'PIXELAD');
-			assert(lines[++i] == 'SETAE');
-			assert(lines[++i] == 'TEST 0Bh');	// 11
-
-			assert(lines[++i] == 'BSLA DE,B');
-			assert(lines[++i] == 'BSRA DE,B');
-			assert(lines[++i] == 'BSRL DE,B');
-			assert(lines[++i] == 'BSRF DE,B');
-			assert(lines[++i] == 'BRLC DE,B');
-
-			assert(lines[++i] == 'JP (C)');
+			const error = checkDisassembly(combined);
+			assert(error == undefined, error);
 		});
 
 
 		test('custom opcode', () => {
-			const memory = [
-				/*1000*/	0xCF, 0x99,		// RST 08h, CODE=99h
-				/*1002*/	0xD7, 0x01, 0x34, 0x12, 0xFF	// RST 10h, a=01h, b=1234h, c=FFh
+			const combined = [
+				/*1000*/	0xCF, 0x99, 'RST 08h, CODE=99h',
+				/*1002*/	0xD7, 0x01, 0x34, 0x12, 0xFF, 'RST 10h, a=01h, b=1234h, c=FFh'
 			];
-
+			Opcodes[0xCF].appendToOpcode(", CODE=#n");
+			Opcodes[0xD7].appendToOpcode(", a=#n, b=#nn, c=#n");
 			const org = 0x1000;
-			dasm.setMemory(org, new Uint8Array(memory));
-			dasm.setLabel(org);
-			Opcodes[0xCF].appendToOpcode(", CODE=#n")
-			Opcodes[0xD7].appendToOpcode(", a=#n, b=#nn, c=#n")
-			dasm.disassemble();
-			const linesUntrimmed = dasm.disassembledLines;
-
-			const lines = trimAllLines(linesUntrimmed);
-			//console.log(lines.join('\n'));
-
-			let i = -1;
-			assert(lines[++i] == 'ORG 1000h')
-			assert(lines[++i] == 'RST 08h, CODE=99h');
-			assert(lines[++i] == 'RST 10h, a=01h, b=1234h, c=FFh');
+			const error = checkDisassembly(combined, org);
+			assert(error == undefined, error);
 		});
 
 
 		test('simple', () => {
-			const memory = [
-/*8000*/ 0x3e, 0xfd,		// ld a,0xfd (-3)
-/*8002*/ 0x21, 0xdc, 0xfe,	// ld hl,0xfedc
-/*8005*/ 0xc9,	// ret
+			const combined = [
+/*8000*/ 0x3e, 0xfd, 'LD A,FDh',
+/*8002*/ 0x21, 0xdc, 0xfe, 'LD HL,FEDCh',
+/*8005*/ 0xc9, 'RET'
 			];
-
-			const org = 0x0000;
-			dasm.memory.setMemory(org, new Uint8Array(memory));
-			dasm.setLabel(org);
-			dasm.disassemble();
-			const linesUntrimmed = dasm.disassembledLines;
-
-			const lines = trimAllLines(linesUntrimmed);
-			//console.log('\n');
-			//console.log(lines.join('\n'));
-
-			let i = -1;
-			assert(lines[++i] == 'ORG 0000h')
-			assert(lines[++i] == 'LD A,FDh');		// 253
-			assert(lines[++i] == 'LD HL,FEDCh');	// 65244
-			assert(lines[++i] == 'RET');
+			const org = 0x8000;
+			const error = checkDisassembly(combined, org);
+			assert(error == undefined, error);
 		});
 
 
