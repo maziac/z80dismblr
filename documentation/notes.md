@@ -2,6 +2,9 @@
 
 ## Binaries
 
+Requires:
+npm version >= 5.3.3.
+
 Use "Run Task...->Build Executables".
 This creates the binaries and zip files for uploading a release.
 

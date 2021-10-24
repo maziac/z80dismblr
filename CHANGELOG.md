@@ -1,3 +1,8 @@
+## 1.6.0
+- Opcodes refactored and fixed.
+- Testcases added for all opcodes.
+
+
 ## 1.5.2
 - REG_VERSION string conversion fixed.
 - Changed >> to >>>.
