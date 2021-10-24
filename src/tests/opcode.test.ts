@@ -57,7 +57,7 @@ suite('Opcode', () => {
 			assert(opcode != undefined);
 			if(!Array.isArray(opcode)) {
 //				console.log('DD ' + i + ', ' + i.toString(16) + ', ' + opcode.name);
-				assert(i == opcode.code);
+				assert(i == opcode.code, '' + i + ' != ' + opcode.code);
 			}
 //			else
 //				console.log('DD ' + i + ', ' + i.toString(16) + ' -> Array');
