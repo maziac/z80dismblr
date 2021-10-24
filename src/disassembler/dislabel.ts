@@ -1,6 +1,4 @@
-//import * as assert from 'assert';
-//import { CodeLocation } from './codelocation';
-import { NumberType, getNumberTypeAsString } from './numbertype';
+import {NumberType, getNumberTypeAsString} from './numbertype';
 
 
 
@@ -45,9 +43,9 @@ export class DisLabel {
 	/**
 	 * Constructor: Initializes memory.
 	 */
- 	constructor (type: NumberType) {
+	constructor(type: NumberType) {
 		this.type = type;
-		DisLabel.id ++;
+		DisLabel.id++;
 		this.id = DisLabel.id;
 	}
 

@@ -1,9 +1,9 @@
 import * as util from 'util';
 import * as assert from 'assert';
-import { BaseMemory } from './basememory';
-import { Memory, MemAttribute } from './memory';
-import { NumberType } from './numbertype'
-import { Format } from './format';
+import {BaseMemory} from './basememory';
+import {Memory, MemAttribute} from './memory';
+import {NumberType} from './numbertype'
+import {Format} from './format';
 
 
 /// Classifies opcodes.
@@ -56,20 +56,20 @@ export class Opcode {
 	 * @param handler Gets the value and should return a string with the label.
 	 * If label string does not exist it can return undefinde and the value will be converted into a hex string.
 	 */
-	public static setConvertToLabelHandler(handler: (value: number)=>string) {
+	public static setConvertToLabelHandler(handler: (value: number) => string) {
 		Opcode.convertToLabelHandler = handler;
 	}
 
 	/// The static member that holds the label converter handler.
-	protected static convertToLabelHandler: (value: number)=>string;
+	protected static convertToLabelHandler: (value: number) => string;
 
 
 	/// Converts a value to a label or a hex string.
 	protected static convertToLabel(value: number): string {
 		let valueString;
-		if(Opcode.convertToLabelHandler)
+		if (Opcode.convertToLabelHandler)
 			valueString = Opcode.convertToLabelHandler(value);
-		if(!valueString) {
+		if (!valueString) {
 			valueString = Format.getHexString(value) + 'h';
 		}
 		return valueString;
@@ -78,19 +78,19 @@ export class Opcode {
 
 	/// Call this to use lower case or upper case opcodes.
 	public static makeLowerCase() {
-		for(let oc of Opcodes)
+		for (let oc of Opcodes)
 			oc.name = oc.name.toLowerCase();
-		for(let oc of OpcodesCB)
+		for (let oc of OpcodesCB)
 			oc.name = oc.name.toLowerCase();
-		for(let oc of OpcodesDD)
+		for (let oc of OpcodesDD)
 			oc.name = oc.name.toLowerCase();
-		for(let oc of OpcodesED)
+		for (let oc of OpcodesED)
 			oc.name = oc.name.toLowerCase();
-		for(let oc of OpcodesFD)
+		for (let oc of OpcodesFD)
 			oc.name = oc.name.toLowerCase();
-		for(let oc of OpcodesDDCB)
+		for (let oc of OpcodesDDCB)
 			oc.name = oc.name.toLowerCase();
-		for(let oc of OpcodesFDCB)
+		for (let oc of OpcodesFDCB)
 			oc.name = oc.name.toLowerCase();
 	}
 
@@ -106,7 +106,7 @@ export class Opcode {
 	 * @param name The mnemonic.
 	 */
 	constructor(code?: number, name = '') {
-		if(code == undefined)
+		if (code == undefined)
 			return;	// Ignore the rest because values wil be copied anyway.
 		name = name.trim();
 		this.code = code;
@@ -117,35 +117,35 @@ export class Opcode {
 		this.length = 1;	// default
 		// Retrieve valueType and opcode flags from name
 		let k;
-		if((k = name.indexOf('#n')) > 0) {
-			if(name.substr(k+2,1) == 'n') { // i.e. '#nn'
+		if ((k = name.indexOf('#n')) > 0) {
+			if (name.substr(k + 2, 1) == 'n') { // i.e. '#nn'
 				// Word
 				this.length = 3;
 				// substitute formatting
-				name = name.substr(0,k) + '%s' + name.substr(k+3);
+				name = name.substr(0, k) + '%s' + name.substr(k + 3);
 				// store type
-				const indirect = name.substr(k-1,1);
-				if(indirect == '(') {
+				const indirect = name.substr(k - 1, 1);
+				if (indirect == '(') {
 					// Enclosed in brackets ? E.g. "(20fe)" -> indirect (this is no call or jp)
 					this.valueType = NumberType.DATA_LBL;
 				}
 				else {
 					// now check for opcode flags
-					if(name.startsWith("CALL")) {
-						this.flags |= OpcodeFlag.CALL|OpcodeFlag.BRANCH_ADDRESS;
+					if (name.startsWith("CALL")) {
+						this.flags |= OpcodeFlag.CALL | OpcodeFlag.BRANCH_ADDRESS;
 						this.valueType = NumberType.CODE_SUB;
 						// Check if conditional
-						if(name.indexOf(',') >= 0)
+						if (name.indexOf(',') >= 0)
 							this.flags |= OpcodeFlag.CONDITIONAL;
 					}
-					else if(name.startsWith("JP")) {
+					else if (name.startsWith("JP")) {
 						this.flags |= OpcodeFlag.BRANCH_ADDRESS;
 						this.valueType = NumberType.CODE_LBL;
 						// Now check if it is conditional, i.e. if there is a ',' in the opcode
 						// Check if conditional or stop code
 						this.flags |= (name.indexOf(',') >= 0) ? OpcodeFlag.CONDITIONAL : OpcodeFlag.STOP;
 					}
-					else if(name.startsWith("LD SP,")) {
+					else if (name.startsWith("LD SP,")) {
 						// The stack pointer is loaded, so this is the top of the stack.
 						this.valueType = NumberType.DATA_LBL;
 						this.flags |= OpcodeFlag.LOAD_STACK_TOP;
@@ -161,43 +161,43 @@ export class Opcode {
 				// Byte
 				this.length = 2;
 				// substitute formatting
-				name = name.substr(0,k) + '%s' + name.substr(k+2);
+				name = name.substr(0, k) + '%s' + name.substr(k + 2);
 				// store type
 				this.valueType = NumberType.NUMBER_BYTE;
 
 				// now check for opcode flags
-				if(name.startsWith("DJNZ")) {
+				if (name.startsWith("DJNZ")) {
 					//this.valueType = NumberType.CODE_LOCAL_LOOP;
 					this.valueType = NumberType.CODE_LOCAL_LBL;	// Becomes a loop because it jumps backwards.
-					this.flags |= OpcodeFlag.BRANCH_ADDRESS|OpcodeFlag.CONDITIONAL;
+					this.flags |= OpcodeFlag.BRANCH_ADDRESS | OpcodeFlag.CONDITIONAL;
 				}
-				if(name.startsWith("JR")) {
+				if (name.startsWith("JR")) {
 					this.valueType = NumberType.CODE_LOCAL_LBL;
 					this.flags |= OpcodeFlag.BRANCH_ADDRESS;
 					// Check if conditional or stop code
 					this.flags |= (name.indexOf(',') >= 0) ? OpcodeFlag.CONDITIONAL : OpcodeFlag.STOP;
 				}
-				else if(name.startsWith("IN") || name.startsWith("OUT")) {
+				else if (name.startsWith("IN") || name.startsWith("OUT")) {
 					// a port
 					this.valueType = NumberType.PORT_LBL;
 				}
 			}
 		}
-		else if(name.startsWith("RET")) {	// "RETN", "RETI", "RET" with or without condition
+		else if (name.startsWith("RET")) {	// "RETN", "RETI", "RET" with or without condition
 			this.flags |= OpcodeFlag.RET;
 			// Check if conditional or stop code
 			this.flags |= (name.indexOf(' ') >= 0) ? OpcodeFlag.CONDITIONAL : OpcodeFlag.STOP;
 		}
-		else if(name.startsWith("RST")) {	// "RST"
+		else if (name.startsWith("RST")) {	// "RST"
 			// Use like a CALL
 			this.valueType = NumberType.CODE_RST;
-			this.flags |= OpcodeFlag.BRANCH_ADDRESS|OpcodeFlag.CALL;
+			this.flags |= OpcodeFlag.BRANCH_ADDRESS | OpcodeFlag.CALL;
 
 			// Get jump value
 			const jumpAddress = this.code & 0b00111000;
 			this.value = jumpAddress;
 		}
-		else if(name.startsWith("JP")) {	// "JP (HL)", "JP (IXY)" or "JP (C)"
+		else if (name.startsWith("JP")) {	// "JP (HL)", "JP (IXY)" or "JP (C)"
 			// Note: we don't set a branch address because we don't know where it jumps to: this.flags |= OpcodeFlag.BRANCH_ADDRESS;
 			// But it is a stop code.
 			this.flags |= OpcodeFlag.STOP;
@@ -256,7 +256,7 @@ export class Opcode {
 	 * further bytes to decode, e.g. "#n" or "#nn" or even "#n,#nn,#nn"
 	 */
 	public appendToOpcode(appendName: string) {
-		if(!appendName || appendName.length == 0)
+		if (!appendName || appendName.length == 0)
 			return;
 
 		this.appendValues = new Array<number>();
@@ -266,13 +266,13 @@ export class Opcode {
 		let k = 0;
 		let text = appendName + ' ';
 		let len = 0;
-		while((k = text.indexOf("#n",k)) >= 0) {
+		while ((k = text.indexOf("#n", k)) >= 0) {
 			// Increment
-			len ++;
+			len++;
 			// Check for word
-			if(text[k+2] == "n") {
-				k ++;
-				len ++;
+			if (text[k + 2] == "n") {
+				k++;
+				len++;
 				this.appendValueTypes.push(NumberType.NUMBER_WORD);
 			}
 			else {
@@ -299,61 +299,61 @@ export class Opcode {
 	public getOpcodeAt(memory: BaseMemory, address: number): Opcode {
 		// Get value (if any)
 		let offs = 0;
-		switch(this.valueType) {
+		switch (this.valueType) {
 			case NumberType.CODE_RST:
 			case NumberType.NONE:
 				// no value
-			break;
+				break;
 			case NumberType.CODE_LBL:
 			case NumberType.CODE_SUB:
 			case NumberType.CODE_SUB:
 			case NumberType.DATA_LBL:
 			case NumberType.NUMBER_WORD:
 				// word value
-				this.value = memory.getWordValueAt(address+1);
+				this.value = memory.getWordValueAt(address + 1);
 				offs = 2;
-			break;
+				break;
 			case NumberType.NUMBER_WORD_BIG_ENDIAN:
 				// e.g. for PUSH $nnnn
-				this.value = memory.getBigEndianWordValueAt(address+1);
+				this.value = memory.getBigEndianWordValueAt(address + 1);
 				offs = 2;
-			break;
+				break;
 			case NumberType.RELATIVE_INDEX:
 			case NumberType.CODE_LOCAL_LBL:
 			case NumberType.CODE_LOCAL_LOOP:
 				// byte value
-				this.value = memory.getValueAt(address+1);
+				this.value = memory.getValueAt(address + 1);
 				offs = 1;
-				if(this.value >= 0x80)
+				if (this.value >= 0x80)
 					this.value -= 0x100;
 				// Change relative jump address to absolute
-				if(this.valueType == NumberType.CODE_LOCAL_LBL || this.valueType == NumberType.CODE_LOCAL_LOOP)
-					this.value += address+2;
-			break;
+				if (this.valueType == NumberType.CODE_LOCAL_LBL || this.valueType == NumberType.CODE_LOCAL_LOOP)
+					this.value += address + 2;
+				break;
 			case NumberType.NUMBER_BYTE:
 				// byte value
-				this.value = memory.getValueAt(address+1);
+				this.value = memory.getValueAt(address + 1);
 				offs = 1;
-			break;
+				break;
 			case NumberType.PORT_LBL:
 				// TODO: need to be implemented differently
-				this.value = memory.getValueAt(address+1);
+				this.value = memory.getValueAt(address + 1);
 				offs = 1;
-			break;
+				break;
 			default:
 				assert(false, 'getOpcodeAt');
-			break;
+				break;
 		}
 
 		// Check for custom code
-		if(this.appendValueTypes) {
+		if (this.appendValueTypes) {
 			this.appendValues.length = 0;
 			let addr = address + 1 + offs;
-			for(const vType of this.appendValueTypes) {
+			for (const vType of this.appendValueTypes) {
 				let val;
-				if(vType == NumberType.NUMBER_BYTE) {
+				if (vType == NumberType.NUMBER_BYTE) {
 					val = memory.getValueAt(addr);
-					addr ++;
+					addr++;
 				}
 				else {
 					val = memory.getWordValueAt(addr);
@@ -372,7 +372,7 @@ export class Opcode {
 	 * is one).
 	 * @returns A string that contains the disassembly, e.g. "LD A,(DATA_LBL1)"
 	 * or "JR Z,.sub1_lbl3".
- 	 * @param memory The memory area. Used to distinguish if the access is maybe wrong.
+	   * @param memory The memory area. Used to distinguish if the access is maybe wrong.
 	 * If this is not required (comment) the parameter can be omitted.
 	 */
 	public disassemble(memory?: Memory): {mnemonic: string, comment: string} {
@@ -380,13 +380,13 @@ export class Opcode {
 		let comment = '';
 
 		// Check if there is any value
-		if(this.valueType == NumberType.NONE) {
+		if (this.valueType == NumberType.NONE) {
 			return {mnemonic: this.name, comment: this.comment};
 		}
 
 		// Get referenced label name
 		let valueName = '';
-		if(this.valueType == NumberType.CODE_LBL
+		if (this.valueType == NumberType.CODE_LBL
 			|| this.valueType == NumberType.CODE_LOCAL_LBL
 			|| this.valueType == NumberType.CODE_LOCAL_LOOP
 			|| this.valueType == NumberType.CODE_SUB) {
@@ -394,46 +394,46 @@ export class Opcode {
 			valueName = Opcode.convertToLabel(val);
 			comment = Format.getConversionForAddress(val);
 			// Check if branching into the middle of an opcode
-			if(memory) {
+			if (memory) {
 				const memAttr = memory.getAttributeAt(val);
-				if(memAttr & MemAttribute.ASSIGNED) {
-					if(!(memAttr & MemAttribute.CODE_FIRST)) {
+				if (memAttr & MemAttribute.ASSIGNED) {
+					if (!(memAttr & MemAttribute.CODE_FIRST)) {
 						// Yes, it jumps into the middle of an opcode.
 						comment += ', WARNING: Branches into the middle of an opcode!';
 					}
 				}
 			}
 		}
-		else if(this.valueType == NumberType.DATA_LBL) {
+		else if (this.valueType == NumberType.DATA_LBL) {
 			const val = this.value;
 			valueName = Opcode.convertToLabel(val);
 			comment = Format.getConversionForAddress(val);
 			// Check if accessing code area
-			if(memory) {
+			if (memory) {
 				const memAttr = memory.getAttributeAt(val);
-				if(memAttr & MemAttribute.ASSIGNED) {
-					if(memAttr & MemAttribute.CODE) {
+				if (memAttr & MemAttribute.ASSIGNED) {
+					if (memAttr & MemAttribute.CODE) {
 						// Yes, code is accessed
 						comment += ', WARNING: Instruction accesses code!';
 					}
 				}
 			}
 		}
-		else if(this.valueType == NumberType.RELATIVE_INDEX) {
+		else if (this.valueType == NumberType.RELATIVE_INDEX) {
 			// E.g. in 'LD (IX+n),a'
 			let val = this.value;
 			valueName = (val >= 0) ? '+' : '';
 			valueName += val.toString();
 		}
-		else if(this.valueType == NumberType.CODE_RST) {
+		else if (this.valueType == NumberType.CODE_RST) {
 			// Use value instead of label (looks better)
-			valueName = Format.getHexString(this.value,2)+'h';
+			valueName = Format.getHexString(this.value, 2) + 'h';
 		}
 		else {
 			// Use direct value
 			const val = this.value;
 			// Add comment
-			if(this.valueType == NumberType.NUMBER_BYTE) {
+			if (this.valueType == NumberType.NUMBER_BYTE) {
 				// byte
 				valueName = Format.getHexString(val, 2) + 'h';
 				comment = Format.getVariousConversionsForByte(val);
@@ -447,7 +447,7 @@ export class Opcode {
 
 		// Disassemble
 		let opCodeString;
-		if(!this.appendValueTypes) {
+		if (!this.appendValueTypes) {
 			// Nomal disassembly
 			opCodeString = util.format(this.name, valueName);
 		}
@@ -455,10 +455,10 @@ export class Opcode {
 			// Custom opcode with appended bytes.
 			const len = this.appendValueTypes.length;
 			const vals = new Array<string>();
-			for(let k=0; k<len; k++) {
+			for (let k = 0; k < len; k++) {
 				const vType = this.appendValueTypes[k];
 				const val = this.appendValues[k];
-				let valName = (vType == NumberType.NUMBER_BYTE) ? Format.getHexString(val, 2): Format.getHexString(val, 4);
+				let valName = (vType == NumberType.NUMBER_BYTE) ? Format.getHexString(val, 2) : Format.getHexString(val, 4);
 				valName += 'h';
 				vals.push(valName);
 			}
@@ -466,9 +466,9 @@ export class Opcode {
 		}
 
 		// Comments
-		if(Opcode.enableComments) {
-			if(this.comment) {
-				if(comment.length > 0)
+		if (Opcode.enableComments) {
+			if (this.comment) {
+				if (comment.length > 0)
 					comment += ', '
 				comment += this.comment;
 			}
@@ -564,10 +564,10 @@ class OpcodeIndexImmediate extends Opcode {
 	 * @returns this
 	 */
 	public getOpcodeAt(memory: BaseMemory, address: number): Opcode {
-		this.value = memory.getValueAt(address+1);
+		this.value = memory.getValueAt(address + 1);
 		if (this.value >= 0x80)
 			this.value -= 0x100;
-		this.secondValue = memory.getValueAt(address+2);
+		this.secondValue = memory.getValueAt(address + 2);
 		return this;
 	}
 
@@ -619,7 +619,7 @@ class OpcodeExtended extends Opcode {
 	 * @returns The opcode from the address after the current one.
 	 */
 	public getOpcodeAt(memory: BaseMemory, address: number): Opcode {
-		return Opcode.getOpcodeAt(memory, address+1, this.opcodes);
+		return Opcode.getOpcodeAt(memory, address + 1, this.opcodes);
 	}
 }
 
@@ -638,8 +638,8 @@ class OpcodeExtended2 extends OpcodeExtended {
 	 * The first 2 bytes are DDCB followed by a value (for the index),
 	 * followed by the rest of the opcode.
 	 */
-	 public getOpcodeAt(memory: BaseMemory, address: number): Opcode {
-		return Opcode.getOpcodeAt(memory, address+2, this.opcodes);
+	public getOpcodeAt(memory: BaseMemory, address: number): Opcode {
+		return Opcode.getOpcodeAt(memory, address + 2, this.opcodes);
 	}
 }
 
@@ -710,76 +710,76 @@ class OpcodeNext_nextreg_n_a extends OpcodeNext {
 	 */
 	protected static getRegisterName(regId: number): string {
 		let regname;
-		switch(regId) {
-			case 0:	regname = "REG_MACHINE_ID"; break;
-			case 1:	regname = "REG_VERSION"; break;
-			case 2:	regname = "REG_RESET"; break;
-			case 3:	regname = "REG_MACHINE_TYPE"; break;
-			case 4:	regname = "REG_RAM_PAGE"; break;
-			case 5:	regname = "REG_PERIPHERAL_1"; break;
-			case 6:	regname = "REG_PERIPHERAL_2"; break;
-			case 7:	regname = "REG_TURBO_MODE"; break;
-			case 8:	regname = "REG_PERIPHERAL_3"; break;
+		switch (regId) {
+			case 0: regname = "REG_MACHINE_ID"; break;
+			case 1: regname = "REG_VERSION"; break;
+			case 2: regname = "REG_RESET"; break;
+			case 3: regname = "REG_MACHINE_TYPE"; break;
+			case 4: regname = "REG_RAM_PAGE"; break;
+			case 5: regname = "REG_PERIPHERAL_1"; break;
+			case 6: regname = "REG_PERIPHERAL_2"; break;
+			case 7: regname = "REG_TURBO_MODE"; break;
+			case 8: regname = "REG_PERIPHERAL_3"; break;
 
-			case 14:	regname = "REG_SUB_VERSION"; break;
-			case 15:	regname = "REG_VIDEO_PARAM"; break;
-			case 16:	regname = "REG_ANTI_BRICK"; break;
-			case 17:	regname = "REG_VIDEO_TIMING"; break;
-			case 18:	regname = "REG_LAYER_2_RAM_PAGE"; break;
-			case 19:	regname = "REG_LAYER_2_SHADOW_RAM_PAGE"; break;
+			case 14: regname = "REG_SUB_VERSION"; break;
+			case 15: regname = "REG_VIDEO_PARAM"; break;
+			case 16: regname = "REG_ANTI_BRICK"; break;
+			case 17: regname = "REG_VIDEO_TIMING"; break;
+			case 18: regname = "REG_LAYER_2_RAM_PAGE"; break;
+			case 19: regname = "REG_LAYER_2_SHADOW_RAM_PAGE"; break;
 
-			case 20:	regname = "REG_GLOBAL_TRANSPARENCY_COLOR"; break;
-			case 21:	regname = "REG_SPRITE_LAYER_SYSTEM"; break;
-			case 22:	regname = "REG_LAYER_2_OFFSET_X"; break;
-			case 23:	regname = "REG_LAYER_2_OFFSET_Y"; break;
-			case 24:	regname = "REG_CLIP_WINDOW_LAYER_2"; break;
-			case 25:	regname = "REG_CLIP_WINDOW_SPRITES"; break;
-			case 26:	regname = "REG_CLIP_WINDOW_ULA"; break;
+			case 20: regname = "REG_GLOBAL_TRANSPARENCY_COLOR"; break;
+			case 21: regname = "REG_SPRITE_LAYER_SYSTEM"; break;
+			case 22: regname = "REG_LAYER_2_OFFSET_X"; break;
+			case 23: regname = "REG_LAYER_2_OFFSET_Y"; break;
+			case 24: regname = "REG_CLIP_WINDOW_LAYER_2"; break;
+			case 25: regname = "REG_CLIP_WINDOW_SPRITES"; break;
+			case 26: regname = "REG_CLIP_WINDOW_ULA"; break;
 
-			case 28:	regname = "REG_CLIP_WINDOW_CONTROL"; break;
+			case 28: regname = "REG_CLIP_WINDOW_CONTROL"; break;
 
-			case 30:	regname = "REG_ACTIVE_VIDEO_LINE_H"; break;
-			case 31:	regname = "REG_ACTIVE_VIDEO_LINE_L"; break;
+			case 30: regname = "REG_ACTIVE_VIDEO_LINE_H"; break;
+			case 31: regname = "REG_ACTIVE_VIDEO_LINE_L"; break;
 
-			case 34:	regname = "REG_LINE_INTERRUPT_CONTROL"; break;
-			case 35:	regname = "REG_LINE_INTERRUPT_VALUE_L"; break;
+			case 34: regname = "REG_LINE_INTERRUPT_CONTROL"; break;
+			case 35: regname = "REG_LINE_INTERRUPT_VALUE_L"; break;
 
-			case 40:	regname = "REG_KEYMAP_ADDRESS_H"; break;
-			case 41:	regname = "REG_KEYMAP_ADDRESS_L"; break;
-			case 42:	regname = "REG_KEYMAP_DATA_H"; break;
-			case 43:	regname = "REG_KEYMAP_DATA_L"; break;
+			case 40: regname = "REG_KEYMAP_ADDRESS_H"; break;
+			case 41: regname = "REG_KEYMAP_ADDRESS_L"; break;
+			case 42: regname = "REG_KEYMAP_DATA_H"; break;
+			case 43: regname = "REG_KEYMAP_DATA_L"; break;
 
-			case 45:	regname = "REG_DAC_MONO"; break;
+			case 45: regname = "REG_DAC_MONO"; break;
 
-			case 50:	regname = "REG_LORES_OFFSET_X"; break;
-			case 51:	regname = "REG_LORES_OFFSET_Y"; break;
+			case 50: regname = "REG_LORES_OFFSET_X"; break;
+			case 51: regname = "REG_LORES_OFFSET_Y"; break;
 
-			case 64:	regname = "REG_PALETTE_INDEX"; break;
-			case 65:	regname = "REG_PALETTE_VALUE_8"; break;
-			case 66:	regname = "REG_ULANEXT_PALETTE_FORMAT"; break;
-			case 67:	regname = "REG_PALETTE_CONTROL"; break;
-			case 68:	regname = "REG_PALETTE_VALUE_16"; break;
+			case 64: regname = "REG_PALETTE_INDEX"; break;
+			case 65: regname = "REG_PALETTE_VALUE_8"; break;
+			case 66: regname = "REG_ULANEXT_PALETTE_FORMAT"; break;
+			case 67: regname = "REG_PALETTE_CONTROL"; break;
+			case 68: regname = "REG_PALETTE_VALUE_16"; break;
 
-			case 74:	regname = "REG_FALLBACK_COLOR"; break;
+			case 74: regname = "REG_FALLBACK_COLOR"; break;
 
-			case 80:	regname = "REG_MMU0"; break;
-			case 81:	regname = "REG_MMU1"; break;
-			case 82:	regname = "REG_MMU2"; break;
-			case 83:	regname = "REG_MMU3"; break;
-			case 84:	regname = "REG_MMU4"; break;
-			case 85:	regname = "REG_MMU5"; break;
-			case 86:	regname = "REG_MMU6"; break;
-			case 87:	regname = "REG_MMU7"; break;
+			case 80: regname = "REG_MMU0"; break;
+			case 81: regname = "REG_MMU1"; break;
+			case 82: regname = "REG_MMU2"; break;
+			case 83: regname = "REG_MMU3"; break;
+			case 84: regname = "REG_MMU4"; break;
+			case 85: regname = "REG_MMU5"; break;
+			case 86: regname = "REG_MMU6"; break;
+			case 87: regname = "REG_MMU7"; break;
 
-			case 96:	regname = "REG_COPPER_DATA"; break;
-			case 97:	regname = "REG_COPPER_CONTROL_L"; break;
-			case 98:	regname = "REG_COPPER_CONTROL_H"; break;
+			case 96: regname = "REG_COPPER_DATA"; break;
+			case 97: regname = "REG_COPPER_CONTROL_L"; break;
+			case 98: regname = "REG_COPPER_CONTROL_H"; break;
 
-			case 255:	regname = "REG_DEBUG"; break;
+			case 255: regname = "REG_DEBUG"; break;
 
 			default:
 				// unknown
-				regname = Format.getHexString(regId, 2)+'h';
+				regname = Format.getHexString(regId, 2) + 'h';
 				break;
 		}
 		return regname;
@@ -799,13 +799,13 @@ class OpcodeNext_nextreg_n_n extends OpcodeNext_nextreg_n_a {
 		super(code, name);
 		// There is still an '#n' to convert
 		this.name = this.name.replace('#n', '%s');
-		this.length ++;
+		this.length++;
 	}
 
 	/// Collects the 2 values.
 	public getOpcodeAt(memory: BaseMemory, address: number): Opcode {
-		this.value = memory.getValueAt(address+1);
-		this.value2 = memory.getValueAt(address+2);
+		this.value = memory.getValueAt(address + 1);
+		this.value2 = memory.getValueAt(address + 2);
 		return this;
 	}
 
@@ -829,9 +829,9 @@ class OpcodeNext_nextreg_n_n extends OpcodeNext_nextreg_n_a {
 	protected static getRegisterValueName(regId: number, regValue: number): string {
 		let valuename;
 		let arr;
-		switch(regId) {
+		switch (regId) {
 			case 0:	// REG_MACHINE_ID
-				switch(regValue) {
+				switch (regValue) {
 					case 0: valuename = "REG_MACHINE_ID"; break;
 					case 1: valuename = "RMI_DE1A"; break;
 					case 2: valuename = "RMI_DE2A"; break;
@@ -846,47 +846,47 @@ class OpcodeNext_nextreg_n_n extends OpcodeNext_nextreg_n_a {
 				break;
 
 			case 1: // REG_VERSION
-				valuename = Format.getHexString(regValue,2) + 'h (v' + (regValue>>>4) + '.' + (regValue&0x0f) + ')';
+				valuename = Format.getHexString(regValue, 2) + 'h (v' + (regValue >>> 4) + '.' + (regValue & 0x0f) + ')';
 				break;
 
 			case 2: // REG_RESET
-				valuename = Format.getHexString(regValue,2) + 'h';
+				valuename = Format.getHexString(regValue, 2) + 'h';
 				arr = new Array<string>();
-				if(regValue & 0x04)
+				if (regValue & 0x04)
 					arr.push("RR_POWER_ON_RESET");
-				if(regValue & 0x02)
+				if (regValue & 0x02)
 					arr.push("RR_HARD_RESET");
-				if(regValue & 0x01)
+				if (regValue & 0x01)
 					arr.push("RR_SOFT_RESET");
-				if(arr.length > 0)
+				if (arr.length > 0)
 					valuename += ' (' + arr.join('|') + ')';
 				break;
 
 			case 3: // REG_MACHINE_TYPE
-				valuename = Format.getHexString(regValue,2) + 'h';
+				valuename = Format.getHexString(regValue, 2) + 'h';
 				arr = new Array<string>();
-				if(regValue & 0x80)
+				if (regValue & 0x80)
 					arr.push("lock timing");
-				switch((regValue>>>4) & 0x07) {
+				switch ((regValue >>> 4) & 0x07) {
 					case 0b000:
-					case 0b001:	arr.push("Timing:ZX 48K"); break;
+					case 0b001: arr.push("Timing:ZX 48K"); break;
 					case 0b010: arr.push("Timing:ZX 128K"); break;
 					case 0b011: arr.push("Timing:ZX +2/+3e"); break;
 					case 0b100: arr.push("Timing:Pentagon 128K"); break;
 				}
-				switch(regValue & 0x07) {
-					case 0b000:	arr.push("Machine:Config mode"); break;
-					case 0b001:	arr.push("Machine:ZX 48K"); break;
+				switch (regValue & 0x07) {
+					case 0b000: arr.push("Machine:Config mode"); break;
+					case 0b001: arr.push("Machine:ZX 48K"); break;
 					case 0b010: arr.push("Machine:ZX 128K"); break;
 					case 0b011: arr.push("Machine:ZX +2/+3e"); break;
 					case 0b100: arr.push("Machine:Pentagon 128K"); break;
 				}
-				if(arr.length > 0)
+				if (arr.length > 0)
 					valuename += ' (' + arr.join('|') + ')';
-			break;
+				break;
 
 			case 4: // REG_RAM_PAGE
-				switch(regValue) {
+				switch (regValue) {
 					case 0x08: valuename = "RRP_RAM_DIVMMC"; break;    // 0x00
 					case 0x04: valuename = "RRP_ROM_DIVMMC"; break;    // 0x18
 					case 0x05: valuename = "RRP_ROM_MF"; break;        // 0x19
@@ -895,7 +895,7 @@ class OpcodeNext_nextreg_n_n extends OpcodeNext_nextreg_n_a {
 				break;
 
 			case 5: // REG_PERIPHERAL_1
-				switch(regValue) {
+				switch (regValue) {
 					case 0x00: valuename = "RP1_JOY1_SINCLAIR"; break;
 					case 0x40: valuename = "RP1_JOY1_KEMPSTON"; break;
 					case 0x80: valuename = "RP1_JOY1_CURSOR"; break;
@@ -913,7 +913,7 @@ class OpcodeNext_nextreg_n_n extends OpcodeNext_nextreg_n_a {
 				break;
 
 			case 7: // REG_TURBO_MODE
-				switch(regValue) {
+				switch (regValue) {
 					case 0x00: valuename = "RTM_3MHZ"; break;
 					case 0x01: valuename = "RTM_7MHZ"; break;
 					case 0x02: valuename = "RTM_14MHZ"; break;
@@ -937,13 +937,13 @@ class OpcodeNext_nextreg_n_n extends OpcodeNext_nextreg_n_a {
 				break;
 
 			case 18: // REG_LAYER_2_RAM_PAGE
-				switch(regValue) {
+				switch (regValue) {
 					case 0x3f: valuename = "RL2RP_MASK"; break;
 				}
 				break;
 
 			case 19: // REG_LAYER_2_SHADOW_RAM_PAGE
-				switch(regValue) {
+				switch (regValue) {
 					case 0x3f: valuename = "RL2RP_MASK"; break;
 				}
 				break;
@@ -952,7 +952,7 @@ class OpcodeNext_nextreg_n_n extends OpcodeNext_nextreg_n_a {
 				break;
 
 			case 21: // REG_SPRITE_LAYER_SYSTEM
-				switch(regValue) {
+				switch (regValue) {
 					case 0x80: valuename = "RSLS_ENABLE_LORES"; break;
 					case 0x00: valuename = "RSLS_LAYER_PRIORITY_SLU"; break;
 					case 0x04: valuename = "RSLS_LAYER_PRIORITY_LSU"; break;
@@ -981,7 +981,7 @@ class OpcodeNext_nextreg_n_n extends OpcodeNext_nextreg_n_a {
 				break;
 
 			case 28: // REG_CLIP_WINDOW_CONTROL
-				switch(regValue) {
+				switch (regValue) {
 					case 0x04: valuename = "RCWC_RESET_ULA_CLIP_INDEX"; break;
 					case 0x02: valuename = "RCWC_RESET_SPRITE_CLIP_INDEX"; break;
 					case 0x01: valuename = "RCWC_RESET_LAYER_2_CLIP_INDEX"; break;
@@ -995,7 +995,7 @@ class OpcodeNext_nextreg_n_n extends OpcodeNext_nextreg_n_a {
 				break;
 
 			case 34: // REG_LINE_INTERRUPT_CONTROL
-				switch(regValue) {
+				switch (regValue) {
 					case 0x80: valuename = "RLIC_INTERRUPT_FLAG"; break;
 					case 0x04: valuename = "RLIC_DISABLE_ULA_INTERRUPT"; break;
 					case 0x02: valuename = "RLIC_ENABLE_LINE_INTERRUPT"; break;
@@ -1037,7 +1037,7 @@ class OpcodeNext_nextreg_n_n extends OpcodeNext_nextreg_n_a {
 				break;
 
 			case 67: // REG_PALETTE_CONTROL
-				switch(regValue) {
+				switch (regValue) {
 					case 0x80: valuename = "RPC_DISABLE_AUTOINC"; break;
 					case 0x00: valuename = "RPC_SELECT_ULA_PALETTE_0"; break;
 					case 0x40: valuename = "RPC_SELECT_ULA_PALETTE_1"; break;
@@ -1092,7 +1092,7 @@ class OpcodeNext_nextreg_n_n extends OpcodeNext_nextreg_n_a {
 				break;
 
 			case 98: // REG_COPPER_CONTROL_H
-				switch(regValue) {
+				switch (regValue) {
 					case 0x00: valuename = "RCCH_COPPER_STOP"; break;
 					case 0x40: valuename = "RCCH_COPPER_RUN_LOOP_RESET"; break;
 					case 0x80: valuename = "RCCH_COPPER_RUN_LOOP"; break;
@@ -1105,8 +1105,8 @@ class OpcodeNext_nextreg_n_n extends OpcodeNext_nextreg_n_a {
 		}
 
 		// Check if undefined
-		if(!valuename)
-			valuename = Format.getHexString(regValue, 2)+'h';
+		if (!valuename)
+			valuename = Format.getHexString(regValue, 2) + 'h';
 		return valuename;
 	}
 }
@@ -1118,7 +1118,7 @@ export const OpcodesED: Array<Opcode> = [
 
 	new OpcodeNext(0x23, "SWAPNIB"),     // ZX Spectrum Next
 	new OpcodeNext(0x24, "MIRROR"),     // ZX Spectrum Next
-	...Array<number>(0x02).fill(0).map((value, index) => new OpcodeInvalid(0x25+index)),
+	...Array<number>(0x02).fill(0).map((value, index) => new OpcodeInvalid(0x25 + index)),
 
 	new OpcodeNext(0x27, "TEST #n"),     // ZX Spectrum Next
 
@@ -1127,7 +1127,7 @@ export const OpcodesED: Array<Opcode> = [
 	new OpcodeNext(0x2A, "BSRL DE,B"),     // ZX Spectrum Next
 	new OpcodeNext(0x2B, "BSRF DE,B"),     // ZX Spectrum Next
 	new OpcodeNext(0x2C, "BRLC DE,B"),     // ZX Spectrum Next
-	...Array<number>(0x03).fill(0).map((value, index) => new OpcodeInvalid(0x2D+index)),
+	...Array<number>(0x03).fill(0).map((value, index) => new OpcodeInvalid(0x2D + index)),
 
 	new OpcodeNext(0x30, "MUL D,E"),     // ZX Spectrum Next
 	new OpcodeNext(0x31, "ADD HL,A"),     // ZX Spectrum Next
@@ -1136,7 +1136,7 @@ export const OpcodesED: Array<Opcode> = [
 	new OpcodeNext(0x34, "ADD HL,#nn"),     // ZX Spectrum Next
 	new OpcodeNext(0x35, "ADD DE,#nn"),     // ZX Spectrum Next
 	new OpcodeNext(0x36, "ADD BC,#nn"),     // ZX Spectrum Next
-	...Array<number>(0x09).fill(0).map((value, index) => new OpcodeInvalid(0x37+index)),
+	...Array<number>(0x09).fill(0).map((value, index) => new OpcodeInvalid(0x37 + index)),
 
 	new Opcode(0x40, "IN B,(C)"),
 	new Opcode(0x41, "OUT (C),B"),
@@ -1202,20 +1202,20 @@ export const OpcodesED: Array<Opcode> = [
 	new Opcode(0x7D, "[reti]"),
 	new Opcode(0x7E, "[im2]"),
 	new Opcode(0x7F, "[ld r,r?]"),
-	...Array<number>(0x0A).fill(0).map((value, index) => new OpcodeInvalid(0x80+index)),
+	...Array<number>(0x0A).fill(0).map((value, index) => new OpcodeInvalid(0x80 + index)),
 
 	new OpcodeNextPush(0x8A, "PUSH #nn"),     // ZX Spectrum Next
-	...Array<number>(0x06).fill(0).map((value, index) => new OpcodeInvalid(0x8B+index)),
+	...Array<number>(0x06).fill(0).map((value, index) => new OpcodeInvalid(0x8B + index)),
 
 	new OpcodeNext_nextreg_n_n(0x91, "NEXTREG #n,#n"),     // ZX Spectrum Next
 	new OpcodeNext_nextreg_n_a(0x92, "NEXTREG #n,A"),     // ZX Spectrum Next
 	new OpcodeNext(0x93, "PIXELDN"),     // ZX Spectrum Next
 	new OpcodeNext(0x94, "PIXELAD"),     // ZX Spectrum Next
 	new OpcodeNext(0x95, "SETAE"),     // ZX Spectrum Next
-	...Array<number>(0x02).fill(0).map((value, index) => new OpcodeInvalid(0x96+index)),
+	...Array<number>(0x02).fill(0).map((value, index) => new OpcodeInvalid(0x96 + index)),
 	new OpcodeNext(0x98, "JP (C)"),     // ZX Spectrum Next
 
-	...Array<number>(0x07).fill(0).map((value, index) => new OpcodeInvalid(0x99+index)),
+	...Array<number>(0x07).fill(0).map((value, index) => new OpcodeInvalid(0x99 + index)),
 
 	new Opcode(0xA0, "LDI"),
 	new Opcode(0xA1, "CPI"),
@@ -1225,7 +1225,7 @@ export const OpcodesED: Array<Opcode> = [
 	new OpcodeNext(0xA4, "LDIX"),     // ZX Spectrum Next
 	new OpcodeNext(0xA5, "LDWS"),     // ZX Spectrum Next
 
-	...Array<number>(0x02).fill(0).map((value, index) => new OpcodeInvalid(0xA6+index)),
+	...Array<number>(0x02).fill(0).map((value, index) => new OpcodeInvalid(0xA6 + index)),
 
 	new Opcode(0xA8, "LDD"),
 	new Opcode(0xA9, "CPD"),
@@ -1234,7 +1234,7 @@ export const OpcodesED: Array<Opcode> = [
 
 	new OpcodeNext(0xAC, "LDDX"),     // ZX Spectrum Next
 
-	...Array<number>(0x03).fill(0).map((value, index) => new OpcodeInvalid(0xAD+index)),
+	...Array<number>(0x03).fill(0).map((value, index) => new OpcodeInvalid(0xAD + index)),
 
 	new Opcode(0xB0, "LDIR"),
 	new Opcode(0xB1, "CPIR"),
@@ -1253,11 +1253,11 @@ export const OpcodesED: Array<Opcode> = [
 
 	new OpcodeNext(0xBC, "LDDRX"),     // ZX Spectrum Next
 
-	...Array<number>(0x100-0xBC-1).fill(0).map((value, index) => new OpcodeInvalid(0xBD+index))
+	...Array<number>(0x100 - 0xBC - 1).fill(0).map((value, index) => new OpcodeInvalid(0xBD + index))
 ];
 // Fix length (2)
 OpcodesED.forEach(opcode => {
-	opcode.length ++;
+	opcode.length++;
 });
 
 /// Opcodes that start with 0xCB.
@@ -1521,7 +1521,7 @@ export const OpcodesCB: Array<Opcode> = [
 ];
 // Fix length (2)
 OpcodesCB.forEach(opcode => {
-	opcode.length ++;
+	opcode.length++;
 });
 
 
@@ -2341,20 +2341,3 @@ export const Opcodes: Array<Opcode> = [
 	new Opcode(0xFF, "RST %s")
 ];
 
-
-// TODO: Remove
-// Additional set combined opcodes.
-//(Opcodes[0xCB] as OpcodeExtended).opcodes = OpcodesCB;
-//(Opcodes[0xDD] as OpcodeExtended).opcodes = OpcodesDD;
-//(Opcodes[0xED] as OpcodeExtended).opcodes = OpcodesED;
-//(Opcodes[0xFD] as OpcodeExtended).opcodes = OpcodesFD;
-
-//OpcodesDD[0xCB] = new OpcodeExtended2(0xCB, OpcodesDDCB);
-//OpcodesDD[0xDD] = new OpcodeNOP(0xDD);
-//OpcodesDD[0xED] = new OpcodeNOP(0xED);
-//OpcodesDD[0xFD] = new OpcodeNOP(0xFD);
-
-//OpcodesFD[0xCB] = new OpcodeExtended2(0xCB, OpcodesFDCB);
-//OpcodesFD[0xDD] = new OpcodeNOP(0xDD);
-//OpcodesFD[0xED] = new OpcodeNOP(0xED);
-//OpcodesFD[0xFD] = new OpcodeNOP(0xFD);
