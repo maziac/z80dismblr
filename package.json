@@ -8,7 +8,7 @@
     "compile": "tsc -p ./src",
     "tslint": "eslint ./src/**/*.ts",
     "watch": "tsc -w -p ./src",
-    "test": "mocha -u tdd ./out/tests/",
+    "test": "mocha -u tdd 'out/**/*.test{s,}.js'",
     "package": "vsce package",
     "publish": "vsce publish"
   },
@@ -28,6 +28,7 @@
     "@types/node": "16.11.4",
     "mocha": "^9.1.3",
     "serialize-javascript": ">=6.0.0",
+    "source-map-support": "^0.5.21",
     "typescript": "^4.4.4"
   }
 }
