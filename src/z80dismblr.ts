@@ -50,7 +50,6 @@ class Startup {
             this.dasm.on('error', msg => {
                 // Note: there is no error at the moment.
                 console.error('Error: ' + msg);
-                return;
             });
             this.dasm.on('warning', msg => {
                 console.error('Warning: ' + msg);
@@ -199,7 +198,7 @@ z80dismblr [options]
     -v|-version|--version: Prints the version number.
     --args file: Instead of an argument list on the command line it is also possible
         to provide the arguments in a file. There is no special format, just
-        provide the arguments. May conatin newlines.
+        provide the arguments. May contain newlines.
     --sna file: Read in a ZX Spectrum snapshot file (48k format only, i.e. no ROM bank support).
     --bin start file: Read in a plain binary. 'start' is the address in memory for the read binary.
     You can use this argument several times to read inseveral binary files.
@@ -216,7 +215,7 @@ z80dismblr [options]
         set it e.g. to change the label name.
     --noautomaticaddr: The disassemble will automatically add addresss 0000h or
         (if a SNA file has been used) the SNA start address to the labels
-        and start disassembly here. If this option is given this behaviour is suppressed.
+        and start disassembly here. If this option is given this behavior is suppressed.
     --jmptable address size: If it is known that a jump-table exists in memory
         then its address and size can be given here. 'size' is the number of addresses.
     --clrlabels: Clears all labels collected so far. E.g. can be used to overrule
@@ -224,7 +223,7 @@ z80dismblr [options]
         defined.
         Can be useful if you want to list a dot file only for a specfic subroutine.
     --rstend addr: Don't follow 'RST's. I.e. the disassembler will not analyze the
-        code called by a RST command of the givven address. You can use this
+        code called by a RST command of the given address. You can use this
         argument several times with different addresses. Example, use:
         "--rstend 8" if you use ESXDOS file handling.
 
@@ -263,7 +262,7 @@ z80dismblr [options]
             - \${size}: The size of the subroutine in bytes.
             - \${instructions}: The number of instructions of the subroutine.
             You can use '\\n' for centered text, and '\\l', '\\r' for left- rightaligned text.
-        --callgraphformat formatstring: You can add additional fromatting
+        --callgraphformat formatstring: You can add additional formatting
             for the dot file. The string you enter here is directly
             put after the "digraph ... {" bracket.
             E.g. use \'--callgraphformat "rankdir=LR;"\' to change direction
@@ -286,8 +285,8 @@ z80dismblr [options]
             Also the comments will be used instead of the generated ones.
             I.e. the more you know about the disassembled sources the more labels
             you can add here with meaningful comments. The format is:
-                "; coments before the address" (one or several lines)
-                "address [name] ; coments on the same line" (address in hex, name is optional)
+                "; comments before the address" (one or several lines)
+                "address [name] ; comments on the same line" (address in hex, name is optional)
                 "; coments after the address" (one or several lines)
                 newline
             Here is an example:
@@ -321,7 +320,7 @@ z80dismblr [options]
         --opcode byte appendtext
             byte: the opcode, e.g. "0xCF"
             appendtext: the text that should appear in the disassembly after the
-                original disasssembly.
+                original disassembly.
                 If the text contains spaces please enclose in quotation marks.
                 '#n' and '#nn' have a special meaning:
                     #n: single byte following the opcode
@@ -532,7 +531,7 @@ z80dismblr [options]
                     if(!text || text.length == 0)
                         throw arg + ": No prefix given";
                     // Set prefix
-                    this.dasm.labelLocalLablePrefix = text;
+                    this.dasm.labelLocalLabelPrefix = text;
                     break;
 
                 // Local loop prefix
@@ -925,7 +924,7 @@ z80dismblr [options]
 		if(gdec) {
 			if(gdec_empty)
 				return NaN;
-			return parseInt(gdec, 10);;
+			return parseInt(gdec, 10);
 		}
 		// Bits
 		if(gbit) {
@@ -936,10 +935,11 @@ z80dismblr [options]
 
 		// Check if status flag value
 		if(gflags) {
-			if(gflags_empty)
-				return NaN;
-			gflags = gflags.toLowerCase()
-			var flags = 0;
+            if (gflags_empty) {
+                return NaN;
+            }
+            gflags = gflags.toLowerCase();
+			let flags = 0;
 			if(gflags.includes('s')) flags |= 0x80;
 			if(gflags.includes('z')) flags |= 0x40;
 			if(gflags.includes('h')) flags |= 0x10;

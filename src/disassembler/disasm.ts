@@ -87,7 +87,7 @@ export class Disassembler extends EventEmitter {
 	public labelRstPrefix = "RST";
 	public labelDataLblPrefix = "DATA";
 	public labelSelfModifyingPrefix = "SELF_MOD";	// I guess this is not used anymore if DATA_LBL priority is below CODE_LBLs
-	public labelLocalLablePrefix = "_l";
+	public labelLocalLabelPrefix = "_l";
 	public labelLoopPrefix = "_loop";
 
 	public labelIntrptPrefix = "INTRPT";
@@ -417,7 +417,7 @@ export class Disassembler extends EventEmitter {
 
 	/**
 	 * Used to set a label as the user.
-	 * I.e. those labels should be fixed, i.e. not changable by the algorithm.
+	 * I.e. those labels should be fixed, i.e. not changeable by the algorithm.
 	 * Note: this affects only the change of the type. The name is anyhow not changed if it
 	 * has been set by the user.
 	 * @param address
@@ -478,7 +478,7 @@ export class Disassembler extends EventEmitter {
 	 * MAME trace files contain the opcode addresses of a run of the program.
 	 * These are used as starting points for the disassembly.
 	 * If a trace file is given it is normally not required to give additional
-	 * label info like start of the program or start of the interrupt rsubroutine.
+	 * label info like start of the program or start of the interrupt subroutine.
 	 * @param path The file path to the trace (.tr) file. (An ASCII file).
 	 * Trace files can become very big, a few seconds already result in MB of data.
 	 */
@@ -583,7 +583,7 @@ export class Disassembler extends EventEmitter {
 	/**
 	 * Parses the memory area for opcodes with labels.
 	 * Stores all labels with a categorization in an array.
-	 * Priorization of labels:
+	 * Prioritization of labels:
 	 * 1. "SUB"-labels: Everything called by "CALL nn" or "CALL cc,nn"
 	 * 2. "LBL"-labels: Everything jumped to "JP nn" or "JP cc,nn"
 	 * 3. "loop"-labels: Everything jumped to by "DJNZ"
@@ -745,7 +745,7 @@ export class Disassembler extends EventEmitter {
 
 	/**
 	 * Finds interrupt labels. I.e. start of program code
-	 * that doesn't have any lable yet.
+	 * that doesn't have any label yet.
 	 * As z80dismblr uses CFG analysis this can normally not happen.
 	 * But if you e.g. provide a trace (tr) file this also includes interrupt traces.
 	 * So z80dismblr will also follow these paths, but since there
@@ -999,7 +999,7 @@ export class Disassembler extends EventEmitter {
 
 	/**
 	 * Finds the next label in the path.
-	 * Uses the direct path, i.e. it doesnot follow any branch addresses.
+	 * Uses the direct path, i.e. it doesn't follow any branch addresses.
 	 * Returns at a STOP code.
 	 * Is used to find "flow-through" references. I.e. references from a SUB
 	 * to another that are creates because the program flow simply flows
@@ -1236,7 +1236,7 @@ export class Disassembler extends EventEmitter {
 	/**
 	 * Returns an array with all addresses used by the subroutine
 	 * given at 'address'.
-	 * Does NOT stop if it reaches a lable of another subroutine.
+	 * Does NOT stop if it reaches a label of another subroutine.
 	 * Works recursively.
 	 * @param address The start address of the subroutine.
 	 * @param addrsArray An empty array in the beginning that is filled with
@@ -1285,7 +1285,7 @@ export class Disassembler extends EventEmitter {
 
 	/**
 	 * Reduces the given array to a coherent area. I.e. if there is a "hole"
-	 * inside the subroutine the parts are treated as two separte subroutines.
+	 * inside the subroutine the parts are treated as two separate subroutines.
 	 * @param address The start address of the subroutine.
 	 * @param addrsArray The array with addresses (was filled by this.getSubroutineAddresses).
 	 */
@@ -1760,7 +1760,7 @@ export class Disassembler extends EventEmitter {
 			let index = 1;
 			for (let child of childLabels) {
 				const indexString = this.getIndex(index, digitCount);
-				child.name = '.' + localPrefix + this.labelLocalLablePrefix;
+				child.name = '.' + localPrefix + this.labelLocalLabelPrefix;
 				if (count > 1)
 					child.name += indexString;
 				index++;
@@ -2292,7 +2292,7 @@ export class Disassembler extends EventEmitter {
 
 
 	/**
-	 * Enables writing empyty lines.
+	 * Enables writing empty lines.
 	 * Used to prohibit that empty lines are written more than once.
 	 */
 	protected resetAddEmptyLine() {
