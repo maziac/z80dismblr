@@ -2,8 +2,9 @@
 
 z80dismblr is a Z80 command line disassembler written in typescript.
 
-I.e. it is complete and working in general but it is still very young so there might be some faults still.
-Please don't hesitate to report any problem that you find.
+Note: The work on z80dismblr is not continued. Instead it has been incorporated into [DeZog](https://github.com/maziac/DeZog) debugger and has been extended there.
+It turned out that inside a debugger the disassembler can be used more interactively and effective.
+
 
 ## Features
 
@@ -220,8 +221,8 @@ The highlighted roots:
 This example shows 4 roots. Why is this?
 1. SNA_LBL_MAIN_START_A660 is the address from the SNA file. Since no other code parts reference (jumps to) it, it is a root. Here truly the program starts.
 2. INTRPT1 is the interrupt that is called 50 times per second on the Spectrum.
-Normally z80dismblr cannot find interrupts because it uses a CFG analysis and if no location refers to the interrupt z80dismblr cannot see it. So you would have to manually set the interrupt address via an argument to z80dimblr ("--codelabel address"). In this case however the "-tr" option was used and so z80dismblr could additionally analyse the traces and find the interrupt by itself.
-3. INTRPT2: This in fact is the real interrupt location. Here a simple "JP INTERPT1" could be found. The reason why z80dismblr did not draw any lines from here is: it is self-modifying code. The binary that z80dismblr analysed simply contains 3 "NOP" operations. Thus there is no label. The jump operation and the jump location is written by executing the code. But since z80dismblr doesn't do a dynamic analysis it cannot see the these values.
+Normally z80dismblr cannot find interrupts because it uses a CFG analysis and if no location refers to the interrupt z80dismblr cannot see it. So you would have to manually set the interrupt address via an argument to z80dismblr ("--codelabel address"). In this case however the "-tr" option was used and so z80dismblr could additionally analyze the traces and find the interrupt by itself.
+3. INTRPT2: This in fact is the real interrupt location. Here a simple "JP INTERPT1" could be found. The reason why z80dismblr did not draw any lines from here is: it is self-modifying code. The binary that z80dismblr analyzed simply contains 3 "NOP" operations. Thus there is no label. The jump operation and the jump location is written by executing the code. But since z80dismblr doesn't do a dynamic analysis it cannot see the these values.
 4. SUB007: This looks strange. And indeed, this helped me to find an error in the assembler program. It was hard to find but in the end the code boiled down to the very simple:
 ~~~
 711D:
@@ -254,7 +255,7 @@ A call to unassigned memory result in a gray bubble (in case of SNA files for th
 
 It is also possible to let z80dismblr generate only a part of the caller graphs e.g. to focus on a certain subroutine.
 
-For this add "--noautomaticaddr" to the commandline. This will prevent that z80dimblr will use address 0000 or the SNA start address automatically.
+For this add "--noautomaticaddr" to the commandline. This will prevent that z80dismblr will use address 0000 or the SNA start address automatically.
 
 Additionally add the address of the subroutine you want to see with a "--codelabel" option:
 ~~~
@@ -336,7 +337,7 @@ The original disassembled code:
 7634 18 F2        jr   .sub055_loop 	; 7628h
 ~~~
 
-After analysing we find out what the purpose is and how it works so we add comments in a special file:
+After analyzing we find out what the purpose is and how it works so we add comments in a special file:
 ~~~
 ; Subroutine to print a text in HL until an end-of-string (0xFF) is found.
 ; There is a little formatting allowed:
@@ -419,7 +420,7 @@ As z80dismblr doesn't know about dynamic changes you might find code areas with 
 
 ## How It Works
 
-The z80dismblr uses a [Control-Flow-Graph](https://en.wikipedia.org/wiki/Control_flow_graph) (CFG) to analyse the binary file(s).
+The z80dismblr uses a [Control-Flow-Graph](https://en.wikipedia.org/wiki/Control_flow_graph) (CFG) to analyze the binary file(s).
 I.e. it runs through the code through all possible paths and disassembles it.
 
 Consider the following example:
@@ -499,12 +500,12 @@ For the code above this leads to the following CFG:
 
 We can see already a few important points:
 - The data at addresses 000Fh is not disassembled as this data is not reachable.
-- The disassembly will stop if all branch addresses have been analysed.
+- The disassembly will stop if all branch addresses have been analyzed.
 
 Additionally to the CFG analysis there is also a code and data label analysis.
 This is why address 0018h can be interpreted.
-The disassembler interpretes all opcodes that deal with data addresses like in 'LD A,(0018h)'.
-This adddresses are known to contain data and so the disassembler disassembles the bytes
+The disassembler interprets all opcodes that deal with data addresses like in 'LD A,(0018h)'.
+This addresses are known to contain data and so the disassembler disassembles the bytes
 to a 'DEFB' and assigns a label to it.
 
 Here is the resulting disassembly:
@@ -604,7 +605,7 @@ START:
 
 ### Opcode Extensions
 
-It is possible to tweak some opcodes a little bit. I.e. it is possible to instruct z80dismblr to treat the data following the opcode in a special way and add it to the disassembly text of the preceeding opcode.
+It is possible to tweak some opcodes a little bit. I.e. it is possible to instruct z80dismblr to treat the data following the opcode in a special way and add it to the disassembly text of the preceding opcode.
 
 E.g. consider the following assembler listing
 
@@ -619,7 +620,7 @@ In this example the "RST 8" will modify the stack in such a way that it a) looks
 
 To modify opcode you need the '--opcode byte appendtext' argument.
 
-'byte' is the opcode to extend (in this case 0xCF for "RST 8") and 'appendtext' contains the formatting for the addtional byte.
+'byte' is the opcode to extend (in this case 0xCF for "RST 8") and 'appendtext' contains the formatting for the additional byte.
 
 I.e. with this argument '--opcode 0xCF ", CODE=#n"' the disassembly will look like:
 
