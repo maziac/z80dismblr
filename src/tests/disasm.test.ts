@@ -38,7 +38,7 @@ suite('Disassembler', () => {
 		dasm.labelSubPrefix = "SUB";
 		dasm.labelLblPrefix = "LBL";
 		dasm.labelDataLblPrefix = "DATA";
-		dasm.labelLocalLablePrefix = "_lbl";
+		dasm.labelLocalLabelPrefix = "_lbl";
 		dasm.labelLoopPrefix = "_loop";
 		dasm.labelSelfModifyingPrefix = "SELF_MOD";
 		dasm.DBG_ADD_DEC_ADDRESS = false;
@@ -555,7 +555,7 @@ suite('Disassembler', () => {
 
 			dasm.labelSubPrefix = "CSUB";
 			dasm.labelLblPrefix = "CCODE";
-			dasm.labelLocalLablePrefix = "_l";
+			dasm.labelLocalLablePrefix = "_lbl";
 			dasm.labelLoopPrefix = "_loop";
 
 			const org = 0x7000;
@@ -578,11 +578,11 @@ suite('Disassembler', () => {
 			assert(label.isEqu == false);
 
 			label = dasm.labels.get(0x7002);
-			assert(label.name == '.csub1_l1');
+			assert(label.name == '.csub1_lbl1');
 			assert(label.isEqu == false);
 
 			label = dasm.labels.get(0x7004);
-			assert(label.name == '.csub1_l2');
+			assert(label.name == '.csub1_lbl2');
 			assert(label.isEqu == false);
 
 			label = dasm.labels.get(0x7005);
@@ -592,10 +592,10 @@ suite('Disassembler', () => {
 			assert(label.name == 'CSUB2');
 
 			label = dasm.labels.get(0x700d);
-			assert(label.name == '.csub2_l1');
+			assert(label.name == '.csub2_lbl1');
 
 			label = dasm.labels.get(0x700f);
-			assert(label.name == '.csub2_l2');
+			assert(label.name == '.csub2_lbl2');
 
 			label = dasm.labels.get(0x7010);
 			assert(label.name == '.csub2_loop1');
